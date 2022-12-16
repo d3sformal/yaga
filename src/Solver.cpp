@@ -59,9 +59,11 @@ void Solver::decide(Variable var)
 
 Solver::Result Solver::check()
 {
+    Subsumption subsumption; // TODO: make this a generic event listener?
     for (auto [type, model] : trail_.models())
     {
         variable_order_->on_variable_resize(type, model->num_vars());
+        subsumption.on_variable_resize(type, model->num_vars());
     }
     variable_order_->on_init(db_, trail_);
 
@@ -80,6 +82,7 @@ Solver::Result Solver::check()
             {
                 trail_.clear();
                 restart_->on_restart(db_, trail_);
+                subsumption.on_restart(db_, trail_);
             }
             else // backtrack instead of restarting
             {

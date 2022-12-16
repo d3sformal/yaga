@@ -15,6 +15,7 @@
 #include "Trail.h"
 #include "Variable.h"
 #include "Variable_order.h"
+#include "Subsumption.h"
 
 namespace perun {
 

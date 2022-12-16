@@ -5,4 +5,5 @@ target_sources(perun PRIVATE
     Luby_restart.cpp
     Restart.cpp
     Solver.cpp
+    Subsumption.cpp
 )

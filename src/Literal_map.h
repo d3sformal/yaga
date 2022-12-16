@@ -31,6 +31,9 @@ public:
     inline Reference operator[](Literal lit) { return values_[index(lit)]; }
     inline Const_reference operator[](Literal lit) const { return values_[index(lit)]; }
 
+    // set values in the map
+    inline void assign(T value) { values_.assign(values_.size(), value); }
+
     // range of values in the map
     inline auto begin() { return values_.begin(); }
     inline auto begin() const { return values_.begin(); }

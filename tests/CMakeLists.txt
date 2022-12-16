@@ -4,4 +4,5 @@ target_sources(test PRIVATE
     Evsids_test.cpp
     Luby_restart_test.cpp
     Solver_test.cpp
+    Subsumption_test.cpp
 )
