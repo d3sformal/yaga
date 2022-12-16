@@ -102,11 +102,7 @@ bool Bool_theory::replace_second_watch(const Model<bool>& model, Watched_clause&
 
     assert(clause.size() >= 2);
     assert(is_false(model, clause[1]));
-
-    if (is_true(model, clause[0]))
-    {
-        return false; 
-    }
+    assert(!is_true(model, clause[0]));
 
     if (clause.size() > 2)
     {
