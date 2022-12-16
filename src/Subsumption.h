@@ -32,9 +32,9 @@ public:
     void on_variable_resize(Variable::Type type, int num_vars);
 
     /** Event called when a new conflict clause is learned but it has not been added to 
-     * the database yet (i.e., before `on_learned_clause()`).
+     * the database yet (i.e., before the on_learned_clause() event).
      * 
-     * It minimizes @p conflict by removing literals that are 
+     * It minimizes @p conflict using self-subsuming resolution.
      * 
      * @param db clause database
      * @param trail current trail
@@ -55,6 +55,8 @@ private:
     public:
         inline Clause_ptr() {}
         inline Clause_ptr(const Clause* ptr, std::uint64_t sig) : ptr_(ptr), sig_(sig) {}
+        inline Clause_ptr(const Clause_ptr&) = default;
+        inline Clause_ptr& operator=(const Clause_ptr&) = default;
         inline const Clause* operator->() { return ptr_; }
         inline const Clause& operator*() { return *ptr_; }
         inline std::uint64_t sig() const { return sig_; }

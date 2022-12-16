@@ -124,20 +124,17 @@ void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause, std::unordered
     }
 
     // remove subsumed clauses
-    auto end = occur_[best_lit].begin();
-    for (auto other_clause_ptr : occur_[best_lit])
+    auto& intersection = occur_[best_lit];
+    auto end = std::partition(intersection.begin(), intersection.end(), [&](auto other_ptr) 
     {
-        if (other_clause_ptr != clause && subsumes(clause, other_clause_ptr))
-        {
-            // convert the Clause_ptr proxy to an actual pointer
-            removed.insert(&*other_clause_ptr); 
-        }
-        else // keep other clause in the adjacency list
-        {
-            *end++ = other_clause_ptr;
-        }
+        return other_ptr == clause || !subsumes(clause, other_ptr);
+    });
+
+    for (auto it = end; it != intersection.end(); ++it)
+    {
+        removed.insert(&*(*it)); // convert the Clause_ptr proxy to an actual pointer
     }
-    occur_[best_lit].erase(end, occur_[best_lit].end());
+    intersection.erase(end, intersection.end());
 }
 
 void Subsumption::remove_subsumed(std::deque<Clause>& clauses)
