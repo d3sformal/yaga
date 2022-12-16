@@ -33,9 +33,9 @@ public:
 
     // range of values in the map
     inline auto begin() { return values_.begin(); }
-    inline const auto begin() const { return values_.begin(); }
+    inline auto begin() const { return values_.begin(); }
     inline auto end() { return values_.end(); }
-    inline const auto end() const { return values_.end(); }
+    inline auto end() const { return values_.end(); }
 
     // change the number of variables
     inline void resize(int num_vars) { values_.resize(num_vars * 2); }

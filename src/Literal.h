@@ -9,7 +9,7 @@
 
 namespace perun {
 
-struct Literal_hash;
+class Literal_hash;
 
 /** Boolean variable or its negation.
  */
