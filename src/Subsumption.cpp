@@ -11,6 +11,21 @@ void Subsumption::on_variable_resize(Variable::Type type, int num_vars)
     }
 }
 
+void Subsumption::on_conflict_clause(Database&, Trail& trail, Clause& conflict)
+{
+    const auto& model = trail.model<bool>(Variable::boolean);
+
+    conflict.erase(std::remove_if(conflict.begin(), conflict.end(), [&](auto lit) 
+    {
+        if (is_true(model, lit.negate()))
+        {
+            auto reason = trail.reason(lit.var());
+            return reason && selfsubsumes(*reason, conflict, lit.negate());
+        }
+        return false;
+    }), conflict.end());
+}
+
 void Subsumption::on_restart(Database& db, Trail&)
 {
     remove_subsumed(db.learned());
@@ -62,6 +77,33 @@ bool Subsumption::subsumes(Subsumption::Clause_ptr first, Subsumption::Clause_pt
     return true;
 }
 
+bool Subsumption::selfsubsumes(const Clause& first, const Clause& second, Literal lit)
+{
+    assert(std::find(first.begin(), first.end(), lit) != first.end());
+    assert(std::find(second.begin(), second.end(), lit.negate()) != second.end());
+
+    if (first.size() > second.size())
+    {
+        return false;
+    }
+
+    bitset_.assign(false);
+    bitset_[lit] = true;
+    for (auto l : second)
+    {
+        bitset_[l] = true;
+    }
+
+    for (auto l : first)
+    {
+        if (!bitset_[l])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause, std::unordered_set<const Clause*>& removed)
 {
     if (clause->empty())
@@ -92,8 +134,7 @@ void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause, std::unordered
         }
         else // keep other clause in the adjacency list
         {
-            *end = other_clause_ptr;
-            ++end;
+            *end++ = other_clause_ptr;
         }
     }
     occur_[best_lit].erase(end, occur_[best_lit].end());

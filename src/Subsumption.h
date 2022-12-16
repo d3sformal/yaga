@@ -20,7 +20,7 @@ namespace perun {
 
 /** Periodically (on restart) removes subsumed clauses.
  * 
- * TODO: minimize learned clauses using self-subsumption.
+ * It also minimizes learned clauses using self-subsumption
  */
 class Subsumption {
 public:
@@ -30,6 +30,17 @@ public:
      * @param num_vars new number of variables
      */
     void on_variable_resize(Variable::Type type, int num_vars);
+
+    /** Event called when a new conflict clause is learned but it has not been added to 
+     * the database yet (i.e., before `on_learned_clause()`).
+     * 
+     * It minimizes @p conflict by removing literals that are 
+     * 
+     * @param db clause database
+     * @param trail current trail
+     * @param conflict clause in conflict with @p trail
+     */
+    void on_conflict_clause(Database& db, Trail& trail, Clause& conflict);
 
     /** Find and remove subsumed learned clauses
      * 
@@ -70,10 +81,17 @@ private:
         return {clause, sig};
     }
 
-    // map literal -> clauses in which it occurs (created by `index()`)
+    // map literal -> clauses in which it occurs (created by index())
     Literal_map<std::vector<Clause_ptr>> occur_;
-    // auxiliary bitset for subset tests
+    // auxiliary bitset for subset tests in subsumes() and selfsubsumes()
     Literal_map<bool> bitset_;
+
+    // check whether a literal is true in a model
+    inline bool is_true(const Model<bool>& model, Literal lit) const 
+    {
+        return model.is_defined(lit.var().ord()) && 
+               model.value(lit.var().ord()) == !lit.is_negation();
+    }
 
     /** Construct `occur_` from learned clauses in @p db
      * 
@@ -88,6 +106,15 @@ private:
      * @return true iff @p first is a proper subset of @p second
      */
     bool subsumes(Clause_ptr first, Clause_ptr second);
+
+    /** Check if `resolve(first, second, lit)` is a proper subset of @p second
+     * 
+     * @param first first clause
+     * @param second second clause
+     * @param lit literal for resolution in @p first ; negation of a literal in @p second
+     * @return true iff `resolve(first, second, lit)` is a proper subset of @p second
+     */
+    bool selfsubsumes(const Clause& first, const Clause& second, Literal lit);
 
     /** Remove clauses subsumed by @p clause from `occur_`
      * 

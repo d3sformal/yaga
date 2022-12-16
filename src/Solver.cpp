@@ -78,6 +78,8 @@ Solver::Result Solver::check()
                 return unsat;
             }
 
+            subsumption.on_conflict_clause(db_, trail_, learned);
+
             if (restart_->should_restart())
             {
                 trail_.clear();
