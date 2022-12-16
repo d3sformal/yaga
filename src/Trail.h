@@ -57,22 +57,28 @@ public:
      */
     inline const auto& assigned(int level) const { return assigned_[level]; }
 
-    /** Add a new partial model for type @p type to this trail
+    /** Create a new model for variables of type @p type in this trail
      * 
-     * @tparam T type of elements stored in the model
+     * @tparam T value type of variables of type @p type
      * @param type type of variables
-     * @return reference to the managed model
+     * @param num_vars number of variables of the type @p type
+     * @return reference to the model in this trail
      */
     template<typename T>
-    inline Model<T>& add_model(Variable::Type type)
+    inline Model<T>& set_model(Variable::Type type, int num_vars)
     {
         if (type >= models_.size())
         {
             models_.resize(static_cast<int>(type) + 1);
         }
+
+        // create and add model for variables of this type
         auto model = std::make_unique<Model<T>>();
         auto ptr = model.get();
         models_[type] = std::move(model);
+
+        // set number of variables of this type
+        resize(type, num_vars);
         return *ptr;
     }
 
@@ -178,7 +184,7 @@ public:
      * 
      * @return true iff at least one variable is assigned in this trail
      */
-    inline bool empty() const { return assigned_.size() == 1 && assigned_[0].size() == 0; }
+    inline bool empty() const { return assigned_.size() == 1 && assigned_[0].empty(); }
 
     /** Make all variables unassigned.
      */

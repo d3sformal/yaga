@@ -14,9 +14,7 @@ TEST_CASE("Resolve propagated literal", "[conflict_analysis]")
     db.assert_clause(lit(0), lit(1), lit(2));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-
-    trail.resize(Variable::boolean, 10);
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     trail.decide(bool_var(0));
     model.set_value(0, false);
@@ -44,9 +42,7 @@ TEST_CASE("Add literals to conflict during resolution", "[conflict_analysis]")
     db.assert_clause(lit(0), lit(2), lit(3));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-
-    trail.resize(Variable::boolean, 10);
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     trail.decide(bool_var(0));
     model.set_value(0, false);
@@ -77,9 +73,7 @@ TEST_CASE("Derive a unit conflict clause", "[conflict_analysis]")
     db.assert_clause(lit(0), lit(2));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-
-    trail.resize(Variable::boolean, 10);
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     trail.decide(bool_var(0));
     model.set_value(0, false);
@@ -108,9 +102,7 @@ TEST_CASE("Derive an empty clause", "[conflict_analysis]")
     db.assert_clause(-lit(0), -lit(1), lit(2));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-
-    trail.resize(Variable::boolean, 10);
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     trail.propagate(bool_var(0), &*db.asserted().begin(), trail.decision_level());
     model.set_value(0, true);

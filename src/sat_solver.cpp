@@ -34,7 +34,6 @@ int main(int argc, char** argv)
     solver.add_theory<Bool_theory>();
     solver.set_variable_order<Evsids>();
     solver.set_restart_policy<Luby_restart>();
-    solver.trail().add_model<bool>(Variable::boolean);
 
     std::string path{argv[1]};
     std::ifstream input{path};
@@ -59,7 +58,7 @@ int main(int argc, char** argv)
         {
             stream.seekg(5);
             stream >> num_vars >> num_clauses;
-            solver.trail().resize(Variable::boolean, num_vars);
+            solver.trail().set_model<bool>(Variable::boolean, num_vars);
         }
         else
         {

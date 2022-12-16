@@ -14,8 +14,7 @@ TEST_CASE("Propagate unit clauses if the trail is empty", "[bool_theory][bcp]")
     db.assert_clause(-lit(1));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-    trail.resize(Variable::boolean, 10);
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     Bool_theory theory;
     auto conflict = theory.propagate(db, trail);
@@ -52,8 +51,7 @@ TEST_CASE("Run BCP after a value is decided", "[bool_theory][bcp]")
     db.assert_clause(lit(0), lit(3));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-    trail.resize(Variable::boolean, 10);
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     // initialize watch lists
     auto conflict = theory.propagate(db, trail);
@@ -102,8 +100,7 @@ TEST_CASE("Run BCP after backtracking", "[bool_theory][bcp]")
     db.assert_clause(-lit(1), -lit(2), lit(3));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-    trail.resize(Variable::boolean, 10);
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     // init
     auto conflict = theory.propagate(db, trail);
@@ -144,8 +141,7 @@ TEST_CASE("Skip satisfied clauses", "[bool_theory][bcp]")
     db.assert_clause(-lit(0), lit(1), lit(2));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-    trail.resize(Variable::boolean, 10);
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     auto conflict = theory.propagate(db, trail);
     REQUIRE(!conflict);

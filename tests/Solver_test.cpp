@@ -14,8 +14,7 @@ TEST_CASE("Check a satisfiable boolean formula", "[sat][integration]")
     solver.add_theory<Bool_theory>();
     solver.set_variable_order<Evsids>();
     solver.set_restart_policy<No_restart>();
-    solver.trail().add_model<bool>(Variable::boolean);
-    solver.trail().resize(Variable::boolean, 3);
+    solver.trail().set_model<bool>(Variable::boolean, 3);
     solver.db().assert_clause(lit(0), lit(1), lit(2));
     solver.db().assert_clause(lit(0), lit(1), -lit(2));
     //solver.db().assert_clause(lit(0), -lit(1), lit(2));
@@ -46,8 +45,7 @@ TEST_CASE("Check an unsatisfiable boolean formula", "[unsat][integration]")
     solver.add_theory<Bool_theory>();
     solver.set_variable_order<Evsids>();
     solver.set_restart_policy<No_restart>();
-    solver.trail().add_model<bool>(Variable::boolean);
-    solver.trail().resize(Variable::boolean, 3);
+    solver.trail().set_model<bool>(Variable::boolean, 3);
     solver.db().assert_clause(lit(0), lit(1), lit(2));
     solver.db().assert_clause(lit(0), lit(1), -lit(2));
     solver.db().assert_clause(lit(0), -lit(1), lit(2));

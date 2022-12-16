@@ -33,8 +33,7 @@ TEST_CASE("Strenghten conflict clause", "[self-subsumption]")
     db.learn_clause(lit(1));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-    trail.resize(Variable::boolean, 4);
+    auto& model = trail.set_model<bool>(Variable::boolean, 4);
 
     model.set_value(0, false);
     trail.propagate(bool_var(0), &*(db.learned().begin()), trail.decision_level());

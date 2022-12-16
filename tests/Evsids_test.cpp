@@ -13,8 +13,7 @@ TEST_CASE("Pick a variable with empty clause database", "[evsids]")
     Database db;
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-    trail.resize(Variable::boolean, 3);
+    auto& model = trail.set_model<bool>(Variable::boolean, 3);
 
     Evsids evsids;
     evsids.on_variable_resize(Variable::boolean, 3);
@@ -49,8 +48,7 @@ TEST_CASE("Pick the most used variable if there has not been a conflict", "[evsi
     db.assert_clause(lit(0));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-    trail.resize(Variable::boolean, 3);
+    auto& model = trail.set_model<bool>(Variable::boolean, 3);
 
     Evsids evsids;
     evsids.on_variable_resize(Variable::boolean, 3);
@@ -85,8 +83,7 @@ TEST_CASE("Pick a variable after a large number of score decays", "[evsids]")
     db.assert_clause(lit(0));
 
     Trail trail;
-    auto& model = trail.add_model<bool>(Variable::boolean);
-    trail.resize(Variable::boolean, 3);
+    auto& model = trail.set_model<bool>(Variable::boolean, 3);
 
     Evsids evsids;
     evsids.on_variable_resize(Variable::boolean, 3);
