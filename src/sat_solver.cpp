@@ -94,20 +94,24 @@ int main(int argc, char** argv)
     {
         if (is_satisfying(solver.trail(), solver.db()))
         {
-            std::cout << "SAT" << std::endl;
+            std::cout << "SAT\n";
         }
         else
         {
-            std::cout << "ERROR" << std::endl;
+            std::cout << "ERROR\n";
             return -2;
         }
     }
     else 
     {
-        std::cout << "UNSAT" << std::endl;
+        std::cout << "UNSAT\n";
     }
 
-    std::cout << (duration.count() / 1e9) << " s" << std::endl;
+    std::cout << "\n";
+    std::cout << "time[s] = " << (duration.count() / 1e9) << "\n";
+    std::cout << "conflicts = " << solver.num_conflicts() << "\n";
+    std::cout << "decisions = " << solver.num_decisions() << "\n";
+    std::cout << "restarts = " << solver.num_restarts() << "\n";
 
     return result == Solver::sat ? 1 : 0;
 }

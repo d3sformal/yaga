@@ -16,6 +16,7 @@
 #include "Variable.h"
 #include "Variable_order.h"
 #include "Subsumption.h"
+#include "Evsids.h"
 
 namespace perun {
 
@@ -66,13 +67,25 @@ public:
      */
     Result check();
 
+    // get total number of conflicts in the last check()
+    inline int num_conflicts() const { return num_conflicts_; }
+    // get total number of decisions in the last check()
+    inline int num_decisions() const { return num_decisions_; }
+    // get total number of restarts in the last check()
+    inline int num_restarts() const { return num_restarts_; }
 private:
     Trail trail_;
     Database db_;
+    Subsumption subsumption_; 
     Conflict_analysis analysis_;
     std::unique_ptr<Restart> restart_;
     std::unique_ptr<Variable_order> variable_order_;
     std::vector<std::unique_ptr<Theory>> theories_;
+
+    // statistics
+    int num_conflicts_ = 0;
+    int num_restarts_ = 0;
+    int num_decisions_ = 0;
 
     std::optional<Clause> propagate();
     // analyze conflict clause
@@ -83,6 +96,10 @@ private:
     std::optional<Variable> pick_variable();
     // decide value of an unassigned variable
     void decide(Variable var);
+    // restart the solver
+    void restart();
+    // reset the solver for a new check()
+    void init();
 };
 
 }

@@ -51,21 +51,38 @@ std::optional<Variable> Solver::pick_variable()
 
 void Solver::decide(Variable var)
 {
+    ++num_decisions_;
     for (auto& theory : theories_)
     {
         theory->decide(db_, trail_, var);
     }
 }
 
-Solver::Result Solver::check()
+void Solver::init()
 {
-    Subsumption subsumption; // TODO: make this a generic event listener?
+    num_conflicts_ = 0;
+    num_decisions_ = 0;
+    num_restarts_ = 0;
+
     for (auto [type, model] : trail_.models())
     {
         variable_order_->on_variable_resize(type, model->num_vars());
-        subsumption.on_variable_resize(type, model->num_vars());
+        subsumption_.on_variable_resize(type, model->num_vars());
     }
     variable_order_->on_init(db_, trail_);
+}
+
+void Solver::restart()
+{
+    ++num_restarts_;
+    trail_.clear();
+    restart_->on_restart(db_, trail_);
+    subsumption_.on_restart(db_, trail_);
+}
+
+Solver::Result Solver::check()
+{
+    init();
 
     for (;;)
     {
@@ -77,14 +94,12 @@ Solver::Result Solver::check()
             {
                 return unsat;
             }
-
-            subsumption.on_conflict_clause(db_, trail_, learned);
+            ++num_conflicts_;
+            subsumption_.on_conflict_clause(db_, trail_, learned);
 
             if (restart_->should_restart())
             {
-                trail_.clear();
-                restart_->on_restart(db_, trail_);
-                subsumption.on_restart(db_, trail_);
+                restart();
             }
             else // backtrack instead of restarting
             {
