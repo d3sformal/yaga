@@ -12,6 +12,8 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
 include_directories(src)
 include_directories(tests)
 
