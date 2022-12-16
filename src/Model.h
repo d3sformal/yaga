@@ -10,7 +10,7 @@ public:
     virtual ~Model_base() = default;
 
     // check if a variable is defined
-    inline bool is_defined(int ord) const { return 0 <= ord && ord < static_cast<int>(defined_.size()) && defined_[ord]; }
+    inline bool is_defined(int ord) const { return defined_[ord]; }
     // make a variable undefined in this model
     inline void clear(int ord) { defined_[ord] = false; }
     // make all variables undefined in this model
@@ -30,7 +30,7 @@ protected:
 
 /** Partial model.
  * 
- * Basically a map from variable ordinal to its value and subset of defined variables.
+ * Map from variable ordinal to its value and subset of defined variables.
  * 
  * @tparam T type of variables stored in the model
  */
@@ -52,7 +52,7 @@ public:
     // get value regardless if `is_defined()`
     inline Const_reference value(int ord) const { return values_[ord]; }
 
-    // get value regardless if `is_defined()`
+    // set a new value for a variable and make it defined
     inline void set_value(int ord, Value_type val) 
     { 
         values_[ord] = val; 
