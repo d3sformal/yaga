@@ -179,6 +179,38 @@ public:
      * @return true iff at least one variable is assigned in this trail
      */
     inline bool empty() const { return assigned_.size() == 1 && assigned_[0].size() == 0; }
+
+    /** Make all variables unassigned.
+     */
+    inline void clear() 
+    {
+        for (auto& list : reason_)
+        {
+            for (auto& value : list)
+            {
+                value = nullptr;
+            }
+        }
+
+        for (auto& list : level_)
+        {
+            for (auto& value : list)
+            {
+                value = UNASSIGNED;
+            }
+        }
+
+        for (auto& model : models_)
+        {
+            if (model)
+            {
+                model->clear();
+            }
+        }
+
+        assigned_.clear();
+        assigned_.emplace_back();
+    }
 private:
     // level in `level_` of unassigned variables
     inline static constexpr int UNASSIGNED = -1;

@@ -10,6 +10,7 @@
 #include "Clause.h"
 #include "Conflict_analysis.h"
 #include "Database.h"
+#include "Restart.h"
 #include "Theory.h"
 #include "Trail.h"
 #include "Variable.h"
@@ -50,6 +51,14 @@ public:
         variable_order_ = std::make_unique<T>(std::forward<Args>(args)...);
     }
 
+    // set a new restart policy
+    template<typename T, typename... Args>
+        requires std::is_base_of_v<Restart, T>
+    inline void set_restart_policy(Args&&... args)
+    {
+        restart_ = std::make_unique<T>(std::forward<Args>(args)...);
+    }
+
     /** Check satisfiability of asserted clauses in database `db()`
      * 
      * @return `sat` if asserted clauses are satisfiable, `unsat` otherwise
@@ -60,6 +69,7 @@ private:
     Trail trail_;
     Database db_;
     Conflict_analysis analysis_;
+    std::unique_ptr<Restart> restart_;
     std::unique_ptr<Variable_order> variable_order_;
     std::vector<std::unique_ptr<Theory>> theories_;
 

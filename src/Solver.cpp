@@ -33,6 +33,7 @@ void Solver::backtrack_with(Clause&& clause, int level)
     {
         theory->on_learned_clause(db_, trail_, &learned);
     }
+    restart_->on_learned_clause(db_, trail_, &learned);
     variable_order_->on_learned_clause(db_, trail_, &learned);
 
     // TODO: handle semantic split (decide clause[0] or clause[1] instead of propagating clause[0])
@@ -75,7 +76,15 @@ Solver::Result Solver::check()
                 return unsat;
             }
 
-            backtrack_with(std::move(learned), level);
+            if (restart_->should_restart())
+            {
+                trail_.clear();
+                restart_->on_restart(db_, trail_);
+            }
+            else // backtrack instead of restarting
+            {
+                backtrack_with(std::move(learned), level);
+            }
         }
         else // no conflict
         {
