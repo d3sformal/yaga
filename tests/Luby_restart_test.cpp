@@ -2,9 +2,9 @@
 
 #include <array>
 
-#include "Luby_restart.h"
+#include "Restart.h"
 
-TEST_CASE("Generate luby sequence", "[luby][debug]")
+TEST_CASE("Generate luby sequence", "[luby]")
 {
     using namespace perun;
 

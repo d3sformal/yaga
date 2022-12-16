@@ -7,7 +7,7 @@
 
 #include "Solver.h"
 #include "Evsids.h"
-#include "Luby_restart.h"
+#include "Restart.h"
 #include "Bool_theory.h"
 
 using namespace perun;
