@@ -17,7 +17,7 @@ public:
     void on_init(Database& db, Trail& trail) override;
     void on_variable_resize(Variable::Type type, int num_vars) override;
     void on_learned_clause(Database& db, Trail& trail, Clause* learned) override;
-    void on_conflict_resolved(Database& db, Trail& trail, const Clause& learned) override;
+    void on_conflict_resolved(Database& db, Trail& trail, const Clause& other) override;
     std::optional<Variable> pick(Database& db, Trail& trail) override;
 
     // get current score of a boolean variable

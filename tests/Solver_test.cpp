@@ -11,7 +11,7 @@ TEST_CASE("Check a satisfiable boolean formula", "[sat][integration]")
     using namespace perun::test;
 
     Solver solver;
-    solver.add_theory<Bool_theory>();
+    solver.set_theory<Bool_theory>();
     solver.set_variable_order<Evsids>();
     solver.set_restart_policy<No_restart>();
     solver.trail().set_model<bool>(Variable::boolean, 3);
@@ -42,7 +42,7 @@ TEST_CASE("Check an unsatisfiable boolean formula", "[unsat][integration]")
     using namespace perun::test;
 
     Solver solver;
-    solver.add_theory<Bool_theory>();
+    solver.set_theory<Bool_theory>();
     solver.set_variable_order<Evsids>();
     solver.set_restart_policy<No_restart>();
     solver.trail().set_model<bool>(Variable::boolean, 3);

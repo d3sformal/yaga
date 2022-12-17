@@ -5,17 +5,13 @@
 #include "Database.h"
 #include "Trail.h"
 #include "Variable.h"
+#include "Event_listener.h"
 
 namespace perun {
 
-class Variable_order {
+class Variable_order : public Event_listener {
 public:
     virtual ~Variable_order() = default;
-
-    virtual void on_init(Database&, Trail&) {}
-    virtual void on_variable_resize(Variable::Type, int) {}
-    virtual void on_learned_clause(Database&, Trail&, Clause*) {}
-    virtual void on_conflict_resolved(Database&, Trail&, const Clause&) {}
 
     /** Pick an unassigned variable in @p trail to decide
      * 

@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     }
 
     Solver solver;
-    solver.add_theory<Bool_theory>();
+    solver.set_theory<Bool_theory>();
     solver.set_variable_order<Evsids>();
     solver.set_restart_policy<Luby_restart>();
 

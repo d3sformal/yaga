@@ -11,7 +11,7 @@ void Subsumption::on_variable_resize(Variable::Type type, int num_vars)
     }
 }
 
-void Subsumption::on_conflict_clause(Database&, Trail& trail, Clause& conflict)
+void Subsumption::on_conflict_derived(Database&, Trail& trail, Clause& conflict)
 {
     const auto& model = trail.model<bool>(Variable::boolean);
 

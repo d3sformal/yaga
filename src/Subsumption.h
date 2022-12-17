@@ -15,6 +15,7 @@
 #include "Database.h"
 #include "Trail.h"
 #include "Variable.h"
+#include "Event_listener.h"
 
 namespace perun {
 
@@ -22,32 +23,13 @@ namespace perun {
  * 
  * It also minimizes learned clauses using self-subsumption
  */
-class Subsumption {
+class Subsumption : public Event_listener {
 public:
-    /** Event called whenever number of variables of type @p type changes
-     * 
-     * @param type type of variables
-     * @param num_vars new number of variables
-     */
-    void on_variable_resize(Variable::Type type, int num_vars);
-
-    /** Event called when a new conflict clause is learned but it has not been added to 
-     * the database yet (i.e., before the on_learned_clause() event).
-     * 
-     * It minimizes @p conflict using self-subsuming resolution.
-     * 
-     * @param db clause database
-     * @param trail current trail
-     * @param conflict clause in conflict with @p trail
-     */
-    void on_conflict_clause(Database& db, Trail& trail, Clause& conflict);
-
-    /** Find and remove subsumed learned clauses
-     * 
-     * @param db clause database
-     * @param trail current trail after restart
-     */
-    void on_restart(Database& db, Trail& trail);
+    void on_variable_resize(Variable::Type type, int num_vars) override;
+    // minimize conflict using self-subsuming resolution
+    void on_conflict_derived(Database& db, Trail& trail, Clause& conflict) override;
+    // find and remove subsumed learned clauses from db
+    void on_restart(Database& db, Trail& trail) override;
 
 private:
     // clause pointer proxy which also stores signature of the clause

@@ -4,15 +4,7 @@ namespace perun {
 
 std::optional<Clause> Solver::propagate()
 {
-    for (auto& theory : theories_)
-    {
-        auto conflict = theory->propagate(db_, trail_);
-        if (conflict)
-        {
-            return conflict;
-        }
-    }
-    return {};
+    return theory_->propagate(db_, trail_);
 }
 
 std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
@@ -29,12 +21,10 @@ void Solver::backtrack_with(Clause&& clause, int level)
     auto& learned = db_.learn_clause(std::move(clause));
 
     // trigger events
-    for (auto& theory : theories_)
+    for (auto listener : listeners())
     {
-        theory->on_learned_clause(db_, trail_, &learned);
+        listener->on_learned_clause(db_, trail_, &learned);
     }
-    restart_->on_learned_clause(db_, trail_, &learned);
-    variable_order_->on_learned_clause(db_, trail_, &learned);
 
     // TODO: handle semantic split (decide clause[0] or clause[1] instead of propagating clause[0])
 
@@ -52,32 +42,39 @@ std::optional<Variable> Solver::pick_variable()
 void Solver::decide(Variable var)
 {
     ++num_decisions_;
-    for (auto& theory : theories_)
-    {
-        theory->decide(db_, trail_, var);
-    }
+    theory_->decide(db_, trail_, var);
 }
 
 void Solver::init()
 {
+    // allocate memory
+    for (auto [type, model] : trail_.models())
+    {
+        for (auto listener : listeners())
+        {
+            listener->on_variable_resize(type, model->num_vars());
+        }
+    }
+
+    // reset solver state
     num_conflicts_ = 0;
     num_decisions_ = 0;
     num_restarts_ = 0;
-
-    for (auto [type, model] : trail_.models())
+    for (auto listener : listeners())
     {
-        variable_order_->on_variable_resize(type, model->num_vars());
-        subsumption_.on_variable_resize(type, model->num_vars());
+        listener->on_init(db_, trail_);
     }
-    variable_order_->on_init(db_, trail_);
 }
 
 void Solver::restart()
 {
     ++num_restarts_;
     trail_.clear();
-    restart_->on_restart(db_, trail_);
-    subsumption_.on_restart(db_, trail_);
+
+    for (auto listener : listeners())
+    {
+        listener->on_restart(db_, trail_);
+    }
 }
 
 Solver::Result Solver::check()
@@ -94,8 +91,12 @@ Solver::Result Solver::check()
             {
                 return unsat;
             }
+
             ++num_conflicts_;
-            subsumption_.on_conflict_clause(db_, trail_, learned);
+            for (auto listener : listeners())
+            {
+                listener->on_conflict_derived(db_, trail_, learned);
+            }
 
             if (restart_->should_restart())
             {

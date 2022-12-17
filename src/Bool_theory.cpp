@@ -106,6 +106,7 @@ bool Bool_theory::replace_second_watch(const Model<bool>& model, Watched_clause&
 
     if (clause.size() > 2)
     {
+        assert(2 <= watch.index && watch.index < static_cast<int>(clause.size()));
         const auto end = watch.index;
         do
         {

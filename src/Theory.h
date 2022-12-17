@@ -6,12 +6,13 @@
 #include "Trail.h"
 #include "Database.h"
 #include "Clause.h"
+#include "Event_listener.h"
 
 namespace perun {
 
 /** Plugin interface for theory specific functions.
  */
-class Theory {
+class Theory : public Event_listener {
 public:
     virtual ~Theory() = default;
 
@@ -33,14 +34,6 @@ public:
      * @param var variable to decide
      */
     virtual void decide(Database&, Trail&, Variable) = 0;
-
-    /** Event called whenever a new clause is learned.
-     * 
-     * @param db clause database
-     * @param trail current trail
-     * @param clause newly learned clause - pointer to @p db 
-     */
-    virtual void on_learned_clause(Database&, Trail&, Clause*) {}
 };
 
 }

@@ -1,6 +1,7 @@
 #ifndef PERUN_SOLVER_H_
 #define PERUN_SOLVER_H_
 
+#include <array>
 #include <memory>
 #include <vector>
 #include <algorithm>
@@ -34,14 +35,14 @@ public:
     inline Database& db() { return db_; }
     inline const Database& db() const { return db_; }
 
-    // add a new theory to the solver
+    // set theory used by the solver
     template<typename T, typename... Args>
         requires std::is_base_of_v<Theory, T>
-    inline T& add_theory(Args&&... args)
+    inline T& set_theory(Args&&... args)
     { 
         auto theory = std::make_unique<T>(std::forward<Args>(args)...);
         auto theory_ptr = theory.get();
-        theories_.emplace_back(std::move(theory));
+        theory_ = std::move(theory);
         return *theory_ptr;
     }
 
@@ -78,14 +79,25 @@ private:
     Database db_;
     Subsumption subsumption_; 
     Conflict_analysis analysis_;
+    std::unique_ptr<Theory> theory_;
     std::unique_ptr<Restart> restart_;
     std::unique_ptr<Variable_order> variable_order_;
-    std::vector<std::unique_ptr<Theory>> theories_;
 
     // statistics
     int num_conflicts_ = 0;
     int num_restarts_ = 0;
     int num_decisions_ = 0;
+
+    // get all event listeners
+    inline auto listeners()
+    {
+        return std::array<Event_listener*, 4>{
+            theory_.get(),
+            restart_.get(),
+            variable_order_.get(),
+            &subsumption_,
+        };
+    }
 
     std::optional<Clause> propagate();
     // analyze conflict clause

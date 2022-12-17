@@ -3,14 +3,13 @@
 
 #include "Database.h"
 #include "Trail.h"
+#include "Event_listener.h"
 
 namespace perun {
 
-class Restart {
+class Restart : public Event_listener {
 public:
     virtual ~Restart() = default;
-    virtual void on_learned_clause(Database&, Trail&, Clause*) {}
-    virtual void on_restart(Database&, Trail&) {}
 
     /** Check whether the solver should restart
      * 

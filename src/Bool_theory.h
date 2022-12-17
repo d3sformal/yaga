@@ -23,6 +23,7 @@ public:
     // decide value for variable var if it is a boolean variable
     void decide(Database& db, Trail& trail, Variable var) override;
 
+    // initialize the learned clause
     void on_learned_clause(Database& db, Trail& trail, Clause* learned) override;
 
 private:

@@ -62,6 +62,7 @@ public:
     }
 
 private:
+    // TODO: use some open addressing implementation?
     // current conflict clause
     std::unordered_set<Literal, Literal_hash> conflict_;
     // the highest decision level in current conflict clause
