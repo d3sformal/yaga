@@ -9,9 +9,22 @@ std::optional<Clause> Solver::propagate()
 
 std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
 {
-    auto[learned, level] = analysis_.analyze(trail_, std::move(conflict), [&](const auto& other_clause) {
-        variable_order_->on_conflict_resolved(db_, trail_, other_clause);
+    auto[learned, level] = analysis_.analyze(trail_, std::move(conflict), [&](const auto& other_clause) 
+    {
+        for (auto listener : listeners())
+        {
+            listener->on_conflict_resolved(db_, trail_, other_clause);
+        }
     });
+
+    if (!learned.empty())
+    {
+        ++num_conflicts_;
+        for (auto listener : listeners())
+        {
+            listener->on_conflict_derived(db_, trail_, learned);
+        }
+    }
     return {learned, level};
 }
 
@@ -90,12 +103,6 @@ Solver::Result Solver::check()
             if (learned.empty())
             {
                 return unsat;
-            }
-
-            ++num_conflicts_;
-            for (auto listener : listeners())
-            {
-                listener->on_conflict_derived(db_, trail_, learned);
             }
 
             if (restart_->should_restart())
