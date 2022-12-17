@@ -21,7 +21,7 @@ public:
 class No_restart final : public Restart {
 public:
     virtual ~No_restart() = default;
-    bool should_restart() const override;
+    bool should_restart() const override { return false; }
 };
 
 class Luby_restart final : public Restart {
@@ -29,9 +29,9 @@ public:
     virtual ~Luby_restart() = default;
     inline Luby_restart() { next(); }
 
-    void on_learned_clause(Database&, Trail&, Clause*) override;
-    void on_restart(Database&, Trail&) override;
-    bool should_restart() const override;
+    void on_learned_clause(Database&, Trail&, Clause*) override { --countdown_; }
+    void on_restart(Database&, Trail&) override { next(); }
+    bool should_restart() const override { return countdown_ <= 0; }
 
     // generate a luby sequence element given a 1-based element index
     inline int luby(std::uint32_t index) const 
