@@ -14,8 +14,6 @@ endif()
 
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
-include_directories(src)
-include_directories(tests)
 include_directories(deps/install/include)
 
 add_library(perun)
