@@ -89,7 +89,7 @@ std::optional<Clause> Bool_theory::propagate(Database& db, Trail& trail)
             model.set_value(lit.var().ord(), !lit.is_negation());
             trail.propagate(lit.var(), reason, trail.decision_level());
         }
-        assert(is_true(model, lit));
+        assert(eval(model, lit) == true);
 
         conflict = falsified(model, lit.negate());
     }
@@ -101,8 +101,8 @@ bool Bool_theory::replace_second_watch(const Model<bool>& model, Watched_clause&
     auto& clause = *watch.clause;
 
     assert(clause.size() >= 2);
-    assert(is_false(model, clause[1]));
-    assert(!is_true(model, clause[0]));
+    assert(eval(model, clause[1]) == false);
+    assert(eval(model, clause[0]) != true);
 
     if (clause.size() > 2)
     {
@@ -111,7 +111,7 @@ bool Bool_theory::replace_second_watch(const Model<bool>& model, Watched_clause&
         do
         {
             // check if the next literal is non-falsified
-            if (!is_false(model, clause[watch.index]))
+            if (eval(model, clause[watch.index]) != false)
             {
                 std::swap(clause[1], clause[watch.index]);
                 watched_[clause[1]].push_back(watch);
@@ -131,7 +131,7 @@ bool Bool_theory::replace_second_watch(const Model<bool>& model, Watched_clause&
 
 std::optional<Clause> Bool_theory::falsified(const Model<bool>& model, Literal falsified_lit)
 {
-    assert(is_false(model, falsified_lit));
+    assert(eval(model, falsified_lit) == false);
 
     auto& watchlist = watched_[falsified_lit];
     for (std::size_t i = 0; i < watchlist.size();)
@@ -153,7 +153,7 @@ std::optional<Clause> Bool_theory::falsified(const Model<bool>& model, Literal f
         assert(clause[1] == falsified_lit);
 
         // skip satisfied clauses
-        if (is_true(model, clause[0]))
+        if (eval(model, clause[0]) == true)
         {
             ++i;
             continue;
@@ -166,7 +166,7 @@ std::optional<Clause> Bool_theory::falsified(const Model<bool>& model, Literal f
         }
         else // there is no other non-falsified literal in clause
         {
-            if (is_false(model, clause[0])) // if the clause is false
+            if (eval(model, clause[0]) == false) // if the clause is false
             {
                 return clause;
             }

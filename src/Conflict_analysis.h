@@ -32,12 +32,11 @@ public:
     std::pair<Clause, int> analyze(const Trail& trail, Clause&& conflict, Resolve_callback&& on_resolve)
     {
         // TODO: handle a semantic split correctly
-
-        assert(!eval(trail, conflict).value_or(true)); // conflict is false in trail
+        const auto& model = trail.model<bool>(Variable::boolean);
+        assert(eval(model, conflict) == false);
 
         init(trail, conflict);
 
-        const auto& model = trail.model<bool>(Variable::boolean);
         const auto& assigned = trail.assigned(top_level_);
         for (auto it = assigned.rbegin(); !can_backtrack() && it != assigned.rend(); ++it)
         {
@@ -80,8 +79,6 @@ private:
     void resolve(const Trail& trail, const Clause& other, Literal lit);
     // finish the conflict derivation
     std::pair<Clause, int> finish(const Trail& trail) const;
-    // evaluate clause in trail
-    std::optional<bool> eval(const Trail& trail, const Clause& clause) const;
 };
 
 }

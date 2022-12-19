@@ -2,6 +2,10 @@
 #define PERUN_MODEL_H_
 
 #include <vector>
+#include <optional>
+
+#include "Literal.h"
+#include "Clause.h"
 
 namespace perun {
 
@@ -63,6 +67,48 @@ private:
     // map variable ordinal -> value
     std::vector<Value_type> values_;
 };
+
+/** Evaluate @p lit in @p model
+ * 
+ * @param model partial model
+ * @param lit checked literal
+ * @return true if @p lit is true in @p model 
+ * @return false if @p lit is false in @p model
+ * @return none if @p lit is undefined in @p model
+ */
+inline std::optional<bool> eval(const Model<bool>& model, Literal lit)
+{
+    return model.is_defined(lit.var().ord()) ? 
+                model.value(lit.var().ord()) == !lit.is_negation() : 
+                std::optional<bool>{};
+}
+
+/** Evaluate @p clause in @p model
+ * 
+ * @param model partial model
+ * @param clause checked clause
+ * @return true if there is at least one true literal in @p clause 
+ * @return false if all literals in @p clause are false
+ * @return none otherwise 
+ */
+inline std::optional<bool> eval(const Model<bool>& model, const Clause& clause)
+{
+    int num_assigned = 0;
+    for (auto lit : clause)
+    {
+        auto val = eval(model, lit);
+        if (val == true)
+        {
+            return true;
+        }
+
+        if (val.has_value())
+        {
+            ++num_assigned;
+        }
+    }
+    return num_assigned >= static_cast<int>(clause.size()) ? false : std::optional<bool>{};
+}
 
 }
 

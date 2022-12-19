@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "Database.h"
+#include "Model.h"
 #include "Theory.h"
 #include "Trail.h"
 #include "Literal.h"
@@ -70,18 +71,6 @@ private:
      * literal in the clause
      */
     bool replace_second_watch(const Model<bool>& model, Watched_clause& watch);
-
-    // check if lit is false in model
-    inline bool is_false(const Model<bool>& model, Literal lit) const 
-    { 
-        return model.is_defined(lit.var().ord()) && model.value(lit.var().ord()) == lit.is_negation(); 
-    }
-
-    // check if lit is true in model
-    inline bool is_true(const Model<bool>& model, Literal lit) const
-    {
-        return model.is_defined(lit.var().ord()) && model.value(lit.var().ord()) == !lit.is_negation();
-    }
 };
 
 }

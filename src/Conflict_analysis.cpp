@@ -57,28 +57,9 @@ std::pair<Clause, int> Conflict_analysis::finish(const Trail& trail) const
     });
 
     // conflict is still false in trail
-    assert(!eval(trail, conflict).value_or(true));
+    assert(eval(trail.model<bool>(Variable::boolean), conflict) == false);
 
     return {conflict, conflict.size() <= 1 ? 0 : trail.decision_level(conflict[1].var()).value()};
-}
-
-std::optional<bool> Conflict_analysis::eval(const Trail& trail, const Clause& clause) const
-{
-    const auto& model = trail.model<bool>(Variable::boolean);
-
-    std::size_t num_assigned = 0;
-    for (auto lit : clause)
-    {
-        if (model.is_defined(lit.var().ord()))
-        {
-            if (model.value(lit.var().ord()) == !lit.is_negation())
-            {
-                return true;
-            }
-            ++num_assigned;
-        }
-    }
-    return num_assigned >= clause.size() ? false : std::optional<bool>{};
 }
 
 }
