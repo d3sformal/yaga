@@ -7,7 +7,6 @@
 #include <concepts>
 #include <ranges>
 #include <algorithm>
-#include <unordered_set>
 
 #include "Clause.h"
 #include "Literal.h"
@@ -23,7 +22,7 @@ namespace perun {
  * 
  * It also minimizes learned clauses using self-subsumption
  */
-class Subsumption : public Event_listener {
+class Subsumption final : public Event_listener {
 public:
     void on_variable_resize(Variable::Type type, int num_vars) override;
     // minimize conflict using self-subsuming resolution
@@ -32,27 +31,29 @@ public:
     void on_restart(Database& db, Trail& trail) override;
 
 private:
-    // clause pointer proxy which also stores signature of the clause
+    // Clause pointer proxy which also stores signature of the clause.
+    // Signature is a 64-bit mask of the clause such that if a clause A is a subset of a clause B,
+    // then A.sig() is a subset of B.sig() (but not necessarily vice versa)
     class Clause_ptr {
     public:
         inline Clause_ptr() {}
-        inline Clause_ptr(const Clause* ptr, std::uint64_t sig) : ptr_(ptr), sig_(sig) {}
+        inline Clause_ptr(Clause* ptr, std::uint64_t sig) : ptr_(ptr), sig_(sig) {}
         inline Clause_ptr(const Clause_ptr&) = default;
         inline Clause_ptr& operator=(const Clause_ptr&) = default;
-        inline const Clause* operator->() { return ptr_; }
-        inline const Clause& operator*() { return *ptr_; }
+        inline Clause* operator->() { return ptr_; }
+        inline Clause& operator*() { return *ptr_; }
         inline std::uint64_t sig() const { return sig_; }
         inline bool operator==(const Clause_ptr& other) const { return ptr_ == other.ptr_; }
         inline bool operator!=(const Clause_ptr& other) const { return !operator==(other); }
     private:
         // pointer to the clause
-        const Clause* ptr_;
+        Clause* ptr_;
         // clause signature
         std::uint64_t sig_;
     };
 
     // compute signature of a clause and create a proxy object which includes this signature
-    inline Clause_ptr make_proxy(const Clause* clause) const
+    inline Clause_ptr make_proxy(Clause* clause) const
     {
         Literal_hash hash;
 
@@ -81,7 +82,7 @@ private:
      * 
      * @param db clause database
      */
-    void index(const std::deque<Clause>& db);
+    void index(std::deque<Clause>& db);
 
     /** Check if @p first is a proper subset of @p second
      * 
@@ -100,12 +101,11 @@ private:
      */
     bool selfsubsumes(const Clause& first, const Clause& second, Literal lit);
 
-    /** Remove clauses subsumed by @p clause from `occur_`
+    /** Mark clauses subsumed by @p clause (by making them empty)
      * 
      * @param clause 
-     * @param removed clauses subsumed by @p clause will be added to this set
      */
-    void remove_subsumed(Clause_ptr clause, std::unordered_set<const Clause*>& removed);
+    void remove_subsumed(Clause_ptr clause);
 
     // removed subsumed clauses in the provided list
     void remove_subsumed(std::deque<Clause>& clauses);

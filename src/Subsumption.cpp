@@ -31,14 +31,14 @@ void Subsumption::on_restart(Database& db, Trail&)
     remove_subsumed(db.learned());
 }
 
-void Subsumption::index(const std::deque<Clause>& clauses)
+void Subsumption::index(std::deque<Clause>& clauses)
 {
     for (auto& list : occur_)
     {
         list.clear();
     }
 
-    for (const auto& clause : clauses)
+    for (auto& clause : clauses)
     {
         auto clause_ptr = make_proxy(&clause);
 
@@ -104,7 +104,7 @@ bool Subsumption::selfsubsumes(const Clause& first, const Clause& second, Litera
     return true;
 }
 
-void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause, std::unordered_set<const Clause*>& removed)
+void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause)
 {
     if (clause->empty())
     {
@@ -124,17 +124,13 @@ void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause, std::unordered
     }
 
     // remove subsumed clauses
-    auto& intersection = occur_[best_lit];
-    auto end = std::partition(intersection.begin(), intersection.end(), [&](auto other_ptr) 
+    for (auto other_ptr : occur_[best_lit])
     {
-        return other_ptr == clause || !subsumes(clause, other_ptr);
-    });
-
-    for (auto it = end; it != intersection.end(); ++it)
-    {
-        removed.insert(&*(*it)); // convert the Clause_ptr proxy to an actual pointer
+        if (other_ptr != clause && subsumes(clause, other_ptr))
+        {
+            other_ptr->clear();
+        }
     }
-    intersection.erase(end, intersection.end());
 }
 
 void Subsumption::remove_subsumed(std::deque<Clause>& clauses)
@@ -142,15 +138,15 @@ void Subsumption::remove_subsumed(std::deque<Clause>& clauses)
     index(clauses);
 
     // find subsumed clauses
-    std::unordered_set<const Clause*> removed;
-    for (const auto& clause : clauses)
+    for (auto& clause : clauses)
     {
-        remove_subsumed(make_proxy(&clause), removed);
+        remove_subsumed(make_proxy(&clause));
     }
 
     // remove them from the list
-    clauses.erase(std::remove_if(clauses.begin(), clauses.end(), [&](const auto& clause) {
-        return removed.contains(&clause);
+    clauses.erase(std::remove_if(clauses.begin(), clauses.end(), [](const auto& clause) 
+    {
+        return clause.empty();
     }), clauses.end());
 }
 
