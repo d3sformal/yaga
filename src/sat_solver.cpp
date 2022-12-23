@@ -1,23 +1,24 @@
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <sstream>
 #include <algorithm>
 #include <chrono>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
 
-#include "Solver.h"
+#include "Bool_theory.h"
 #include "Evsids.h"
 #include "Restart.h"
-#include "Bool_theory.h"
+#include "Solver.h"
 
 using namespace perun;
 
-bool is_satisfying(const Trail& trail, const Database& db)
+bool is_satisfying(Trail const& trail, Database const& db)
 {
-    const auto& model = trail.model<bool>(Variable::boolean);
-    return std::all_of(db.asserted().begin(), db.asserted().end(), [&](const auto& clause) {
+    auto const& model = trail.model<bool>(Variable::boolean);
+    return std::all_of(db.asserted().begin(), db.asserted().end(), [&](auto const& clause) {
         return std::any_of(clause.begin(), clause.end(), [&](auto lit) {
-            return model.is_defined(lit.var().ord()) && model.value(lit.var().ord()) == !lit.is_negation();
+            return model.is_defined(lit.var().ord()) &&
+                   model.value(lit.var().ord()) == !lit.is_negation();
         });
     });
 }
@@ -33,7 +34,7 @@ int main(int argc, char** argv)
     Solver solver;
     solver.set_theory<Bool_theory>();
     solver.set_variable_order<Evsids>();
-    solver.set_restart_policy<Luby_restart>();
+    solver.set_restart_policy<Glucose_restart>();
 
     std::string path{argv[1]};
     std::ifstream input{path};
@@ -101,7 +102,7 @@ int main(int argc, char** argv)
             return -2;
         }
     }
-    else 
+    else
     {
         std::cout << "UNSAT\n";
     }

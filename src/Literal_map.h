@@ -7,51 +7,109 @@
 
 namespace perun {
 
-template<typename T>
-class Literal_map
-{
+/** Dense map from literals to values of type T
+ *
+ * @tparam T value type
+ */
+template <typename T> class Literal_map {
 public:
     using Reference = typename std::vector<T>::reference;
     using Const_reference = typename std::vector<T>::const_reference;
 
+    /** Create an empty map
+     */
     inline Literal_map() {}
 
-    inline Literal_map(std::size_t size) : values_(size) {}
-    inline Literal_map(std::size_t size, T value) : values_(size, value) {}
+    /** Create a map with @p num_vars boolean variables
+     *
+     * @param num_vars number of boolean variables
+     */
+    inline explicit Literal_map(std::size_t num_vars) : values(num_vars * 2) {}
+
+    /** Create a map with @p num_vars boolean variables where each literal is
+     * mapped to @p value
+     *
+     * @param num_vars number of boolean variables
+     * @param value value that will be copied to all literals
+     */
+    inline Literal_map(std::size_t num_vars, T value) : values(num_vars * 2, value) {}
 
     // non-copyable
-    inline Literal_map(const Literal_map&) = delete;
-    inline Literal_map& operator=(const Literal_map&) = delete;
+    inline Literal_map(Literal_map const&) = delete;
+    inline Literal_map& operator=(Literal_map const&) = delete;
 
     // movable
     inline Literal_map(Literal_map&&) = default;
     inline Literal_map& operator=(Literal_map&&) = default;
 
-    // access values in the map
-    inline Reference operator[](Literal lit) { return values_[index(lit)]; }
-    inline Const_reference operator[](Literal lit) const { return values_[index(lit)]; }
+    /** Get value of @p lit
+     *
+     * @param lit literal
+     * @return reference to a value mapped to @p lit
+     */
+    inline Reference operator[](Literal lit) { return values[index(lit)]; }
 
-    // set values in the map
-    inline void assign(T value) { values_.assign(values_.size(), value); }
+    /** Get value of @p lit
+     *
+     * @param lit literal
+     * @return reference to a value mapped to @p lit
+     */
+    inline Const_reference operator[](Literal lit) const { return values[index(lit)]; }
 
-    // range of values in the map
-    inline auto begin() { return values_.begin(); }
-    inline auto begin() const { return values_.begin(); }
-    inline auto end() { return values_.end(); }
-    inline auto end() const { return values_.end(); }
+    /** Map all literals to a copy of @p value
+     *
+     * @param value value copied to all literals
+     */
+    inline void assign(T value) { values.assign(values.size(), value); }
 
-    // change the number of variables
-    inline void resize(int num_vars) { values_.resize(num_vars * 2); }
+    /** Begin iterator of the range of values in this map in an unspecified
+     * order.
+     *
+     * @return begin iterator of values in this map
+     */
+    inline auto begin() { return values.begin(); }
+
+    /** Begin iterator of the range of values in this map in an unspecified
+     * order.
+     *
+     * @return begin iterator of values in this map
+     */
+    inline auto begin() const { return values.begin(); }
+
+    /** End iterator of the range of values in this map in an unspecified order.
+     *
+     * @return end iterator of values in this map
+     */
+    inline auto end() { return values.end(); }
+
+    /** End iterator of the range of values in this map in an unspecified order.
+     *
+     * @return end iterator of values in this map
+     */
+    inline auto end() const { return values.end(); }
+
+    /** Change the number of boolean variables
+     *
+     * @param num_vars new number of boolean variables
+     */
+    inline void resize(std::size_t num_vars) { values.resize(num_vars * 2); }
+
+    /** Get number of boolean variables
+     *
+     * @return number of boolean variables
+     */
+    inline int num_vars() const { return values.size() / 2; }
+
 private:
-    std::vector<T> values_;
+    std::vector<T> values;
 
-    // Map a literal to index for `values_`
-    inline int index(Literal lit) const 
-    { 
-        return lit.var().ord() * 2 + static_cast<int>(lit.is_negation()); 
+    // Map a literal to index for `values`
+    inline int index(Literal lit) const
+    {
+        return lit.var().ord() * 2 + static_cast<int>(lit.is_negation());
     }
 };
 
-}
+} // namespace perun
 
 #endif // PERUN_LITERAL_MAP_H_

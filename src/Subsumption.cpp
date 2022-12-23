@@ -13,23 +13,21 @@ void Subsumption::on_variable_resize(Variable::Type type, int num_vars)
 
 void Subsumption::on_conflict_derived(Database&, Trail& trail, Clause& conflict)
 {
-    const auto& model = trail.model<bool>(Variable::boolean);
+    auto const& model = trail.model<bool>(Variable::boolean);
 
-    conflict.erase(std::remove_if(conflict.begin(), conflict.end(), [&](auto lit) 
-    {
-        if (is_true(model, lit.negate()))
+    auto is_redundant = [&](auto lit) {
+        if (eval(model, lit.negate()) == true)
         {
             auto reason = trail.reason(lit.var());
             return reason && selfsubsumes(*reason, conflict, lit.negate());
         }
         return false;
-    }), conflict.end());
+    };
+
+    conflict.erase(std::remove_if(conflict.begin(), conflict.end(), is_redundant), conflict.end());
 }
 
-void Subsumption::on_restart(Database& db, Trail&)
-{
-    remove_subsumed(db.learned());
-}
+void Subsumption::on_restart(Database& db, Trail&) { remove_subsumed(db); }
 
 void Subsumption::index(std::deque<Clause>& clauses)
 {
@@ -77,7 +75,7 @@ bool Subsumption::subsumes(Subsumption::Clause_ptr first, Subsumption::Clause_pt
     return true;
 }
 
-bool Subsumption::selfsubsumes(const Clause& first, const Clause& second, Literal lit)
+bool Subsumption::selfsubsumes(Clause const& first, Clause const& second, Literal lit)
 {
     assert(std::find(first.begin(), first.end(), lit) != first.end());
     assert(std::find(second.begin(), second.end(), lit.negate()) != second.end());
@@ -133,21 +131,20 @@ void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause)
     }
 }
 
-void Subsumption::remove_subsumed(std::deque<Clause>& clauses)
+void Subsumption::remove_subsumed(Database& db)
 {
-    index(clauses);
+    index(db.learned());
 
     // find subsumed clauses
-    for (auto& clause : clauses)
+    for (auto& clause : db.learned())
     {
         remove_subsumed(make_proxy(&clause));
     }
 
     // remove them from the list
-    clauses.erase(std::remove_if(clauses.begin(), clauses.end(), [](const auto& clause) 
-    {
-        return clause.empty();
-    }), clauses.end());
+    db.learned().erase(std::remove_if(db.learned().begin(), db.learned().end(),
+                                      [](auto const& clause) { return clause.empty(); }),
+                       db.learned().end());
 }
 
-}
+} // namespace perun

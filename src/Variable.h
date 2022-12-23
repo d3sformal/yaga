@@ -1,5 +1,5 @@
-#ifndef PERUN_VARIABLE_H_
-#define PERUN_VARIABLE_H_
+#ifndef PERUN_VARIABLE_H
+#define PERUN_VARIABLE_H
 
 #include <ostream>
 
@@ -15,25 +15,29 @@ public:
     inline Variable() {}
 
     /** Create a new variable representation
-     * 
+     *
      * @param ord 0-based ordinal number of this variable
      * @param type type of this variable
      */
-    inline Variable(int ord, Type type) : ord_(ord), type_(type) {}
+    inline Variable(int ord, Type type) : number(ord), var_type(type) {}
 
     // comparable
-    inline bool operator==(const Variable& other) const { return type_ == other.type_ && ord_ == other.ord_; }
-    inline bool operator!=(const Variable& other) const { return !operator==(other); }
+    inline bool operator==(Variable const& other) const
+    {
+        return var_type == other.var_type && number == other.number;
+    }
+    inline bool operator!=(Variable const& other) const { return !operator==(other); }
 
     // get 0-based ordinal number of this variable
-    inline int ord() const { return ord_; }
+    inline int ord() const { return number; }
     // get type of this variable
-    inline Type type() const { return type_; }
+    inline Type type() const { return var_type; }
+
 private:
     // 0-based ordinal number of this variable
-    int ord_;
+    int number;
     // type of this variable
-    Type type_;
+    Type var_type;
 };
 
 inline std::ostream& operator<<(std::ostream& out, Variable var)
@@ -50,6 +54,6 @@ inline std::ostream& operator<<(std::ostream& out, Variable var)
     return out;
 }
 
-}
+} // namespace perun
 
-#endif // PERUN_VARIABLE_H_
+#endif // PERUN_VARIABLE_H

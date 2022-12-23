@@ -1,5 +1,5 @@
-#ifndef PERUN_CLAUSE_H_
-#define PERUN_CLAUSE_H_
+#ifndef PERUN_CLAUSE_H
+#define PERUN_CLAUSE_H
 
 #include <vector>
 
@@ -7,9 +7,10 @@
 
 namespace perun {
 
-// disjunction of literals
+/** Disjunction of literals
+ */
 using Clause = std::vector<Literal>;
 
-}
+} // namespace perun
 
-#endif // PERUN_CLAUSE_H_
+#endif // PERUN_CLAUSE_H

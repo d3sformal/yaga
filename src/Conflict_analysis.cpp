@@ -2,22 +2,22 @@
 
 namespace perun {
 
-void Conflict_analysis::init(const Trail& trail, const Clause& conflict)
+void Conflict_analysis::init(Trail const& trail, Clause const& clause)
 {
-    top_level_ = 0;
-    conflict_.clear();
-    for (auto lit : conflict)
+    top_level = 0;
+    conflict.clear();
+    for (auto lit : clause)
     {
-        conflict_.insert(lit);
-        top_level_ = std::max<int>(top_level_, trail.decision_level(lit.var()).value());
+        conflict.insert(lit);
+        top_level = std::max<int>(top_level, trail.decision_level(lit.var()).value());
     }
 
-    num_top_level_ = std::count_if(conflict.begin(), conflict.end(), [&](auto lit) {
-        return trail.decision_level(lit.var()).value() == top_level_;
+    num_top_level = std::count_if(conflict.begin(), conflict.end(), [&](auto lit) {
+        return trail.decision_level(lit.var()).value() == top_level;
     });
 }
 
-void Conflict_analysis::resolve(const Trail& trail, const Clause& other, Literal conflict_lit)
+void Conflict_analysis::resolve(Trail const& trail, Clause const& other, Literal conflict_lit)
 {
     assert(can_resolve(conflict_lit));
 
@@ -25,41 +25,41 @@ void Conflict_analysis::resolve(const Trail& trail, const Clause& other, Literal
     {
         if (lit != conflict_lit.negate())
         {
-            auto[_, is_inserted] = conflict_.insert(lit);
-            if (is_inserted && trail.decision_level(lit.var()) == top_level_)
+            auto [_, is_inserted] = conflict.insert(lit);
+            if (is_inserted && trail.decision_level(lit.var()) == top_level)
             {
-                ++num_top_level_;
+                ++num_top_level;
             }
         }
     }
 
-    assert(trail.decision_level(conflict_lit.var()) == top_level_);
+    assert(trail.decision_level(conflict_lit.var()) == top_level);
 
-    conflict_.erase(conflict_.find(conflict_lit));
-    --num_top_level_;
+    conflict.erase(conflict.find(conflict_lit));
+    --num_top_level;
 }
 
-std::pair<Clause, int> Conflict_analysis::finish(const Trail& trail) const
+std::pair<Clause, int> Conflict_analysis::finish(Trail const& trail) const
 {
-    Clause conflict{conflict_.begin(), conflict_.end()};
-    if (conflict.empty())
+    Clause clause{conflict.begin(), conflict.end()};
+    if (clause.empty())
     {
-        return {conflict, -1};
+        return {clause, -1};
     }
 
     // move literals with the highest decision level to the front
     // normalizes conflict analysis output regardless of hash set implementation
-    std::sort(conflict.begin(), conflict.end(), [&](auto&& lhs, auto&& rhs) 
-    {
+    std::sort(clause.begin(), clause.end(), [&](auto&& lhs, auto&& rhs) {
         auto lhs_level = trail.decision_level(lhs.var()).value_or(-1);
         auto rhs_level = trail.decision_level(rhs.var()).value_or(-1);
-        return lhs_level > rhs_level || (lhs_level == rhs_level && lhs.var().ord() < rhs.var().ord());
+        return lhs_level > rhs_level ||
+               (lhs_level == rhs_level && lhs.var().ord() < rhs.var().ord());
     });
 
     // conflict is still false in trail
-    assert(eval(trail.model<bool>(Variable::boolean), conflict) == false);
+    assert(eval(trail.model<bool>(Variable::boolean), clause) == false);
 
-    return {conflict, conflict.size() <= 1 ? 0 : trail.decision_level(conflict[1].var()).value()};
+    return {clause, clause.size() <= 1 ? 0 : trail.decision_level(clause[1].var()).value()};
 }
 
-}
+} // namespace perun

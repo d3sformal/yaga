@@ -1,5 +1,5 @@
-#ifndef PERUN_EVSIDS_H_
-#define PERUN_EVSIDS_H_
+#ifndef PERUN_EVSIDS_H
+#define PERUN_EVSIDS_H
 
 #include <vector>
 
@@ -14,46 +14,86 @@ class Evsids final : public Variable_order {
 public:
     virtual ~Evsids() = default;
 
+    /** Reset VSIDS scores and initialize VSIDS scores by bumping all variables
+     * in asserted clauses.
+     *
+     * @param db clause database
+     * @param trail solver trail
+     */
     void on_init(Database& db, Trail& trail) override;
+
+    /** Allocate memory for VSIDS scores/
+     *
+     * @param type type of variable
+     * @param num_vars new number of variables of type @p type
+     */
     void on_variable_resize(Variable::Type type, int num_vars) override;
+
+    /** Bump variables in @p learned and decay VSIDS scores.
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     * @param learned pointer to the newly learned clause in @p db
+     */
     void on_learned_clause(Database& db, Trail& trail, Clause* learned) override;
-    void on_conflict_resolved(Database& db, Trail& trail, const Clause& other) override;
+
+    /** Bump variables in @p other
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     * @param other clause that has just been resolved with conflict clause in
+     * conflict analysis
+     */
+    void on_conflict_resolved(Database& db, Trail& trail, Clause const& other) override;
+
+    /** Find an unassigned variable with the highest VSIDS score.
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     * @return unassigned variable with the highest VSIDS score or none if all
+     * variables are assigned
+     */
     std::optional<Variable> pick(Database& db, Trail& trail) override;
 
-    // get current score of a boolean variable
-    inline float score(int var_ord) const { return score_[var_ord]; }
+    /** Get current VSIDS score of a boolean variable
+     *
+     * @param var_ord ordinal number of a boolean variable
+     * @return VSIDS score of boolean variable @p var_ord
+     */
+    inline float score(int var_ord) const { return vsids[var_ord]; }
+
 private:
-    // map boolean variable ordinal -> VSIDS score 
-    std::vector<float> score_;
+    // map boolean variable ordinal -> VSIDS score
+    std::vector<float> vsids;
     // score grow factor (inverse dacay factor)
-    float grow_ = 1.05f;
-    // current variable increment value when it is bumped
-    float inc_ = 1.0f;
+    float grow = 1.05f;
+    // current ammount by which a variable VSIDS is increased in `bump()`
+    float inc = 1.0f;
 
     // when a score exceeds this threshold, all scores are rescaled
-    inline static const float score_threshold = 1e35f;
+    inline static float const score_threshold = 1e35f;
 
-    inline void rescale() 
+    inline void rescale()
     {
-        for (auto& score : score_)
+        for (auto& score : vsids)
         {
             score /= score_threshold;
         }
-        inc_ /= score_threshold;
+        inc /= score_threshold;
     }
 
-    inline void decay() { inc_ *= grow_; }
+    inline void decay() { inc *= grow; }
 
     inline void bump(int var_ord)
     {
-        score_[var_ord] += inc_;
-        if (score_[var_ord] >= score_threshold)
+        vsids[var_ord] += inc;
+        if (vsids[var_ord] >= score_threshold)
         {
             rescale();
         }
     }
 };
 
-}
+} // namespace perun
 
-#endif // PERUN_EVSIDS_H_
+#endif // PERUN_EVSIDS_H

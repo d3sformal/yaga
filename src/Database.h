@@ -1,51 +1,66 @@
-#ifndef PERUN_DATABASE_H_
-#define PERUN_DATABASE_H_
+#ifndef PERUN_DATABASE_H
+#define PERUN_DATABASE_H
 
 #include <deque>
 #include <vector>
 
-#include "Literal.h"
 #include "Clause.h"
+#include "Literal.h"
 
 namespace perun {
 
 class Database {
 public:
     /** Add a new clause that is part of the input formula.
-     * 
+     *
      * @tparam Args argument types for Clause constructor
      * @param args arguments for Clause constructor
      */
-    template<typename... Args>
-    inline void assert_clause(Args&&... args)
+    template <typename... Args> inline Clause& assert_clause(Args&&... args)
     {
-        asserted_.emplace_back(Clause{std::forward<Args>(args)...});
+        return asserted_clauses.emplace_back(Clause{std::forward<Args>(args)...});
     }
 
     /** Add a clause that is implied by asserted clauses to the database.
-     * 
+     *
      * @tparam Args argument types for Clause constructor
      * @param args arguments for Clause constructor
      * @return reference to the clause in this database
      */
-    template<typename... Args>
-    inline Clause& learn_clause(Args&&... args)
+    template <typename... Args> inline Clause& learn_clause(Args&&... args)
     {
-        return learned_.emplace_back(Clause{std::forward<Args>(args)...});
+        return learned_clauses.emplace_back(Clause{std::forward<Args>(args)...});
     }
 
-    // get learned clauses
-    inline auto& learned() { return learned_; }
-    inline const auto& learned() const { return learned_; }
-    // get range of asserted clauses
-    inline auto& asserted() { return asserted_; }
-    inline const auto& asserted() const { return asserted_; }
+    /** Get all learned clauses
+     *
+     * @return reference to a range with learned clauses.
+     */
+    inline auto& learned() { return learned_clauses; }
+
+    /** Get all learned clauses
+     *
+     * @return reference to a range with learned clauses.
+     */
+    inline auto const& learned() const { return learned_clauses; }
+
+    /** Get all asserted clauses
+     *
+     * @return reference to a range with asserted clauses
+     */
+    inline auto& asserted() { return asserted_clauses; }
+
+    /** Get all asserted clauses
+     *
+     * @return reference to a range with asserted clauses
+     */
+    inline auto const& asserted() const { return asserted_clauses; }
 
 private:
-    std::deque<Clause> learned_;
-    std::deque<Clause> asserted_;
+    std::deque<Clause> learned_clauses;
+    std::deque<Clause> asserted_clauses;
 };
 
-}
+} // namespace perun
 
-#endif // PERUN_DATABASE_H_
+#endif // PERUN_DATABASE_H

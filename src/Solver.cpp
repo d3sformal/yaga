@@ -2,27 +2,24 @@
 
 namespace perun {
 
-std::optional<Clause> Solver::propagate()
-{
-    return theory_->propagate(db_, trail_);
-}
+std::optional<Clause> Solver::propagate() { return theory->propagate(database, solver_trail); }
 
 std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
 {
-    auto[learned, level] = analysis_.analyze(trail_, std::move(conflict), [&](const auto& other_clause) 
-    {
-        for (auto listener : listeners())
-        {
-            listener->on_conflict_resolved(db_, trail_, other_clause);
-        }
-    });
+    auto [learned, level] =
+        analysis.analyze(trail(), std::move(conflict), [&](auto const& other_clause) {
+            for (auto listener : listeners())
+            {
+                listener->on_conflict_resolved(db(), trail(), other_clause);
+            }
+        });
 
     if (!learned.empty())
     {
-        ++num_conflicts_;
+        ++total_conflicts;
         for (auto listener : listeners())
         {
-            listener->on_conflict_derived(db_, trail_, learned);
+            listener->on_conflict_derived(db(), trail(), learned);
         }
     }
     return {learned, level};
@@ -31,37 +28,37 @@ std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
 void Solver::backtrack_with(Clause&& clause, int level)
 {
     // add the clause to database
-    auto& learned = db_.learn_clause(std::move(clause));
+    auto& learned = db().learn_clause(std::move(clause));
 
     // trigger events
     for (auto listener : listeners())
     {
-        listener->on_learned_clause(db_, trail_, &learned);
+        listener->on_learned_clause(db(), trail(), &learned);
     }
 
-    // TODO: handle semantic split (decide clause[0] or clause[1] instead of propagating clause[0])
+    // TODO: handle semantic split (decide clause[0] or clause[1] instead of
+    // propagating clause[0])
 
     // propagate the top level literal at assertion level
-    trail_.backtrack(level);
-    trail_.propagate(learned[0].var(), &learned, level);
-    trail_.model<bool>(Variable::boolean).set_value(learned[0].var().ord(), !learned[0].is_negation());
+    trail().backtrack(level);
+    trail().propagate(learned[0].var(), &learned, level);
+    trail()
+        .model<bool>(Variable::boolean)
+        .set_value(learned[0].var().ord(), !learned[0].is_negation());
 }
 
-std::optional<Variable> Solver::pick_variable()
-{
-    return variable_order_->pick(db_, trail_);
-}
+std::optional<Variable> Solver::pick_variable() { return variable_order->pick(db(), trail()); }
 
 void Solver::decide(Variable var)
 {
-    ++num_decisions_;
-    theory_->decide(db_, trail_, var);
+    ++total_decisions;
+    theory->decide(db(), trail(), var);
 }
 
 void Solver::init()
 {
     // allocate memory
-    for (auto [type, model] : trail_.models())
+    for (auto [type, model] : solver_trail.models())
     {
         for (auto listener : listeners())
         {
@@ -70,23 +67,23 @@ void Solver::init()
     }
 
     // reset solver state
-    num_conflicts_ = 0;
-    num_decisions_ = 0;
-    num_restarts_ = 0;
+    total_conflicts = 0;
+    total_decisions = 0;
+    total_restarts = 0;
     for (auto listener : listeners())
     {
-        listener->on_init(db_, trail_);
+        listener->on_init(db(), trail());
     }
 }
 
 void Solver::restart()
 {
-    ++num_restarts_;
-    trail_.clear();
+    ++total_restarts;
+    trail().clear();
 
     for (auto listener : listeners())
     {
-        listener->on_restart(db_, trail_);
+        listener->on_restart(db(), trail());
     }
 }
 
@@ -99,13 +96,13 @@ Solver::Result Solver::check()
         auto conflict = propagate();
         if (conflict)
         {
-            auto[learned, level] = analyze_conflict(std::move(conflict.value()));
+            auto [learned, level] = analyze_conflict(std::move(conflict.value()));
             if (learned.empty())
             {
                 return unsat;
             }
 
-            if (restart_->should_restart())
+            if (restart_policy->should_restart())
             {
                 restart();
             }
@@ -126,4 +123,4 @@ Solver::Result Solver::check()
     }
 }
 
-}
+} // namespace perun

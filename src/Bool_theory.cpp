@@ -15,24 +15,24 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
 void Bool_theory::on_learned_clause(Database&, Trail&, Clause* learned)
 {
     // initialize watched literals in the learned clause
-    watched_[(*learned)[0]].emplace_back(learned);
+    watched[(*learned)[0]].emplace_back(learned);
     if (learned->size() > 1)
     {
-        watched_[(*learned)[1]].emplace_back(learned);
+        watched[(*learned)[1]].emplace_back(learned);
     }
 }
 
 std::optional<Clause> Bool_theory::initialize(Database& db, Trail& trail)
 {
-    const auto& model = trail.model<bool>(Variable::boolean);
-    
+    auto const& model = trail.model<bool>(Variable::boolean);
+
     // allocate space for new variables if necessary
-    watched_.resize(model.num_vars());
+    watched.resize(model.num_vars());
 
     if (trail.empty()) // initialize watch lists
     {
         // clear watch lists
-        for (auto& list : watched_)
+        for (auto& list : watched)
         {
             list.clear();
         }
@@ -46,13 +46,13 @@ std::optional<Clause> Bool_theory::initialize(Database& db, Trail& trail)
             {
                 if (clause.size() == 1) // propagate unit clauses
                 {
-                    watched_[clause[0]].emplace_back(Watched_clause{&clause});
-                    propagate_.push_back({clause[0], &clause});
+                    watched[clause[0]].emplace_back(Watched_clause{&clause});
+                    satisfied.push_back({clause[0], &clause});
                 }
                 else // non-unit clause
                 {
-                    watched_[clause[0]].emplace_back(&clause);
-                    watched_[clause[1]].emplace_back(&clause);
+                    watched[clause[0]].emplace_back(&clause);
+                    watched[clause[1]].emplace_back(&clause);
                 }
             }
         }
@@ -64,24 +64,24 @@ std::optional<Clause> Bool_theory::initialize(Database& db, Trail& trail)
         if (var.type() == Variable::boolean)
         {
             auto lit = model.value(var.ord()) ? Literal{var.ord()} : Literal{var.ord()}.negate();
-            propagate_.push_back({lit, reason});
+            satisfied.push_back({lit, reason});
         }
     }
 
     return {};
 }
 
-std::optional<Clause> Bool_theory::propagate(Database& db, Trail& trail) 
+std::optional<Clause> Bool_theory::propagate(Database& db, Trail& trail)
 {
-    propagate_.clear();
+    satisfied.clear();
 
     auto& model = trail.model<bool>(Variable::boolean);
     auto conflict = initialize(db, trail);
 
-    while (!conflict && !propagate_.empty())
+    while (!conflict && !satisfied.empty())
     {
-        auto [lit, reason] = propagate_.back();
-        propagate_.pop_back();
+        auto [lit, reason] = satisfied.back();
+        satisfied.pop_back();
 
         // propagate the literal if necessary
         if (reason != nullptr && !model.is_defined(lit.var().ord()))
@@ -96,7 +96,7 @@ std::optional<Clause> Bool_theory::propagate(Database& db, Trail& trail)
     return conflict;
 }
 
-bool Bool_theory::replace_second_watch(const Model<bool>& model, Watched_clause& watch)
+bool Bool_theory::replace_second_watch(Model<bool> const& model, Watched_clause& watch)
 {
     auto& clause = *watch.clause;
 
@@ -107,14 +107,14 @@ bool Bool_theory::replace_second_watch(const Model<bool>& model, Watched_clause&
     if (clause.size() > 2)
     {
         assert(2 <= watch.index && watch.index < static_cast<int>(clause.size()));
-        const auto end = watch.index;
+        auto const end = watch.index;
         do
         {
             // check if the next literal is non-falsified
             if (eval(model, clause[watch.index]) != false)
             {
                 std::swap(clause[1], clause[watch.index]);
-                watched_[clause[1]].push_back(watch);
+                watched[clause[1]].push_back(watch);
                 return true;
             }
 
@@ -123,17 +123,16 @@ bool Bool_theory::replace_second_watch(const Model<bool>& model, Watched_clause&
             {
                 watch.index = 2; // skip the watched literals
             }
-        }
-        while (watch.index != end);
+        } while (watch.index != end);
     }
     return false;
 }
 
-std::optional<Clause> Bool_theory::falsified(const Model<bool>& model, Literal falsified_lit)
+std::optional<Clause> Bool_theory::falsified(Model<bool> const& model, Literal falsified_lit)
 {
     assert(eval(model, falsified_lit) == false);
 
-    auto& watchlist = watched_[falsified_lit];
+    auto& watchlist = watched[falsified_lit];
     for (std::size_t i = 0; i < watchlist.size();)
     {
         auto& watch = watchlist[i];
@@ -170,11 +169,11 @@ std::optional<Clause> Bool_theory::falsified(const Model<bool>& model, Literal f
             {
                 return clause;
             }
-            propagate_.push_back({clause[0], &clause});
+            satisfied.push_back({clause[0], &clause});
             ++i;
         }
     }
     return {};
 }
 
-}
+} // namespace perun

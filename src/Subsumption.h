@@ -1,25 +1,26 @@
-#ifndef PERUN_SUBSUMPTION_H_
-#define PERUN_SUBSUMPTION_H_
+#ifndef PERUN_SUBSUMPTION_H
+#define PERUN_SUBSUMPTION_H
 
-#include <vector>
-#include <deque>
-#include <cstdint>
-#include <concepts>
-#include <ranges>
 #include <algorithm>
+#include <concepts>
+#include <cstdint>
+#include <deque>
+#include <ranges>
+#include <vector>
 
 #include "Clause.h"
+#include "Database.h"
+#include "Event_listener.h"
 #include "Literal.h"
 #include "Literal_map.h"
-#include "Database.h"
+#include "Model.h"
 #include "Trail.h"
 #include "Variable.h"
-#include "Event_listener.h"
 
 namespace perun {
 
 /** Periodically (on restart) removes subsumed clauses.
- * 
+ *
  * It also minimizes learned clauses using self-subsumption
  */
 class Subsumption final : public Event_listener {
@@ -32,27 +33,34 @@ public:
 
 private:
     // Clause pointer proxy which also stores signature of the clause.
-    // Signature is a 64-bit mask of the clause such that if a clause A is a subset of a clause B,
-    // then A.sig() is a subset of B.sig() (but not necessarily vice versa)
+    // Signature is a 64-bit mask of the clause such that if a clause A is a
+    // subset of a clause B, then A.sig() is a subset of B.sig() (but not
+    // necessarily vice versa)
     class Clause_ptr {
     public:
         inline Clause_ptr() {}
         inline Clause_ptr(Clause* ptr, std::uint64_t sig) : ptr_(ptr), sig_(sig) {}
-        inline Clause_ptr(const Clause_ptr&) = default;
-        inline Clause_ptr& operator=(const Clause_ptr&) = default;
+        inline Clause_ptr(Clause_ptr const&) = default;
+        inline Clause_ptr& operator=(Clause_ptr const&) = default;
         inline Clause* operator->() { return ptr_; }
         inline Clause& operator*() { return *ptr_; }
         inline std::uint64_t sig() const { return sig_; }
-        inline bool operator==(const Clause_ptr& other) const { return ptr_ == other.ptr_; }
-        inline bool operator!=(const Clause_ptr& other) const { return !operator==(other); }
+        inline bool operator==(Clause_ptr const& other) const { return ptr_ == other.ptr_; }
+        inline bool operator!=(Clause_ptr const& other) const { return !operator==(other); }
+
     private:
         // pointer to the clause
         Clause* ptr_;
         // clause signature
         std::uint64_t sig_;
     };
+    // map literal -> clauses in which it occurs (created by index())
+    Literal_map<std::vector<Clause_ptr>> occur_;
+    // auxiliary bitset for subset tests in subsumes() and selfsubsumes()
+    Literal_map<bool> bitset_;
 
-    // compute signature of a clause and create a proxy object which includes this signature
+    // compute signature of a clause and create a proxy object which includes
+    // this signature
     inline Clause_ptr make_proxy(Clause* clause) const
     {
         Literal_hash hash;
@@ -66,26 +74,14 @@ private:
         return {clause, sig};
     }
 
-    // map literal -> clauses in which it occurs (created by index())
-    Literal_map<std::vector<Clause_ptr>> occur_;
-    // auxiliary bitset for subset tests in subsumes() and selfsubsumes()
-    Literal_map<bool> bitset_;
-
-    // check whether a literal is true in a model
-    inline bool is_true(const Model<bool>& model, Literal lit) const 
-    {
-        return model.is_defined(lit.var().ord()) && 
-               model.value(lit.var().ord()) == !lit.is_negation();
-    }
-
     /** Construct `occur_` from learned clauses in @p db
-     * 
+     *
      * @param db clause database
      */
     void index(std::deque<Clause>& db);
 
     /** Check if @p first is a proper subset of @p second
-     * 
+     *
      * @param first pointer to the first clause with its signature
      * @param second pointer to the second clause with its signature
      * @return true iff @p first is a proper subset of @p second
@@ -93,24 +89,26 @@ private:
     bool subsumes(Clause_ptr first, Clause_ptr second);
 
     /** Check if `resolve(first, second, lit)` is a proper subset of @p second
-     * 
+     *
      * @param first first clause
      * @param second second clause
-     * @param lit literal for resolution in @p first ; negation of a literal in @p second
-     * @return true iff `resolve(first, second, lit)` is a proper subset of @p second
+     * @param lit literal for resolution in @p first ; negation of a literal in
+     * @p second
+     * @return true iff `resolve(first, second, lit)` is a proper subset of @p
+     * second
      */
-    bool selfsubsumes(const Clause& first, const Clause& second, Literal lit);
+    bool selfsubsumes(Clause const& first, Clause const& second, Literal lit);
 
     /** Mark clauses subsumed by @p clause (by making them empty)
-     * 
-     * @param clause 
+     *
+     * @param clause
      */
     void remove_subsumed(Clause_ptr clause);
 
-    // removed subsumed clauses in the provided list
-    void remove_subsumed(std::deque<Clause>& clauses);
+    // removed subsumed learned clauses
+    void remove_subsumed(Database& db);
 };
 
-}
+} // namespace perun
 
-#endif // PERUN_SUBSUMPTION_H_
+#endif // PERUN_SUBSUMPTION_H
