@@ -19,17 +19,14 @@ class Conflict_analysis {
 public:
     /** Derive a conflict clause suitable for backtracking using resolution.
      *
-     * Postcondition: Literals in the returned clause are ordered by decision
-     * level from the highest to the smallest.
+     * Postcondition: Literals in the returned clause are ordered by decision level from
+     * the highest to the smallest.
      *
-     * @tparam Resolve_callback function which takes a clause reference as a
-     * parameter
+     * @tparam Resolve_callback function which takes a clause reference as a parameter
      * @param trail current trail
      * @param conflict conflict clause -- clause that is false in @p trail
-     * @param on_resolve callback called for each clause that is resolved with
-     * @p conflict
-     * @return conflict clause suitable for backtracking and decision level to
-     * backtrack to.
+     * @param on_resolve callback called for each clause that is resolved with @p conflict
+     * @return conflict clause suitable for backtracking and decision level to backtrack to.
      */
     template <std::invocable<Clause const&> Resolve_callback>
     std::pair<Clause, int> analyze(Trail const& trail, Clause&& conflict,

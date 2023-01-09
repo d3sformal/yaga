@@ -36,15 +36,25 @@ void Solver::backtrack_with(Clause&& clause, int level)
         listener->on_learned_clause(db(), trail(), &learned);
     }
 
-    // TODO: handle semantic split (decide clause[0] or clause[1] instead of
-    // propagating clause[0])
-
-    // propagate the top level literal at assertion level
     trail().backtrack(level);
-    trail().propagate(learned[0].var(), &learned, level);
-    trail()
-        .model<bool>(Variable::boolean)
-        .set_value(learned[0].var().ord(), !learned[0].is_negation());
+
+    if (learned.size() >= 2 &&
+        trail().decision_level(learned[0].var()) == trail().decision_level(learned[1].var()))
+    {
+        // decide the first or the second literal in `learned`
+        trail().decide(learned[0].var());
+        trail()
+            .model<bool>(Variable::boolean)
+            .set_value(learned[0].var().ord(), !learned[0].is_negation());
+    }
+    else // UIP
+    {
+        // propagate the top level literal at assertion level
+        trail().propagate(learned[0].var(), &learned, level);
+        trail()
+            .model<bool>(Variable::boolean)
+            .set_value(learned[0].var().ord(), !learned[0].is_negation());
+    }
 }
 
 std::optional<Variable> Solver::pick_variable() { return variable_order->pick(db(), trail()); }

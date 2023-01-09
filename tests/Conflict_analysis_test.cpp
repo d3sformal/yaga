@@ -119,3 +119,34 @@ TEST_CASE("Derive an empty clause", "[conflict_analysis]")
     REQUIRE(level == -1);
     REQUIRE(learned == clause());
 }
+
+TEST_CASE("Derive a semantic split clause", "[conflict_analysis]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    db.assert_clause(-lit(0), -lit(1), lit(2));
+
+    Trail trail;
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
+
+    trail.decide(bool_var(7));
+    model.set_value(7, false);
+
+    trail.propagate(bool_var(0), nullptr, trail.decision_level());
+    model.set_value(0, true);
+
+    trail.propagate(bool_var(1), nullptr, trail.decision_level());
+    model.set_value(1, true);
+
+    trail.propagate(bool_var(2), &*db.asserted().begin(), trail.decision_level());
+    model.set_value(2, true);
+
+    Conflict_analysis analysis;
+
+    auto [learned, level] = analysis.analyze(trail, clause(-lit(0), -lit(1), -lit(2)));
+
+    REQUIRE(level == 0);
+    REQUIRE(learned == clause(-lit(0), -lit(1)));
+}

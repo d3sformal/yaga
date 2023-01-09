@@ -48,16 +48,19 @@ std::pair<Clause, int> Conflict_analysis::finish(Trail const& trail) const
     }
 
     // move literals with the highest decision level to the front
-    // normalizes conflict analysis output regardless of hash set implementation
+    // this ormalizes conflict analysis output regardless of hash set implementation
     std::sort(clause.begin(), clause.end(), [&](auto&& lhs, auto&& rhs) {
         auto lhs_level = trail.decision_level(lhs.var()).value_or(-1);
         auto rhs_level = trail.decision_level(rhs.var()).value_or(-1);
         return lhs_level > rhs_level ||
                (lhs_level == rhs_level && lhs.var().ord() < rhs.var().ord());
     });
-
-    // conflict is still false in trail
     assert(eval(trail.model<bool>(Variable::boolean), clause) == false);
+
+    if (num_top_level >= 2) // if clause is a semantic split
+    {
+        return {clause, top_level - 1};
+    }
 
     return {clause, clause.size() <= 1 ? 0 : trail.decision_level(clause[1].var()).value()};
 }

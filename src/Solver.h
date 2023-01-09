@@ -57,7 +57,7 @@ public:
      * @return reference to the theory in this solver
      */
     template <typename T, typename... Args>
-    requires std::is_base_of_v<Theory, T>
+        requires std::is_base_of_v<Theory, T>
     inline T& set_theory(Args&&... args)
     {
         auto concrete_theory = std::make_unique<T>(std::forward<Args>(args)...);
@@ -74,7 +74,7 @@ public:
      * @return reference to the heuristic in this solver
      */
     template <typename T, typename... Args>
-    requires std::is_base_of_v<Variable_order, T>
+        requires std::is_base_of_v<Variable_order, T>
     inline T& set_variable_order(Args&&... args)
     {
         auto vo = std::make_unique<T>(std::forward<Args>(args)...);
@@ -91,7 +91,7 @@ public:
      * @return reference to the policy in this solver
      */
     template <typename T, typename... Args>
-    requires std::is_base_of_v<Restart, T>
+        requires std::is_base_of_v<Restart, T>
     inline T& set_restart_policy(Args&&... args)
     {
         auto policy = std::make_unique<T>(std::forward<Args>(args)...);
