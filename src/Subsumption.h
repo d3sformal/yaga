@@ -39,25 +39,28 @@ private:
     class Clause_ptr {
     public:
         inline Clause_ptr() {}
-        inline Clause_ptr(Clause* ptr, std::uint64_t sig) : ptr_(ptr), sig_(sig) {}
+        inline Clause_ptr(Clause* ptr, std::uint64_t sig) : clause_ptr(ptr), clause_sig(sig) {}
         inline Clause_ptr(Clause_ptr const&) = default;
         inline Clause_ptr& operator=(Clause_ptr const&) = default;
-        inline Clause* operator->() { return ptr_; }
-        inline Clause& operator*() { return *ptr_; }
-        inline std::uint64_t sig() const { return sig_; }
-        inline bool operator==(Clause_ptr const& other) const { return ptr_ == other.ptr_; }
+        inline Clause* operator->() { return clause_ptr; }
+        inline Clause& operator*() { return *clause_ptr; }
+        inline std::uint64_t sig() const { return clause_sig; }
+        inline bool operator==(Clause_ptr const& other) const
+        {
+            return clause_ptr == other.clause_ptr;
+        }
         inline bool operator!=(Clause_ptr const& other) const { return !operator==(other); }
 
     private:
         // pointer to the clause
-        Clause* ptr_;
+        Clause* clause_ptr;
         // clause signature
-        std::uint64_t sig_;
+        std::uint64_t clause_sig;
     };
     // map literal -> clauses in which it occurs (created by index())
-    Literal_map<std::vector<Clause_ptr>> occur_;
+    Literal_map<std::vector<Clause_ptr>> occur;
     // auxiliary bitset for subset tests in subsumes() and selfsubsumes()
-    Literal_map<bool> bitset_;
+    Literal_map<bool> lit_bitset;
 
     // compute signature of a clause and create a proxy object which includes
     // this signature
@@ -74,7 +77,7 @@ private:
         return {clause, sig};
     }
 
-    /** Construct `occur_` from learned clauses in @p db
+    /** Construct `occur` from learned clauses in @p db
      *
      * @param db clause database
      */

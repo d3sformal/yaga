@@ -24,6 +24,13 @@ public:
     inline Literal(Literal const&) = default;
     inline Literal& operator=(Literal const&) = default;
 
+    /** Construct a literal from boolean variable ordinal number
+     *
+     * @param var_ord 0-based ordinal number of a boolean variable
+     */
+    inline explicit Literal(int var_ord)
+        : value(var_ord + 1) {} // + 1 so that we can represent 0 and its negation
+
     /** Check whether two literals are equal.
      *
      * @param other other literal
@@ -37,13 +44,6 @@ public:
      * @return true iff this literal is not equalivant to @p other
      */
     inline bool operator!=(Literal const& other) const { return !operator==(other); }
-
-    /** Construct a literal from boolean variable ordinal number
-     *
-     * @param var_ord 0-based ordinal number of a boolean variable
-     */
-    inline explicit Literal(int var_ord)
-        : value(var_ord + 1) {} // + 1 so that we can represent 0 and its negation
 
     /** Get negation of this literal
      *

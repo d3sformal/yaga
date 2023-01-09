@@ -6,8 +6,8 @@ void Subsumption::on_variable_resize(Variable::Type type, int num_vars)
 {
     if (type == Variable::boolean)
     {
-        occur_.resize(num_vars);
-        bitset_.resize(num_vars);
+        occur.resize(num_vars);
+        lit_bitset.resize(num_vars);
     }
 }
 
@@ -31,7 +31,7 @@ void Subsumption::on_restart(Database& db, Trail&) { remove_subsumed(db); }
 
 void Subsumption::index(std::deque<Clause>& clauses)
 {
-    for (auto& list : occur_)
+    for (auto& list : occur)
     {
         list.clear();
     }
@@ -42,7 +42,7 @@ void Subsumption::index(std::deque<Clause>& clauses)
 
         for (auto lit : clause)
         {
-            occur_[lit].emplace_back(clause_ptr);
+            occur[lit].emplace_back(clause_ptr);
         }
     }
 }
@@ -59,15 +59,15 @@ bool Subsumption::subsumes(Subsumption::Clause_ptr first, Subsumption::Clause_pt
         return false;
     }
 
-    bitset_.assign(false);
+    lit_bitset.assign(false);
     for (auto lit : *second)
     {
-        bitset_[lit] = true;
+        lit_bitset[lit] = true;
     }
 
     for (auto lit : *first)
     {
-        if (!bitset_[lit])
+        if (!lit_bitset[lit])
         {
             return false;
         }
@@ -85,16 +85,16 @@ bool Subsumption::selfsubsumes(Clause const& first, Clause const& second, Litera
         return false;
     }
 
-    bitset_.assign(false);
-    bitset_[lit] = true;
+    lit_bitset.assign(false);
+    lit_bitset[lit] = true;
     for (auto l : second)
     {
-        bitset_[l] = true;
+        lit_bitset[l] = true;
     }
 
     for (auto l : first)
     {
-        if (!bitset_[l])
+        if (!lit_bitset[l])
         {
             return false;
         }
@@ -111,18 +111,18 @@ void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause)
 
     // find literal in clause with the shortest occur list
     Literal best_lit = *clause->begin();
-    std::size_t best_size = occur_[best_lit].size();
+    std::size_t best_size = occur[best_lit].size();
     for (auto it = clause->begin() + 1; it != clause->end(); ++it)
     {
-        if (occur_[*it].size() < best_size)
+        if (occur[*it].size() < best_size)
         {
             best_lit = *it;
-            best_size = occur_[*it].size();
+            best_size = occur[*it].size();
         }
     }
 
     // remove subsumed clauses
-    for (auto other_ptr : occur_[best_lit])
+    for (auto other_ptr : occur[best_lit])
     {
         if (other_ptr != clause && subsumes(clause, other_ptr))
         {
