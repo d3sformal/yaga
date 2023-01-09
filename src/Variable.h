@@ -9,6 +9,7 @@ class Variable {
 public:
     enum Type {
         boolean = 0,
+        rational = 1,
     };
 
     // default constructible
