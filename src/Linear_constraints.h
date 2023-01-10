@@ -100,6 +100,8 @@ template <typename Value> class Linear_constraints;
  */
 template <typename Value> class Linear_constraint {
 public:
+    friend class Linear_constraints<Value>;
+
     using Value_type = Value;
     using Range_type = std::pair<int, int>;
 
@@ -119,12 +121,6 @@ public:
         : position(position), predicate(pred), literal(lit), constant(rhs), constraints(constraints)
     {
     }
-
-    /** Get location of values of this constraint in Linear_constraints
-     *
-     * @return range of indices
-     */
-    inline Range_type pos() const { return position; }
 
     /** Get predicate of this constraint
      *
@@ -224,6 +220,12 @@ private:
     Value_type constant;
     // container which contains this constraint
     Linear_constraints<Value_type>* constraints;
+
+    /** Get location of values of this constraint in Linear_constraints
+     *
+     * @return range of indices
+     */
+    inline Range_type pos() const { return position; }
 };
 
 /** Hash functor for Linear_constraint that disregards order of variables.
