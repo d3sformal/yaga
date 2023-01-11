@@ -516,11 +516,20 @@ private:
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
     inline Value_type find_norm_constant(Var_range&& var_range, Coef_range&& coef_range) const
     {
-        auto min_coef_it =
-            std::begin(coef_range) +
-            std::distance(std::begin(var_range),
-                          std::min_element(std::begin(var_range), std::end(var_range)));
-        return Value_type{1} / *min_coef_it;
+        int min_var = var_range.front();
+        auto min_coef = coef_range.front();
+
+        auto var_it = std::begin(var_range);
+        auto coef_it = std::begin(coef_range);
+        for (; var_it != std::end(var_range); ++var_it, ++coef_it)
+        {
+            if (*var_it < min_var)
+            {
+                min_var = *var_it;
+                min_coef = *coef_it;
+            }
+        }
+        return Value_type{1} / min_coef;
     }
 
     // flip inequalities if mult is negative
