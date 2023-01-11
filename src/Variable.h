@@ -47,6 +47,10 @@ inline std::ostream& operator<<(std::ostream& out, Variable var)
     {
         out << "boolean(";
     }
+    else if (var.type() == Variable::rational)
+    {
+        out << "rational(";
+    }
     else
     {
         out << "type=" << var.type() << "(";
