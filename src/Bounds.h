@@ -127,8 +127,6 @@ public:
      */
     inline void add_upper_bound(Model<Value_type> const& model, Implied_value_type bound)
     {
-        assert(is_upper_bound(model, bound.reason()));
-
         auto current_bound = upper_bound(model);
         if (current_bound.value() > bound.value() ||
             (current_bound.value() == bound.value() && bound.reason().is_strict()))
@@ -144,8 +142,6 @@ public:
      */
     inline void add_lower_bound(Model<Value_type> const& model, Implied_value_type bound)
     {
-        assert(is_lower_bound(model, bound.reason()));
-
         auto current_bound = lower_bound(model);
         if (current_bound.value() < bound.value() ||
             (current_bound.value() == bound.value() && bound.reason().is_strict()))

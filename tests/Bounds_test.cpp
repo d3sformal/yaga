@@ -10,7 +10,7 @@ inline perun::Implied_value<Value> implied(perun::Model<Value> const& model, per
     return {cons.implied_value(model) / cons.coef().front(), cons};
 }
 
-TEST_CASE("Add upper bounds", "[bounds][debug]")
+TEST_CASE("Add upper bounds", "[bounds]")
 {
     using namespace perun;
     using namespace perun::test;
