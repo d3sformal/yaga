@@ -153,6 +153,16 @@ inline Linear_predicate operator<=(Dot_product const& lhs, double rhs)
     };
 }
 
+inline Linear_predicate operator>=(Dot_product const& lhs, double rhs)
+{
+    return Linear_predicate{
+        .lhs = lhs,
+        .rhs = rhs,
+        .pred = Order_predicate::LT,
+        .is_negation = true,
+    };
+}
+
 inline Linear_predicate operator<(Dot_product const& lhs, double rhs)
 {
     return Linear_predicate{
@@ -160,6 +170,16 @@ inline Linear_predicate operator<(Dot_product const& lhs, double rhs)
         .rhs = rhs,
         .pred = Order_predicate::LT,
         .is_negation = false,
+    };
+}
+
+inline Linear_predicate operator>(Dot_product const& lhs, double rhs)
+{
+    return Linear_predicate{
+        .lhs = lhs,
+        .rhs = rhs,
+        .pred = Order_predicate::LEQ,
+        .is_negation = true,
     };
 }
 
@@ -194,6 +214,17 @@ inline Linear_predicate operator<=(Variable lhs, double rhs)
     };
 }
 
+inline Linear_predicate operator>=(Variable lhs, double rhs)
+{
+    assert(lhs.type() == Variable::rational);
+    return Linear_predicate{
+        .lhs = Dot_product{.vars = {lhs.ord()}, .coef = {1}},
+        .rhs = rhs,
+        .pred = Order_predicate::LT,
+        .is_negation = true,
+    };
+}
+
 inline Linear_predicate operator<(Variable lhs, double rhs)
 {
     assert(lhs.type() == Variable::rational);
@@ -202,6 +233,17 @@ inline Linear_predicate operator<(Variable lhs, double rhs)
         .rhs = rhs,
         .pred = Order_predicate::LT,
         .is_negation = false,
+    };
+}
+
+inline Linear_predicate operator>(Variable lhs, double rhs)
+{
+    assert(lhs.type() == Variable::rational);
+    return Linear_predicate{
+        .lhs = Dot_product{.vars = {lhs.ord()}, .coef = {1}},
+        .rhs = rhs,
+        .pred = Order_predicate::LEQ,
+        .is_negation = true,
     };
 }
 
@@ -235,6 +277,18 @@ inline auto factory(Linear_constraints<double>& repository)
         auto result = rep_ptr->make(val.lhs.vars, val.lhs.coef, val.pred, val.rhs);
         return val.is_negation ? result.negate() : result;
     };
+}
+
+template<typename Value>
+inline Linear_constraint<Value> operator-(Linear_constraint<Value> const& cons)
+{
+    return cons.negate();
+}
+
+template<typename Value, typename... Tail>
+inline Clause clause(Linear_constraint<Value> cons, Linear_constraint<Tail>... tail)
+{
+    return clause(cons.lit(), tail.lit()...);
 }
 
 }
