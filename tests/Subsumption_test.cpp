@@ -48,6 +48,6 @@ TEST_CASE("Strenghten conflict clause", "[self-subsumption]")
 
     Subsumption s;
     s.on_variable_resize(Variable::boolean, 4);
-    s.on_conflict_derived(db, trail, conflict);
+    s.minimize(trail, conflict);
     REQUIRE(conflict == clause(lit(2), lit(3)));
 }

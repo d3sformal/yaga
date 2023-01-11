@@ -25,11 +25,26 @@ namespace perun {
  */
 class Subsumption final : public Event_listener {
 public:
+    /** Allocate memory for internal structures.
+     * 
+     * @param type type of variables
+     * @param num_vars new number of variables of type @p type
+     */
     void on_variable_resize(Variable::Type type, int num_vars) override;
-    // minimize conflict using self-subsuming resolution
-    void on_conflict_derived(Database& db, Trail& trail, Clause& conflict) override;
-    // find and remove subsumed learned clauses from db
+
+    /** Find and remove subsumed learned clauses from db
+     * 
+     * @param db clause database
+     * @param trail current solver trail
+     */
     void on_restart(Database& db, Trail& trail) override;
+
+    /** Minimize @p clause using self-subsuming resolution.
+     * 
+     * @param trail current solver trail
+     * @param clause clause to minimize
+     */
+    void minimize(Trail const& trail, Clause& clause);
 
 private:
     // Clause pointer proxy which also stores signature of the clause.

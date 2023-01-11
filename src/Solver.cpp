@@ -17,10 +17,7 @@ std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
     if (!learned.empty())
     {
         ++total_conflicts;
-        for (auto listener : listeners())
-        {
-            listener->on_conflict_derived(db(), trail(), learned);
-        }
+        subsumption.minimize(trail(), learned);
     }
     return {learned, level};
 }

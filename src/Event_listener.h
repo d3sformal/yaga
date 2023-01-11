@@ -42,17 +42,6 @@ public:
      */
     virtual void on_conflict_resolved(Database&, Trail&, Clause const&) {}
 
-    /** Called when a conflict clause is derived by conflict analysis (before
-     * `on_learend_clause()`)
-     *
-     * Implementations are free to modify the @p conflict clause
-     *
-     * @param db clause database without @p conflict
-     * @param trail current solver trail
-     * @param conflict clause that is false in @p trail
-     */
-    virtual void on_conflict_derived(Database&, Trail&, Clause&) {}
-
     /** Called after each restart
      *
      * @param db clause database

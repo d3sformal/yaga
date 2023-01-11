@@ -2,16 +2,7 @@
 
 namespace perun {
 
-void Subsumption::on_variable_resize(Variable::Type type, int num_vars)
-{
-    if (type == Variable::boolean)
-    {
-        occur.resize(num_vars);
-        lit_bitset.resize(num_vars);
-    }
-}
-
-void Subsumption::on_conflict_derived(Database&, Trail& trail, Clause& conflict)
+void Subsumption::minimize(Trail const& trail, Clause& clause)
 {
     auto const& model = trail.model<bool>(Variable::boolean);
 
@@ -19,12 +10,21 @@ void Subsumption::on_conflict_derived(Database&, Trail& trail, Clause& conflict)
         if (eval(model, lit.negate()) == true)
         {
             auto reason = trail.reason(lit.var());
-            return reason && selfsubsumes(*reason, conflict, lit.negate());
+            return reason && selfsubsumes(*reason, clause, lit.negate());
         }
         return false;
     };
 
-    conflict.erase(std::remove_if(conflict.begin(), conflict.end(), is_redundant), conflict.end());
+    clause.erase(std::remove_if(clause.begin(), clause.end(), is_redundant), clause.end());
+}
+
+void Subsumption::on_variable_resize(Variable::Type type, int num_vars)
+{
+    if (type == Variable::boolean)
+    {
+        occur.resize(num_vars);
+        lit_bitset.resize(num_vars);
+    }
 }
 
 void Subsumption::on_restart(Database& db, Trail&) { remove_subsumed(db); }
