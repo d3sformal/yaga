@@ -2,7 +2,25 @@ cmake_minimum_required(VERSION 3.17)
 
 project(perun CXX)
 
-find_package(Catch2 3 REQUIRED PATHS deps/install)
+include(FetchContent)
+
+find_package(Catch2 3 QUIET)
+
+if(FOUND_CATCH)
+    message(STATUS "Using system install of Catch2")
+else()
+    message(STATUS "Fetching Catch2")
+
+    FetchContent_Declare(
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG        v3.2.1
+    )
+
+    FetchContent_MakeAvailable(Catch2)
+
+    message(STATUS "Fetching Catch2 - done")
+endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     add_compile_options(-fdiagnostics-color=always)
@@ -13,8 +31,6 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-
-include_directories(deps/install/include)
 
 add_library(perun)
 add_executable(test)
