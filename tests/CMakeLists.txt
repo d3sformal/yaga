@@ -6,6 +6,7 @@ target_sources(test PRIVATE
     Conflict_analysis_test.cpp
     Evsids_test.cpp
     Glucose_restart_test.cpp
+    Linear_arithmetic_test.cpp
     Linear_constraints_test.cpp
     Luby_restart_test.cpp
     Solver_test.cpp

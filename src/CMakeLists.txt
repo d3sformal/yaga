@@ -4,6 +4,7 @@ target_sources(perun PRIVATE
     Bool_theory.cpp
     Conflict_analysis.cpp
     Evsids.cpp
+    Linear_arithmetic.cpp
     Solver.cpp
     Subsumption.cpp
 )
