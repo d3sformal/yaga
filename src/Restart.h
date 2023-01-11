@@ -43,7 +43,7 @@ public:
      * @param trail current solver trail
      * @param learned learned clause
      */
-    void on_learned_clause(Database&, Trail&, Clause*) override { --countdown; }
+    void on_learned_clause(Database&, Trail&, Clause const&) override { --countdown; }
 
     /** Reset countdown to the next restart to the next element of Luby
      * sequence.
@@ -112,12 +112,12 @@ public:
      * @param trail current solver trail
      * @param learned newly learned clause
      */
-    void on_learned_clause(Database&, Trail& trail, Clause* learned) override
+    void on_learned_clause(Database&, Trail& trail, Clause const& learned) override
     {
         --countdown;
-        std::vector<int> levels(learned->size());
+        std::vector<int> levels(learned.size());
         auto it = levels.begin();
-        for (auto lit : *learned)
+        for (auto lit : learned)
         {
             *it++ = trail.decision_level(lit.var()).value();
         }

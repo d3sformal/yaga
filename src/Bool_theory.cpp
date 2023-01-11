@@ -12,13 +12,20 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
     }
 }
 
-void Bool_theory::on_learned_clause(Database&, Trail&, Clause* learned)
+void Bool_theory::on_learned_clause(Database& db, Trail&, Clause const& learned)
 {
-    // initialize watched literals in the learned clause
-    watched[(*learned)[0]].emplace_back(learned);
-    if (learned->size() > 1)
+    // find the learned clause in database (should be exactly one comparison since learned clases
+    // are added to the back)
+    auto it = std::find_if(
+        db.learned().rbegin(), db.learned().rend(),
+        [learned_ptr = &learned](auto const& clause) { return &clause == learned_ptr; });
+    assert(it != db.learned().rend());
+
+    // watch the first two literals in the learned clause
+    watched[learned[0]].emplace_back(&*it);
+    if (db.learned().back().size() > 1)
     {
-        watched[(*learned)[1]].emplace_back(learned);
+        watched[learned[1]].emplace_back(&*it);
     }
 }
 

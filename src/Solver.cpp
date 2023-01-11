@@ -30,7 +30,7 @@ void Solver::backtrack_with(Clause&& clause, int level)
     // trigger events
     for (auto listener : listeners())
     {
-        listener->on_learned_clause(db(), trail(), &learned);
+        listener->on_learned_clause(db(), trail(), learned);
     }
 
     trail().backtrack(level);

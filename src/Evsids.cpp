@@ -37,9 +37,9 @@ void Evsids::on_conflict_resolved(Database&, Trail&, Clause const& other)
     }
 }
 
-void Evsids::on_learned_clause(Database&, Trail&, Clause* learned)
+void Evsids::on_learned_clause(Database&, Trail&, Clause const& learned)
 {
-    for (auto lit : *learned)
+    for (auto lit : learned)
     {
         bump(lit.var().ord());
     }

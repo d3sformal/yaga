@@ -92,12 +92,12 @@ TEST_CASE("Pick a variable after a large number of score decays", "[evsids]")
     auto learned = clause(lit(2));
     for (int i = 0; i < 10000; ++i)
     {
-        evsids.on_learned_clause(db, trail, &learned);
+        evsids.on_learned_clause(db, trail, learned);
     }
     learned = clause(lit(1));
     for (int i = 0; i < 10; ++i)
     {
-        evsids.on_learned_clause(db, trail, &learned);
+        evsids.on_learned_clause(db, trail, learned);
     }
 
     auto res = evsids.pick(db, trail);

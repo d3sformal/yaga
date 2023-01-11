@@ -29,9 +29,9 @@ public:
      *
      * @param db clause database
      * @param trail current solver trail
-     * @param learned pointer to the newly learned clause in @p db
+     * @param learned reference to the newly learned clause in @p db
      */
-    virtual void on_learned_clause(Database&, Trail&, Clause*) {}
+    virtual void on_learned_clause(Database&, Trail&, Clause const&) {}
 
     /** Called when a conflict clause is resolved with @p other_clause in
      * conflict analysis

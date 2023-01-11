@@ -33,9 +33,9 @@ public:
      *
      * @param db clause database
      * @param trail current solver trail
-     * @param learned pointer to the newly learned clause in @p db
+     * @param learned reference to the newly learned clause in @p db
      */
-    void on_learned_clause(Database& db, Trail& trail, Clause* learned) override;
+    void on_learned_clause(Database& db, Trail& trail, Clause const& learned) override;
 
     /** Bump variables in @p other
      *
