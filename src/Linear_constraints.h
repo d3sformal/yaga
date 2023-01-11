@@ -228,6 +228,26 @@ private:
     inline Range_type pos() const { return position; }
 };
 
+/** Evaluate linear constraint in @p model
+ * 
+ * @tparam Value_type type of constants in @p cons
+ * @param model partial assignment of LRA variables
+ * @param cons linear constraint to evaluate
+ * @return true if @p cons is true in model, false if @p cons is false in model. None, if @p cons is undefined.
+ */
+template<typename Value_type>
+inline std::optional<bool> eval(Model<Value_type> const& model, Linear_constraint<Value_type> const& cons)
+{
+    for (auto var : cons.vars())
+    {
+        if (!model.is_defined(var))
+        {
+            return {};
+        }
+    }
+    return cons.eval(model);
+}
+
 /** Hash functor for Linear_constraint that disregards order of variables.
  *
  * @tparam Value_type value type of coefficients in the constraint
