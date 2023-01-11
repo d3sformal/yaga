@@ -90,7 +90,7 @@ int main(int argc, char** argv)
     auto result = solver.check();
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
-    if (result == Solver::sat)
+    if (result == Solver::Result::sat)
     {
         if (is_satisfying(solver.trail(), solver.db()))
         {
@@ -113,5 +113,5 @@ int main(int argc, char** argv)
     std::cout << "decisions = " << solver.num_decisions() << "\n";
     std::cout << "restarts = " << solver.num_restarts() << "\n";
 
-    return result == Solver::sat ? 1 : 0;
+    return result == Solver::Result::sat ? 1 : 0;
 }

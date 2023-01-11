@@ -25,7 +25,7 @@ TEST_CASE("Check a satisfiable boolean formula", "[sat][integration]")
     solver.db().assert_clause(-lit(0), -lit(1), -lit(2));
 
     auto result = solver.check();
-    REQUIRE(result == Solver::sat);
+    REQUIRE(result == Solver::Result::sat);
 
     auto& model = solver.trail().model<bool>(Variable::boolean);
     REQUIRE(model.is_defined(0));
@@ -56,5 +56,5 @@ TEST_CASE("Check an unsatisfiable boolean formula", "[unsat][integration]")
     solver.db().assert_clause(-lit(0), -lit(1), -lit(2));
 
     auto result = solver.check();
-    REQUIRE(result == Solver::unsat);
+    REQUIRE(result == Solver::Result::unsat);
 }

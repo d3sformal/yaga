@@ -23,7 +23,7 @@ namespace perun {
 
 class Solver {
 public:
-    enum Result { unsat = 0, sat = 1 };
+    enum class Result { unsat = 0, sat = 1 };
 
     /** Get current trail (partial model)
      *

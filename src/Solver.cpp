@@ -106,7 +106,7 @@ Solver::Result Solver::check()
             auto [learned, level] = analyze_conflict(std::move(conflict.value()));
             if (learned.empty())
             {
-                return unsat;
+                return Result::unsat;
             }
 
             if (restart_policy->should_restart())
@@ -123,7 +123,7 @@ Solver::Result Solver::check()
             auto var = pick_variable();
             if (!var)
             {
-                return sat;
+                return Result::sat;
             }
             decide(var.value());
         }
