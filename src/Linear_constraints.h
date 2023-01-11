@@ -6,6 +6,7 @@
 #include <concepts>
 #include <functional>
 #include <iterator>
+#include <ostream>
 #include <ranges>
 #include <tuple>
 #include <unordered_set>
@@ -248,6 +249,60 @@ inline std::optional<bool> eval(Model<Value_type> const& model, Linear_constrain
     return cons.eval(model);
 }
 
+/** Print a linear constraint for testing
+ * 
+ * @tparam Value_type type of constants in the linear constraint
+ * @param out output stream
+ * @param cons linear constraint to print
+ * @return @p out
+ */
+template<typename Value_type>
+inline std::ostream& operator<<(std::ostream& out, Linear_constraint<Value_type> const& cons)
+{
+    char const* delim = "";
+    auto var_it = cons.vars().begin();
+    auto coef_it = cons.coef().begin();
+    for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
+    {
+        out << delim << *coef_it << " * " << Variable{*var_it, Variable::rational};
+        delim = " + ";
+    }
+
+    if (!cons.lit().is_negation())
+    {
+        switch (cons.pred())
+        {
+            case Order_predicate::EQ:
+                out << " = ";
+                break;
+            case Order_predicate::LT:
+                out << " < ";
+                break;
+            case Order_predicate::LEQ:
+                out << " <= ";
+                break;
+        }
+    }
+    else // negation
+    {
+        switch (cons.pred())
+        {
+            case Order_predicate::EQ:
+                out << " != ";
+                break;
+            case Order_predicate::LT:
+                out << " >= ";
+                break;
+            case Order_predicate::LEQ:
+                out << " > ";
+                break;
+        }
+    }
+    out << cons.rhs();
+
+    return out;
+}
+
 /** Hash functor for Linear_constraint that disregards order of variables.
  *
  * @tparam Value_type value type of coefficients in the constraint
@@ -398,6 +453,20 @@ public:
         }
 
         return {lit, it->pos(), it->pred(), it->rhs(), this};
+    }
+
+    /** Find boolean constraint which implements @p bool_var_ord
+     * 
+     * @param bool_var_ord ordinal number of a boolean variable
+     * @return constraint which implements @p bool_var_ord or an empty constraint, if there is no linear constraint for @p bool_var_ord
+     */
+    Constraint_type operator[](int bool_var_ord) const
+    {
+        if (bool_var_ord < 0 || bool_var_ord >= static_cast<int>(constraints.size()))
+        {
+            return {}; // empty constraint
+        }
+        return constraints[bool_var_ord];
     }
 
     /** Get range of variables of @p cons
