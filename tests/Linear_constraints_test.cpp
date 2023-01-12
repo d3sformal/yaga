@@ -3,6 +3,69 @@
 #include "test.h"
 #include "Linear_constraints.h"
 
+TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Linear_constraints<double> repo;
+    auto make = factory(repo);
+    auto [x, y, z] = real_vars<3>();
+
+    auto constraints = std::array{
+        std::tuple{make(x < 1), Order_predicate::LT, false},
+        std::tuple{make(x <= 1), Order_predicate::LEQ, false},
+        std::tuple{make(x == 1), Order_predicate::EQ, false},
+        std::tuple{make(x > 1), Order_predicate::LEQ, true},
+        std::tuple{make(x >= 1), Order_predicate::LT, true},
+        std::tuple{make(x != 1), Order_predicate::EQ, true},
+    };
+
+    for (auto [cons, exp_pred, exp_polarity] : constraints)
+    {
+        REQUIRE(std::ranges::equal(cons.vars(), std::vector<int>{x.ord()}));
+        REQUIRE(std::ranges::equal(cons.coef(), std::vector<double>{1}));
+        REQUIRE(cons.pred() == exp_pred);
+        REQUIRE(cons.rhs() == 1);
+        REQUIRE(cons.lit().is_negation() == exp_polarity);
+    }
+    
+    auto cons = make(2 * x < 4);
+    REQUIRE(std::ranges::equal(cons.vars(), std::vector<int>{x.ord()}));
+    REQUIRE(std::ranges::equal(cons.coef(), std::vector<double>{1})); // normalized by Linear_constraints
+    REQUIRE(cons.pred() == Order_predicate::LT);
+    REQUIRE(cons.rhs() == 2);
+    REQUIRE(!cons.lit().is_negation());
+}
+
+TEST_CASE("Create complicated predicates", "[test_expr]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Linear_constraints<double> repo;
+    auto make = factory(repo);
+    auto [x, y, z] = real_vars<3>();
+
+    auto constraints = std::array{
+        std::tuple{make(2 * x + 5 * y + 8 * z < x + y), Order_predicate::LT, false},
+        std::tuple{make(2 * x + 5 * y + 8 * z <= x + y), Order_predicate::LEQ, false},
+        std::tuple{make(2 * x + 5 * y + 8 * z == x + y), Order_predicate::EQ, false},
+        std::tuple{make(2 * x + 5 * y + 8 * z > x + y), Order_predicate::LEQ, true},
+        std::tuple{make(2 * x + 5 * y + 8 * z >= x + y), Order_predicate::LT, true},
+        std::tuple{make(2 * x + 5 * y + 8 * z != x + y), Order_predicate::EQ, true},
+    };
+
+    for (auto [cons, exp_pred, exp_polarity] : constraints)
+    {
+        REQUIRE(std::ranges::equal(cons.vars(), std::vector<int>{x.ord(), y.ord(), z.ord()}));
+        REQUIRE(std::ranges::equal(cons.coef(), std::vector<double>{1, 4, 8}));
+        REQUIRE(cons.pred() == exp_pred);
+        REQUIRE(cons.rhs() == 0);
+        REQUIRE(cons.lit().is_negation() == exp_polarity);
+    }
+}
+
 TEST_CASE("Create normalized constraints", "[linear_constraints]")
 {
     using namespace perun;

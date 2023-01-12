@@ -7,45 +7,36 @@
 
 namespace perun::test {
 
-    // create a linear constraint and return its literal
-    auto factory(Linear_arithmetic& plugin)
-    {
-        return [plugin_ptr = &plugin](Linear_predicate const& pred) 
-        {
-            auto cons = plugin_ptr->constraint(pred.lhs.vars, pred.lhs.coef, pred.pred, pred.rhs);
-            return pred.is_negation ? cons.negate() : cons;
-        };
-    }
+// propagate that lit is true in trail at current decision level without reason
+auto propagate(Trail& trail, Literal lit)
+{
+    auto& model = trail.model<bool>(Variable::boolean);
+    assert(!model.is_defined(lit.var().ord()));
+    model.set_value(lit.var().ord(), !lit.is_negation());
+    trail.propagate(lit.var(), nullptr, trail.decision_level());
+}
 
-    // decide that lit is true in trail
-    auto decide(Trail& trail, Literal lit)
-    {
-        auto& model = trail.model<bool>(Variable::boolean);
-        assert(!model.is_defined(lit.var().ord()));
-        model.set_value(lit.var().ord(), !lit.is_negation());
-        trail.decide(lit.var());
-    }
+// decide that lit is true in trail
+auto decide(Trail& trail, Literal lit)
+{
+    auto& model = trail.model<bool>(Variable::boolean);
+    assert(!model.is_defined(lit.var().ord()));
+    model.set_value(lit.var().ord(), !lit.is_negation());
+    trail.decide(lit.var());
+}
 
-    // propagate that lit is true in trail at current decision level without reason
-    auto propagate(Trail& trail, Literal lit)
-    {
-        auto& model = trail.model<bool>(Variable::boolean);
-        assert(!model.is_defined(lit.var().ord()));
-        model.set_value(lit.var().ord(), !lit.is_negation());
-        trail.propagate(lit.var(), nullptr, trail.decision_level());
-    }
+template<typename Value>
+auto decide(Trail& trail, Linear_constraint<Value> const& cons)
+{
+    return decide(trail, cons.lit());
+}
 
-    template<typename Value>
-    auto decide(Trail& trail, Linear_constraint<Value> const& cons)
-    {
-        return decide(trail, cons.lit());
-    }
+template<typename Value>
+auto propagate(Trail& trail, Linear_constraint<Value> const& cons)
+{
+    return propagate(trail, cons.lit());
+}
 
-    template<typename Value>
-    auto propagate(Trail& trail, Linear_constraint<Value> const& cons)
-    {
-        return propagate(trail, cons.lit());
-    }
 }
 
 TEST_CASE("Propagate in an empty trail", "[linear_arithmetic]")
@@ -290,4 +281,6 @@ TEST_CASE("Detect a bound conflict", "[linear_constraints]")
     auto conflict = lra.propagate(db, trail);
     REQUIRE(conflict);
     REQUIRE(conflict.value() == clause(-linear(x + z > 0), -linear(x + y <= 0), linear(y - z < 0)));
+
+    
 }
