@@ -523,16 +523,16 @@ public:
      */
     inline bool eval(Model<Value_type> const& model, Constraint_type const& cons) const
     {
-        auto value = cons.rhs();
+        auto rhs = cons.rhs();
         auto [var_it, var_end] = vars(cons);
         auto [coef_it, coef_end] = coef(cons);
         for (; var_it != var_end; ++var_it, ++coef_it)
         {
             assert(coef_it != coef_end);
             assert(model.is_defined(*var_it));
-            value -= *coef_it * model.value(*var_it);
+            rhs -= *coef_it * model.value(*var_it);
         }
-        return cons.pred()(Value_type{0}, value);
+        return cons.lit().is_negation() ^ cons.pred()(Value_type{0}, rhs);
     }
 
     /** Given @p cons with exactly one unassigned variable, evaluate the rest of the constraint.

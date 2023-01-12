@@ -159,3 +159,24 @@ TEST_CASE("Constraints with different nubmer of variables are different", "[line
     REQUIRE(cons2.lit().var() != cons3.lit().var());
     REQUIRE(cons1.lit().var() != cons3.lit().var());
 }
+
+TEST_CASE("Evaluate negation of a linear constraint", "[linear_constraints]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Linear_constraints<double> repo;
+    auto make = factory(repo);
+    auto [x, y, z] = real_vars<3>();
+    auto cons = make(x >= y).negate();
+
+    Model<double> model;
+    model.resize(3);
+    REQUIRE(!perun::eval(model, cons));
+    model.set_value(x.ord(), 0);
+    REQUIRE(!perun::eval(model, cons));
+    model.set_value(y.ord(), 0);
+    REQUIRE(perun::eval(model, cons) == false);
+    model.set_value(y.ord(), 1);
+    REQUIRE(perun::eval(model, cons) == true);
+}
