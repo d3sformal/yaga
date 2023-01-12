@@ -259,7 +259,7 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_constra
     REQUIRE(perun::eval(lra_model, linear(x + y + z <= 0)) == false);
 }
 
-TEST_CASE("Detect a bound conflict", "[linear_constraints]")
+TEST_CASE("Detect a bound conflict", "[linear_constraints][debug]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -273,14 +273,14 @@ TEST_CASE("Detect a bound conflict", "[linear_constraints]")
     auto linear = factory(lra);
     auto [x, y, z] = real_vars<3>();
 
-    propagate(trail, linear(x + y <= 0));
-    propagate(trail, linear(x + z > 0));
+    propagate(trail, linear(x <= y));
+    propagate(trail, linear(x > z));
     propagate(trail, linear(y == 0));
     propagate(trail, linear(z == 0));
 
     auto conflict = lra.propagate(db, trail);
     REQUIRE(conflict);
-    REQUIRE(conflict.value() == clause(-linear(x + z > 0), -linear(x + y <= 0), linear(y - z < 0)));
-
-    
+    REQUIRE(conflict.value() == clause(-linear(z < x), -linear(x <= y), linear(z < y)));
+    REQUIRE(perun::eval(bool_model, conflict.value()) == false);
+    REQUIRE(perun::eval(lra_model, linear(z < y)) == false);
 }
