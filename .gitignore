@@ -1,0 +1,5 @@
+.vscode
+deps/install
+build-debug
+build-release
+data
