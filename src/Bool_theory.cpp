@@ -23,7 +23,7 @@ void Bool_theory::on_learned_clause(Database& db, Trail&, Clause const& learned)
 
     // watch the first two literals in the learned clause
     watched[learned[0]].emplace_back(&*it);
-    if (db.learned().back().size() > 1)
+    if (learned.size() > 1)
     {
         watched[learned[1]].emplace_back(&*it);
     }
