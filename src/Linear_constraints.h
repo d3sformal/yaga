@@ -230,14 +230,16 @@ private:
 };
 
 /** Evaluate linear constraint in @p model
- * 
+ *
  * @tparam Value_type type of constants in @p cons
  * @param model partial assignment of LRA variables
  * @param cons linear constraint to evaluate
- * @return true if @p cons is true in model, false if @p cons is false in model. None, if @p cons is undefined.
+ * @return true if @p cons is true in model, false if @p cons is false in model. None, if @p cons is
+ * undefined.
  */
-template<typename Value_type>
-inline std::optional<bool> eval(Model<Value_type> const& model, Linear_constraint<Value_type> const& cons)
+template <typename Value_type>
+inline std::optional<bool> eval(Model<Value_type> const& model,
+                                Linear_constraint<Value_type> const& cons)
 {
     for (auto var : cons.vars())
     {
@@ -250,13 +252,13 @@ inline std::optional<bool> eval(Model<Value_type> const& model, Linear_constrain
 }
 
 /** Print a linear constraint for testing
- * 
+ *
  * @tparam Value_type type of constants in the linear constraint
  * @param out output stream
  * @param cons linear constraint to print
  * @return @p out
  */
-template<typename Value_type>
+template <typename Value_type>
 inline std::ostream& operator<<(std::ostream& out, Linear_constraint<Value_type> const& cons)
 {
     char const* delim = "";
@@ -272,30 +274,30 @@ inline std::ostream& operator<<(std::ostream& out, Linear_constraint<Value_type>
     {
         switch (cons.pred())
         {
-            case Order_predicate::EQ:
-                out << " = ";
-                break;
-            case Order_predicate::LT:
-                out << " < ";
-                break;
-            case Order_predicate::LEQ:
-                out << " <= ";
-                break;
+        case Order_predicate::EQ:
+            out << " = ";
+            break;
+        case Order_predicate::LT:
+            out << " < ";
+            break;
+        case Order_predicate::LEQ:
+            out << " <= ";
+            break;
         }
     }
     else // negation
     {
         switch (cons.pred())
         {
-            case Order_predicate::EQ:
-                out << " != ";
-                break;
-            case Order_predicate::LT:
-                out << " >= ";
-                break;
-            case Order_predicate::LEQ:
-                out << " > ";
-                break;
+        case Order_predicate::EQ:
+            out << " != ";
+            break;
+        case Order_predicate::LT:
+            out << " >= ";
+            break;
+        case Order_predicate::LEQ:
+            out << " > ";
+            break;
         }
     }
     out << cons.rhs();
@@ -456,9 +458,10 @@ public:
     }
 
     /** Find boolean constraint which implements @p bool_var_ord
-     * 
+     *
      * @param bool_var_ord ordinal number of a boolean variable
-     * @return constraint which implements @p bool_var_ord or an empty constraint, if there is no linear constraint for @p bool_var_ord
+     * @return constraint which implements @p bool_var_ord or an empty constraint, if there is no
+     * linear constraint for @p bool_var_ord
      */
     Constraint_type operator[](int bool_var_ord) const
     {
