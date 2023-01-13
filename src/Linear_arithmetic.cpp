@@ -275,6 +275,37 @@ std::optional<Clause> Linear_arithmetic::unit(std::vector<int>& assigned, Trail&
     return {};
 }
 
+Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Model<Value_type> const& model, Constraint_type const& first, Constraint_type const& second)
+{
+    assert(!first.empty());
+    assert(!second.empty());
+    assert(first.vars().front() == second.vars().front());
+    assert(!model.is_defined(first.vars().front()));
+
+    // find predicate of the combination
+    auto pred = first.is_strict() || second.is_strict() ? Order_predicate::LT : Order_predicate::LEQ;
+
+    // compute constants such that `poly(first) * first_mult + poly(second) * second_mult` 
+    // eliminates the first variable
+    auto first_mult = first.coef().front() < Value_type{0} ? Value_type{1} : Value_type{-1};
+    auto second_mult = std::abs(first.coef().front()) / second.coef().front();
+
+    // compute `poly(first) * first_mult + poly(second) * second_mult` 
+    auto rhs = first.rhs() * first_mult + second.rhs() * second_mult;
+    std::unordered_map<int, Value_type> prod;
+    for (auto [cons_ptr, mult] : {std::pair{&first, first_mult}, std::pair{&second, second_mult}})
+    {
+        auto var_it = ++cons_ptr->vars().begin(); // skip the unassigned variable
+        auto coef_it = ++cons_ptr->coef().begin();
+        for (; var_it != cons_ptr->vars().end(); ++var_it, ++coef_it)
+        {
+            auto [it, _] = prod.insert({*var_it, Value_type{0}});
+            it->second += *coef_it * mult;
+        }
+    }
+    return constraint(model, std::views::keys(prod), std::views::values(prod), pred, rhs);
+}
+
 std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Models_type& models,
                                                               Bounds<Value_type>& bounds)
 {
@@ -285,50 +316,41 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
     {
         return {}; // no conflict
     }
-    assert(!lb.reason().empty());
-    assert(!ub.reason().empty());
-    assert(lb.reason().vars().front() == ub.reason().vars().front());
-    assert(!models.owned().is_defined(lb.reason().vars().front()));
 
-    // eliminate the unassigned variable in lb and ub using the Fourier-Motzkin method
-    auto pred = is_either_strict ? Order_predicate::LT : Order_predicate::LEQ;
-    auto lb_mult = lb.reason().coef().front() < 0 ? Value_type{1} : Value_type{-1};
-    auto ub_mult = std::abs(lb.reason().coef().front()) / ub.reason().coef().front();
-
-    // compute `lb_mult * polynomial(lb) + ub_mult * polynomial(ub)`
-    auto rhs = lb.reason().rhs() * lb_mult + ub.reason().rhs() * ub_mult;
-    std::unordered_map<int, Value_type> prod;
-    auto var_it = ++lb.reason().vars().begin(); // skip the unassigned variable
-    auto coef_it = ++lb.reason().coef().begin();
-    for (; var_it != lb.reason().vars().end(); ++var_it, ++coef_it)
-    {
-        prod.insert({*var_it, *coef_it * lb_mult});
-    }
-
-    var_it = ++ub.reason().vars().begin();
-    coef_it = ++ub.reason().coef().begin();
-    for (; var_it != ub.reason().vars().end(); ++var_it, ++coef_it)
-    {
-        auto [it, _] = prod.insert({*var_it, Value_type{0}});
-        it->second += *coef_it * ub_mult;
-    }
-
-    // create a constraint `L < U`
-    auto cons =
-        constraint(models.owned(), std::views::keys(prod), std::views::values(prod), pred, rhs);
-
-    // semantically propagate the new literal so that the conflict clause is false even in
-    // the boolean model
+    // create `L < U` and propagate the literal semantically so that the conflict clause if false
+    auto cons = eliminate(models.owned(), lb.reason(), ub.reason());
     propagate(trail, models, cons);
 
     // L <= x && x <= U -> L < U
     return Clause{lb.reason().lit().negate(), ub.reason().lit().negate(), cons.lit()};
 }
 
-std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail&, Models_type&,
-                                                                   Bounds<Value_type>&)
+std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail, Models_type& models,
+                                                                   Bounds<Value_type>& bounds)
 {
-    return {}; // TODO
+    // check if `L <= x && x <= U` and `L = U`
+    auto lb = bounds.lower_bound(models);
+    auto ub = bounds.upper_bound(models);
+    if (lb.value() != ub.value() || lb.reason().is_strict() || ub.reason().is_strict())
+    {
+        return {};
+    }
+
+    // check if `x != D` where `D != L`
+    auto inequality = bounds.inequality(models, lb.value());
+    if (!inequality)
+    {
+        return {};
+    }
+
+    // create `L < D` and `D < U`
+    auto lb_d = eliminate(models.owned(), lb.reason(), inequality.value().reason());
+    auto d_ub = eliminate(models.owned(), inequality.value().reason(), ub.reason());
+    propagate(trail, models, lb_d);
+    propagate(trail, models, d_ub);
+
+    return Clause{lb.reason().lit().negate(), ub.reason().lit().negate(), 
+                  inequality.value().reason().lit().negate(), lb_d.lit(), d_ub.lit()}; 
 }
 
 void Linear_arithmetic::propagate(Trail& trail, Models_type& models, Constraint_type const& cons)

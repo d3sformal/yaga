@@ -173,14 +173,15 @@ public:
         return {lit().negate(), pos(), pred(), rhs(), constraints};
     }
 
-    /** Check if this linear constraint represents a strict inequality (< or >)
+    /** Check if this linear constraint represents a strict inequality (< or > or !=)
      *
-     * @return true iff pred() is < and lit() is not negated, or pred() is <= and lit() is negated
+     * @return true iff this is a constraint of type <, >, or !=
      */
     inline bool is_strict() const
     {
         return (lit().is_negation() && pred() == Order_predicate::LEQ) ||
-               (!lit().is_negation() && pred() == Order_predicate::LT);
+               (!lit().is_negation() && pred() == Order_predicate::LT) ||
+               (lit().is_negation() && pred() == Order_predicate::EQ);
     }
 
     /** Evaluate this constraint in @p model

@@ -458,6 +458,54 @@ inline Linear_predicate<T> operator==(Variable lhs, T rhs)
 
 template<typename T>
     requires std::is_arithmetic_v<T>
+inline Linear_predicate<T> operator<=(T lhs, Variable rhs)
+{
+    assert(rhs.type() == Variable::rational);
+    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} <= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+}
+
+template<typename T>
+    requires std::is_arithmetic_v<T>
+inline Linear_predicate<T> operator<(T lhs, Variable rhs)
+{
+    assert(rhs.type() == Variable::rational);
+    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} < Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+}
+
+template<typename T>
+    requires std::is_arithmetic_v<T>
+inline Linear_predicate<T> operator>(T lhs, Variable rhs)
+{
+    assert(rhs.type() == Variable::rational);
+    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} > Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+}
+
+template<typename T>
+    requires std::is_arithmetic_v<T>
+inline Linear_predicate<T> operator>=(T lhs, Variable rhs)
+{
+    assert(rhs.type() == Variable::rational);
+    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} >= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+}
+
+template<typename T>
+    requires std::is_arithmetic_v<T>
+inline Linear_predicate<T> operator==(T lhs, Variable rhs)
+{
+    assert(rhs.type() == Variable::rational);
+    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} == Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+}
+
+template<typename T>
+    requires std::is_arithmetic_v<T>
+inline Linear_predicate<T> operator!=(T lhs, Variable rhs)
+{
+    assert(rhs.type() == Variable::rational);
+    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} != Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+}
+
+template<typename T>
+    requires std::is_arithmetic_v<T>
 inline Linear_predicate<T> operator!=(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);

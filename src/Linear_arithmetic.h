@@ -211,6 +211,19 @@ private:
     std::optional<Clause> unit(std::vector<int>& assigned, Trail& trail, Models_type& models,
                                Constraint_type& cons);
 
+    /** Combine @p first and @p second using Fourier-Motzking elimination of the first unassigned 
+     * variable in @p first and @p second
+     * 
+     * Precondition: the first variable in both @p first and @p second is the only unassigned variable 
+     * in either constraint.
+     * 
+     * @param model partial assignment of LRA variables
+     * @param first first constraint
+     * @param second second constraint
+     * @return Constraint_type 
+     */
+    Constraint_type eliminate(Model<Value_type> const& model, Constraint_type const& first, Constraint_type const& second);
+
     /** Check if there is a bound conflict (i.e., `L <= x && x <= U` and `U < L` or similar
      * conflicts with strict bounds)
      *

@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "test.h"
-#include "Linear_arithmetic.h"
 #include "Clause.h"
+#include "Linear_arithmetic.h"
 #include "Literal.h"
+#include "test.h"
 
 namespace perun::test {
 
@@ -25,19 +25,17 @@ auto decide(Trail& trail, Literal lit)
     trail.decide(lit.var());
 }
 
-template<typename Value>
-auto decide(Trail& trail, Linear_constraint<Value> const& cons)
+template <typename Value> auto decide(Trail& trail, Linear_constraint<Value> const& cons)
 {
     return decide(trail, cons.lit());
 }
 
-template<typename Value>
-auto propagate(Trail& trail, Linear_constraint<Value> const& cons)
+template <typename Value> auto propagate(Trail& trail, Linear_constraint<Value> const& cons)
 {
     return propagate(trail, cons.lit());
 }
 
-}
+} // namespace perun::test
 
 TEST_CASE("Propagate in an empty trail", "[linear_arithmetic]")
 {
@@ -112,7 +110,7 @@ TEST_CASE("Detect implied equality", "[lienar_arithmetic]")
     REQUIRE(models.owned().is_defined(x.ord()));
     REQUIRE(models.owned().value(x.ord()) == 4);
     REQUIRE(trail.decision_level(x) == 0);
-    
+
     REQUIRE(models.owned().is_defined(y.ord()));
     REQUIRE(models.owned().value(y.ord()) == 8);
     REQUIRE(trail.decision_level(y) == 0);
@@ -327,4 +325,34 @@ TEST_CASE("Detect a bound conflict", "[linear_constraints]")
     REQUIRE(conflict.value() == clause(-linear(z < x), -linear(x <= y), linear(z < y)));
     REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
     REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
+}
+
+TEST_CASE("Detect an inequality conflict", "[linear_constraints]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 10);
+    trail.set_model<double>(Variable::rational, 10);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, 10);
+    auto models = lra.relevant_models(trail);
+    auto linear = factory(lra);
+    auto [x, y, z] = real_vars<3>();
+
+    propagate(trail, linear(y <= x));
+    propagate(trail, linear(x <= z));
+    propagate(trail, linear(x != 0));
+    propagate(trail, linear(y == 0));
+    propagate(trail, linear(z == 0));
+
+    auto conflict = lra.propagate(db, trail);
+    REQUIRE(conflict);
+    REQUIRE(conflict.value() ==
+            clause(-linear(y <= x), -linear(x <= z), linear(x == 0), linear(y < 0), linear(0 < z)));
+    REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
+    REQUIRE(perun::eval(models.owned(), linear(0 < z)) == false);
 }
