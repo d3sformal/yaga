@@ -10,7 +10,7 @@ inline perun::Implied_value<Value> implied(perun::Theory_models<Value> const& mo
     return {cons.implied_value(models.owned()) / cons.coef().front(), cons};
 }
 
-TEST_CASE("Validity of bounds depends on theory models", "[bounds][debug]")
+TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -174,29 +174,29 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds][debug]")
             models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
         }
 
-        REQUIRE(bounds.is_allowed(models, 10));
-        REQUIRE(bounds.is_allowed(models, 5));
+        REQUIRE(!bounds.inequality(models, 10));
+        REQUIRE(!bounds.inequality(models, 5));
 
         // y = 0
         models.owned().set_value(y.ord(), 0);
         bounds.add_inequality(implied(models, trail[0]));
-        REQUIRE(!bounds.is_allowed(models, 10));
-        REQUIRE(bounds.is_allowed(models, 5));
+        REQUIRE(bounds.inequality(models, 10));
+        REQUIRE(!bounds.inequality(models, 5));
 
         // z = 0
         models.owned().set_value(z.ord(), 0);
         bounds.add_inequality(implied(models, trail[1]));
-        REQUIRE(!bounds.is_allowed(models, 10));
-        REQUIRE(!bounds.is_allowed(models, 5));
+        REQUIRE(bounds.inequality(models, 10));
+        REQUIRE(bounds.inequality(models, 5));
 
         // backtrack to y = 0
         models.owned().clear(z.ord());
-        REQUIRE(!bounds.is_allowed(models, 10));
-        REQUIRE(bounds.is_allowed(models, 5));
+        REQUIRE(bounds.inequality(models, 10));
+        REQUIRE(!bounds.inequality(models, 5));
 
         // backtrack before y = 0
         models.owned().clear(y.ord());
-        REQUIRE(bounds.is_allowed(models, 10));
-        REQUIRE(bounds.is_allowed(models, 5));
+        REQUIRE(!bounds.inequality(models, 10));
+        REQUIRE(!bounds.inequality(models, 5));
     }
 }

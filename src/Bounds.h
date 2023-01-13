@@ -133,13 +133,13 @@ public:
         }
     }
 
-    /** Check whether there is an inequality that would disallow @p value
-     *
+    /** Check whether there is an inequality of type `x != value`
+     * 
      * @param models partial assignment of variables
      * @param value checked value
-     * @return true iff there is no linear constraint that would disallow @p value
+     * @return implied inequality or none, if there is none.
      */
-    inline bool is_allowed(Models_type const& models, Value_type value)
+    std::optional<Implied_value_type> inequality(Models_type const& models, Value_type value)
     {
         // remove obsolete values
         disallowed.erase(std::remove_if(disallowed.begin(), disallowed.end(),
@@ -147,8 +147,13 @@ public:
                          disallowed.end());
 
         // check if value is in the list
-        return std::find_if(disallowed.begin(), disallowed.end(),
-                            [value](auto v) { return v.value() == value; }) == disallowed.end();
+        auto it = std::find_if(disallowed.begin(), disallowed.end(),
+                               [value](auto v) { return v.value() == value; });
+        if (it == disallowed.end())
+        {
+            return {};
+        }
+        return *it;
     }
 
     /** Add a new value to the list of disallowed values
