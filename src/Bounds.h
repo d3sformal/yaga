@@ -41,6 +41,43 @@ private:
     Constraint_type cons;
 };
 
+/** Reference to models relevant for a theory
+ * 
+ * @tparam Value type of variables of the theory
+ */
+template <typename Value>
+class Theory_models {
+public:
+    Theory_models(Model<bool>* bool_model, Model<Value>* owned_model) : bool_model(bool_model), owned_model(owned_model) {}
+
+    /** Get model of boolean variables
+     * 
+     * @return partial assignment of boolean variables
+     */
+    inline Model<bool> const& boolean() const { return *bool_model; }
+
+    /** Get model of boolean variables
+     * 
+     * @return partial assignment of boolean variables
+     */
+    inline Model<bool>& boolean() { return *bool_model; }
+
+    /** Get model of variables owned by the theory
+     * 
+     * @return partial assignment of variables owned by the theory
+     */
+    inline Model<Value> const& owned() const { return *owned_model; }
+
+    /** Get model of variables owned by the theory
+     * 
+     * @return partial assignment of variables owned by the theory
+     */
+    inline Model<Value>& owned() { return *owned_model; }
+private:
+    Model<bool>* bool_model;
+    Model<Value>* owned_model;
+};
+
 /** This class keeps track of implied bounds and inequalities for a variable.
  *
  * Obsolete bounds are removed lazily when a bound is requested.
