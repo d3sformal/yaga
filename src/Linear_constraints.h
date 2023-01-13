@@ -108,7 +108,7 @@ public:
 
     /** Create an empty linear constraint
      */
-    inline Linear_constraint() : position({0, 0}), predicate(Order_predicate::EQ), constant(0) {}
+    inline Linear_constraint() : position({0, 0}), predicate(Order_predicate::EQ), constant(0), constraints(nullptr) {}
 
     /** Create a new linear constraint
      *
@@ -344,39 +344,6 @@ private:
 template <typename Value_type> class Linear_constraint_equal {
 public:
     bool operator()(Linear_constraint<Value_type> const& lhs,
-                    Linear_constraint<Value_type> const& rhs)
-    {
-        if (lhs.size() != rhs.size() || lhs.pred() != rhs.pred() || lhs.rhs() != rhs.rhs())
-        {
-            return false;
-        }
-
-        coef.clear();
-        coef.resize(1 + *std::max_element(lhs.vars().begin(), lhs.vars().end()), Value_type{0});
-
-        // map variables -> coefficients in `lhs`
-        auto lhs_coef_it = lhs.coef().begin();
-        for (auto var : lhs.vars())
-        {
-            assert(lhs_coef_it != lhs.coef().end());
-            assert(var < static_cast<int>(coef.size()));
-            coef[var] = *lhs_coef_it++;
-        }
-
-        // check that the coefficients are the same
-        auto rhs_coef_it = rhs.coef().begin();
-        for (auto var : rhs.vars())
-        {
-            assert(rhs_coef_it != rhs.coef().end());
-            if (coef[var] != *rhs_coef_it)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    bool operator()(Linear_constraint<Value_type> const& lhs,
                     Linear_constraint<Value_type> const& rhs) const
     {
         if (lhs.size() != rhs.size() || lhs.pred() != rhs.pred() || lhs.rhs() != rhs.rhs())
@@ -384,30 +351,29 @@ public:
             return false;
         }
 
+        // check equality using a brute force algorithm
+        auto lhs_var_it = lhs.vars().begin();
         auto lhs_coef_it = lhs.coef().begin();
-        for (auto var : lhs.vars())
+        for (; lhs_var_it != lhs.vars().end(); ++lhs_var_it, ++lhs_coef_it)
         {
             assert(lhs_coef_it != lhs.coef().end());
-            auto rhs_var_it = std::find(rhs.vars().begin(), rhs.vars().end(), var);
+
+            // find the variable in rhs
+            auto rhs_var_it = std::find(rhs.vars().begin(), rhs.vars().end(), *lhs_var_it);
             if (rhs_var_it == rhs.vars().end())
             {
                 return false;
             }
 
+            // find the corresponding coefficient of the variable in rhs
             auto rhs_coef_it = rhs.coef().begin() + std::distance(rhs.vars().begin(), rhs_var_it);
             if (*lhs_coef_it != *rhs_coef_it)
             {
                 return false;
             }
-
-            ++lhs_coef_it;
         }
         return true;
     }
-
-private:
-    // map variable -> coefficient value (auxiliary memory for operator())
-    std::vector<Value_type> coef;
 };
 
 /** Repository of linear constraints.
