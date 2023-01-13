@@ -93,3 +93,30 @@ TEST_CASE("Wait for a minimum number of conflicts before restart", "[glucose]")
     restart.on_learned_clause(db, trail, learned);
     REQUIRE(restart.should_restart());
 }
+
+TEST_CASE("Compute clause LBD if decision levels of literals are not consecutive", "[glucose]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Glucose_restart restart;
+    restart.set_min_conflicts(0);
+    restart.set_slow_exp(3);
+    restart.set_fast_exp(2);
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 9);
+    trail.decide(bool_var(0));
+    trail.propagate(bool_var(1), nullptr, 1);
+    trail.decide(bool_var(2));
+    trail.propagate(bool_var(3), nullptr, 2);
+
+    auto learned = clause(lit(0), lit(2), lit(1), lit(3));
+
+    restart.should_restart();
+
+    restart.on_learned_clause(db, trail, learned);
+    REQUIRE_THAT(restart.fast(), Catch::Matchers::WithinRel(2.f / 4));
+    REQUIRE_THAT(restart.slow(), Catch::Matchers::WithinRel(2.f / 8));
+}

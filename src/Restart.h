@@ -121,6 +121,7 @@ public:
         {
             *it++ = trail.decision_level(lit.var()).value();
         }
+        std::sort(levels.begin(), levels.end());
         add_glucose(std::distance(levels.begin(), std::unique(levels.begin(), levels.end())));
     }
 
