@@ -5,178 +5,198 @@
 
 // compute inequality implied by a unit linear constraint
 template<typename Value>
-inline perun::Implied_value<Value> implied(perun::Model<Value> const& model, perun::Linear_constraint<Value>& cons)
+inline perun::Implied_value<Value> implied(perun::Theory_models<Value> const& models, perun::Linear_constraint<Value>& cons)
 {
-    return {cons.implied_value(model) / cons.coef().front(), cons};
+    return {cons.implied_value(models.owned()) / cons.coef().front(), cons};
 }
 
-TEST_CASE("Add upper bounds", "[bounds]")
+TEST_CASE("Validity of bounds depends on theory models", "[bounds][debug]")
 {
     using namespace perun;
     using namespace perun::test;
 
-    Model<double> model;
-    model.resize(10);
-    model.set_value(1, 0.0);
-    model.set_value(2, 0.0);
-    model.set_value(3, 0.0);
-    model.set_value(4, 0.0);
+    Model<bool> bool_model;
+    Model<double> lra_model;
+    bool_model.resize(10);
+    lra_model.resize(5);
+    Theory_models<double> models{&bool_model, &lra_model};
     Bounds<double> bounds;
     Linear_constraints<double> constraints;
     auto make = factory(constraints);
     auto [x, y, z, w, a] = real_vars<5>();
 
-    REQUIRE(bounds.upper_bound(model).value() == std::numeric_limits<double>::max());
-    REQUIRE(bounds.upper_bound(model).reason().empty());
+    SECTION("Push new upper bounds to a stack")
+    {
+        std::array trail{
+            make(x + y <= 7),
+            make(x + z <= 8),
+            make(x + w <= 6),
+            make(x + a < 6),
+        };
+        for (auto const& cons : trail)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+        }
 
-    auto cons = make(x + y <= 7);
-    bounds.add_upper_bound(model, implied(model, cons));
-    REQUIRE(bounds.upper_bound(model).value() == 7);
-    REQUIRE(bounds.upper_bound(model).reason().lit() == cons.lit());
+        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<double>::max());
+        REQUIRE(bounds.upper_bound(models).reason().empty());
 
-    auto cons2 = make(x + z <= 8);
-    bounds.add_upper_bound(model, implied(model, cons2));
-    REQUIRE(bounds.upper_bound(model).value() == 7);
-    REQUIRE(bounds.upper_bound(model).reason().lit() == cons.lit());
+        models.owned().set_value(y.ord(), 0);
+        bounds.add_upper_bound(models, implied(models, trail[0]));
+        REQUIRE(bounds.upper_bound(models).value() == 7);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[0].lit());
 
-    auto cons3 = make(x + w <= 6);
-    bounds.add_upper_bound(model, implied(model, cons3));
-    REQUIRE(bounds.upper_bound(model).value() == 6);
-    REQUIRE(bounds.upper_bound(model).reason().lit() == cons3.lit());
+        models.owned().set_value(z.ord(), 0);
+        bounds.add_upper_bound(models, implied(models, trail[1]));
+        REQUIRE(bounds.upper_bound(models).value() == 7);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[0].lit());
 
-    auto cons4 = make(x + a < 6);
-    bounds.add_upper_bound(model, implied(model, cons4));
-    REQUIRE(bounds.upper_bound(model).value() == 6);
-    REQUIRE(bounds.upper_bound(model).reason().lit() == cons4.lit());
-}
+        models.owned().set_value(w.ord(), 0);
+        bounds.add_upper_bound(models, implied(models, trail[2]));
+        REQUIRE(bounds.upper_bound(models).value() == 6);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[2].lit());
 
-TEST_CASE("Add lower bounds", "[bounds]")
-{
-    using namespace perun;
-    using namespace perun::test;
+        models.owned().set_value(a.ord(), 0);
+        bounds.add_upper_bound(models, implied(models, trail[3]));
+        REQUIRE(bounds.upper_bound(models).value() == 6);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[3].lit());
+    }
 
-    Model<double> model;
-    model.resize(10);
-    model.set_value(1, 0.0);
-    model.set_value(2, 0.0);
-    model.set_value(3, 0.0);
-    model.set_value(4, 0.0);
-    Bounds<double> bounds;
-    Linear_constraints<double> constraints;
-    auto make = factory(constraints);
-    auto [x, y, z, w, a] = real_vars<5>();
+    SECTION("Push new lower bounds to a stack")
+    {
+        std::array trail{
+            make(x + y >= -7),
+            make(x + z >= -8),
+            make(x + w >= -6),
+            make(x + a > -6),
+        };
+        for (auto const& cons : trail)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+        }
 
-    REQUIRE(bounds.lower_bound(model).value() == std::numeric_limits<double>::lowest());
-    REQUIRE(bounds.lower_bound(model).reason().empty());
+        REQUIRE(bounds.lower_bound(models).value() == std::numeric_limits<double>::lowest());
+        REQUIRE(bounds.lower_bound(models).reason().empty());
 
-    auto cons = make(-x + y <= 7);
-    bounds.add_lower_bound(model, implied(model, cons));
-    REQUIRE(bounds.lower_bound(model).value() == -7);
-    REQUIRE(bounds.lower_bound(model).reason().lit() == cons.lit());
+        models.owned().set_value(y.ord(), 0);
+        bounds.add_lower_bound(models, implied(models, trail[0]));
+        REQUIRE(bounds.lower_bound(models).value() == -7);
+        REQUIRE(bounds.lower_bound(models).reason().lit() == trail[0].lit());
 
-    auto cons2 = make(-x + z <= 8);
-    bounds.add_lower_bound(model, implied(model, cons2));
-    REQUIRE(bounds.lower_bound(model).value() == -7);
-    REQUIRE(bounds.lower_bound(model).reason().lit() == cons.lit());
+        models.owned().set_value(z.ord(), 0);
+        bounds.add_lower_bound(models, implied(models, trail[1]));
+        REQUIRE(bounds.lower_bound(models).value() == -7);
+        REQUIRE(bounds.lower_bound(models).reason().lit() == trail[0].lit());
 
-    auto cons3 = make(-x + w <= 6);
-    bounds.add_lower_bound(model, implied(model, cons3));
-    REQUIRE(bounds.lower_bound(model).value() == -6);
-    REQUIRE(bounds.lower_bound(model).reason().lit() == cons3.lit());
+        models.owned().set_value(w.ord(), 0);
+        bounds.add_lower_bound(models, implied(models, trail[2]));
+        REQUIRE(bounds.lower_bound(models).value() == -6);
+        REQUIRE(bounds.lower_bound(models).reason().lit() == trail[2].lit());
 
-    auto cons4 = make(-x + a < 6);
-    bounds.add_lower_bound(model, implied(model, cons4));
-    REQUIRE(bounds.lower_bound(model).value() == -6);
-    REQUIRE(bounds.lower_bound(model).reason().lit() == cons4.lit());
-}
+        models.owned().set_value(a.ord(), 0);
+        bounds.add_lower_bound(models, implied(models, trail[3]));
+        REQUIRE(bounds.lower_bound(models).value() == -6);
+        REQUIRE(bounds.lower_bound(models).reason().lit() == trail[3].lit());
+    }
 
-TEST_CASE("Get upper bound after backtracking", "[bounds]")
-{
-    using namespace perun;
-    using namespace perun::test;
+    SECTION("Get upper bounds after backtracking an assignment of LRA variables")
+    {
+        std::array trail{
+            make(x + y <= 10),
+            make(x + z <= 7),
+            make(x + w <= 5),
+        };
+        for (auto const& cons : trail)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+        }
 
-    Model<double> model;
-    model.resize(10);
-    Bounds<double> bounds;
-    Linear_constraints<double> constraints;
-    auto make = factory(constraints);
+        // y = 0
+        models.owned().set_value(y.ord(), 0);
+        bounds.add_upper_bound(models, implied(models, trail[0]));
 
-    auto x = real_var(0);
-    auto y = real_var(1);
-    auto z = real_var(2);
-    auto w = real_var(3);
+        // z = 0
+        models.owned().set_value(z.ord(), 0);
+        bounds.add_upper_bound(models, implied(models, trail[1]));
 
-    // y = 0
-    auto cons = make(x + y <= 10);
-    model.set_value(y.ord(), 0.0);
-    bounds.add_upper_bound(model, implied(model, cons));
+        // w = 0
+        models.owned().set_value(w.ord(), 0);
+        bounds.add_upper_bound(models, implied(models, trail[2]));
 
-    // z = 0
-    auto cons2 = make(x + z <= 7);
-    model.set_value(z.ord(), 0.0);
-    bounds.add_upper_bound(model, implied(model, cons2));
+        REQUIRE(bounds.upper_bound(models).value() == 5);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[2].lit());
 
-    // w = 0
-    auto cons3 = make(x + w <= 5);
-    model.set_value(w.ord(), 0.0);
-    bounds.add_upper_bound(model, implied(model, cons3));
+        // backtrack to y = 0
+        models.owned().clear(w.ord());
+        models.owned().clear(z.ord());
 
-    REQUIRE(bounds.upper_bound(model).value() == 5);
-    REQUIRE(bounds.upper_bound(model).reason().lit() == cons3.lit());
+        REQUIRE(bounds.upper_bound(models).value() == 10);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[0].lit());
 
-    // backtrack to y = 0
-    model.clear(w.ord());
-    model.clear(z.ord());
+        // backtrack before y = 0
+        models.owned().clear(y.ord());
 
-    REQUIRE(bounds.upper_bound(model).value() == 10);
-    REQUIRE(bounds.upper_bound(model).reason().lit() == cons.lit());
+        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<double>::max());
+        REQUIRE(bounds.upper_bound(models).reason().empty());
+    }
 
-    // backtrack before y = 0
-    model.clear(y.ord());
+    SECTION("Get upper bounds after backtracking boolean variables")
+    {
+        std::array trail{
+            make(x <= 10),
+            make(x <= 7),
+            make(x <= 5),
+        };
+        for (auto& cons : trail)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+            bounds.add_upper_bound(models, implied(models, cons));
+        }
 
-    REQUIRE(bounds.upper_bound(model).value() == std::numeric_limits<double>::max());
-    REQUIRE(bounds.upper_bound(model).reason().empty());
-}
+        REQUIRE(bounds.upper_bound(models).value() == 5);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[2].lit());
 
-TEST_CASE("Exclude values", "[bounds]")
-{
-    using namespace perun;
-    using namespace perun::test;
+        models.boolean().clear(trail[2].lit().var().ord());
+        models.boolean().clear(trail[1].lit().var().ord());
+        
+        REQUIRE(bounds.upper_bound(models).value() == 10);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[0].lit());
+    }
 
-    Model<double> model;
-    model.resize(10);
-    Bounds<double> bounds;
-    Linear_constraints<double> constraints;
-    auto make = factory(constraints);
+    SECTION("Exclude values")
+    {
+        std::array trail{
+            make(x + y != 10),
+            make(x + z != 5),
+        };
+        for (auto const& cons : trail)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+        }
 
-    auto x = real_var(0);
-    auto y = real_var(1);
-    auto z = real_var(2);
+        REQUIRE(bounds.is_allowed(models, 10));
+        REQUIRE(bounds.is_allowed(models, 5));
 
-    REQUIRE(bounds.is_allowed(model, 10));
-    REQUIRE(bounds.is_allowed(model, 5));
+        // y = 0
+        models.owned().set_value(y.ord(), 0);
+        bounds.add_inequality(implied(models, trail[0]));
+        REQUIRE(!bounds.is_allowed(models, 10));
+        REQUIRE(bounds.is_allowed(models, 5));
 
-    // y = 0
-    auto cons = make(x + y != 10);
-    model.set_value(y.ord(), 0);
-    bounds.add_inequality(implied(model, cons));
-    REQUIRE(!bounds.is_allowed(model, 10));
-    REQUIRE(bounds.is_allowed(model, 5));
+        // z = 0
+        models.owned().set_value(z.ord(), 0);
+        bounds.add_inequality(implied(models, trail[1]));
+        REQUIRE(!bounds.is_allowed(models, 10));
+        REQUIRE(!bounds.is_allowed(models, 5));
 
-    // z = 0
-    auto cons2 = make(x + z != 5);
-    model.set_value(z.ord(), 0);
-    bounds.add_inequality(implied(model, cons2));
-    REQUIRE(!bounds.is_allowed(model, 10));
-    REQUIRE(!bounds.is_allowed(model, 5));
+        // backtrack to y = 0
+        models.owned().clear(z.ord());
+        REQUIRE(!bounds.is_allowed(models, 10));
+        REQUIRE(bounds.is_allowed(models, 5));
 
-    // backtrack to y = 0
-    model.clear(z.ord());
-    REQUIRE(!bounds.is_allowed(model, 10));
-    REQUIRE(bounds.is_allowed(model, 5));
-
-    // backtrack before y = 0
-    model.clear(y.ord());
-    REQUIRE(bounds.is_allowed(model, 10));
-    REQUIRE(bounds.is_allowed(model, 5));
+        // backtrack before y = 0
+        models.owned().clear(y.ord());
+        REQUIRE(bounds.is_allowed(models, 10));
+        REQUIRE(bounds.is_allowed(models, 5));
+    }
 }

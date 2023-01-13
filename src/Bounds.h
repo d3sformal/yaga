@@ -42,37 +42,40 @@ private:
 };
 
 /** Reference to models relevant for a theory
- * 
+ *
  * @tparam Value type of variables of the theory
  */
-template <typename Value>
-class Theory_models {
+template <typename Value> class Theory_models {
 public:
-    Theory_models(Model<bool>* bool_model, Model<Value>* owned_model) : bool_model(bool_model), owned_model(owned_model) {}
+    Theory_models(Model<bool>* bool_model, Model<Value>* owned_model)
+        : bool_model(bool_model), owned_model(owned_model)
+    {
+    }
 
     /** Get model of boolean variables
-     * 
+     *
      * @return partial assignment of boolean variables
      */
     inline Model<bool> const& boolean() const { return *bool_model; }
 
     /** Get model of boolean variables
-     * 
+     *
      * @return partial assignment of boolean variables
      */
     inline Model<bool>& boolean() { return *bool_model; }
 
     /** Get model of variables owned by the theory
-     * 
+     *
      * @return partial assignment of variables owned by the theory
      */
     inline Model<Value> const& owned() const { return *owned_model; }
 
     /** Get model of variables owned by the theory
-     * 
+     *
      * @return partial assignment of variables owned by the theory
      */
     inline Model<Value>& owned() { return *owned_model; }
+
 private:
     Model<bool>* bool_model;
     Model<Value>* owned_model;
@@ -90,15 +93,16 @@ template <typename Value_type> class Bounds {
 public:
     using Implied_value_type = Implied_value<Value_type>;
     using Constraint_type = Linear_constraint<Value_type>;
+    using Models_type = Theory_models<Value_type>;
 
     /** Get current tightest implied upper bound
      *
-     * @param model current partial assignment of LRA variables
+     * @param models partial assignment of variables
      * @return tightest upper bound or maximal value if there is no implied upper bound
      */
-    inline Implied_value_type upper_bound(Model<Value_type> const& model)
+    inline Implied_value_type upper_bound(Models_type const& models)
     {
-        remove_obsolete(ub, model);
+        remove_obsolete(ub, models);
 
         if (ub.empty()) // no bound
         {
@@ -112,12 +116,12 @@ public:
 
     /** Get current tightest implied lower bound
      *
-     * @param model current partial assignment of LRA variables
+     * @param models partial assignment of variables
      * @return tightest lower bound or minimal value if there is no implied lower bound
      */
-    inline Implied_value_type lower_bound(Model<Value_type> const& model)
+    inline Implied_value_type lower_bound(Models_type const& models)
     {
-        remove_obsolete(lb, model);
+        remove_obsolete(lb, models);
 
         if (lb.empty()) // no bound
         {
@@ -131,15 +135,15 @@ public:
 
     /** Check whether there is an inequality that would disallow @p value
      *
-     * @param model current partial assignment of LRA variables
+     * @param models partial assignment of variables
      * @param value checked value
      * @return true iff there is no linear constraint that would disallow @p value
      */
-    inline bool is_allowed(Model<Value_type> const& model, Value_type value)
+    inline bool is_allowed(Models_type const& models, Value_type value)
     {
         // remove obsolete values
         disallowed.erase(std::remove_if(disallowed.begin(), disallowed.end(),
-                                        [&](auto v) { return is_obsolete(model, v.reason()); }),
+                                        [&](auto v) { return is_obsolete(models, v.reason()); }),
                          disallowed.end());
 
         // check if value is in the list
@@ -159,12 +163,12 @@ public:
 
     /** Add a new upper @p bound
      *
-     * @param model current partial assignment of LRA variables
+     * @param models partial assignment variables
      * @param bound new upper bound
      */
-    inline void add_upper_bound(Model<Value_type> const& model, Implied_value_type bound)
+    inline void add_upper_bound(Models_type const& models, Implied_value_type bound)
     {
-        auto current_bound = upper_bound(model);
+        auto current_bound = upper_bound(models);
         if (current_bound.value() > bound.value() ||
             (current_bound.value() == bound.value() && bound.reason().is_strict()))
         {
@@ -174,12 +178,12 @@ public:
 
     /** Add a new lower @p bound
      *
-     * @param model current partial assignment of LRA variables
+     * @param models partial assignment of variables
      * @param bound new lower bound
      */
-    inline void add_lower_bound(Model<Value_type> const& model, Implied_value_type bound)
+    inline void add_lower_bound(Models_type const& models, Implied_value_type bound)
     {
-        auto current_bound = lower_bound(model);
+        auto current_bound = lower_bound(models);
         if (current_bound.value() < bound.value() ||
             (current_bound.value() == bound.value() && bound.reason().is_strict()))
         {
@@ -198,85 +202,41 @@ private:
     /** Remove obsolete bounds from the top of the @p bounds stack
      *
      * @param bounds stack with bounds
-     * @param model current partial assignment of LRA variables
+     * @param models partial assignment of variables
      */
-    inline void remove_obsolete(std::vector<Implied_value_type>& bounds,
-                                Model<Value_type> const& model)
+    inline void remove_obsolete(std::vector<Implied_value_type>& bounds, Models_type const& models)
     {
-        while (!bounds.empty() && is_obsolete(model, bounds.back().reason()))
+        while (!bounds.empty() && is_obsolete(models, bounds.back().reason()))
         {
             bounds.pop_back();
         }
     }
 
-    /** Check whether @p cons is obsolete given @p model
+    /** Check whether @p cons is obsolete given @p models
      *
-     * @param model current partial assignment of LRA variables
+     * @param models partial assignment of variables
      * @param cons checked constraint
      * @return true iff both watched variables (the first two variables) in @p cons are unassigned
      */
-    inline bool is_obsolete(Model<Value_type> const& model, Constraint_type const& cons) const
+    inline bool is_obsolete(Models_type const& models, Constraint_type const& cons) const
     {
+        // check that the constraint is still on the trail as a boolean variable
+        if (cons.empty() || !models.boolean().is_defined(cons.lit().var().ord()))
+        {
+            return true;
+        }
+
+        // check that the constraint is still unit
         auto [var_it, var_end] = cons.vars();
         assert(var_it != var_end);
         auto next_var_it = var_it + 1;
         if (next_var_it == var_end)
         {
-            assert(!model.is_defined(*var_it));
+            assert(!models.owned().is_defined(*var_it));
             return false;
         }
 
-        return !model.is_defined(*var_it) && !model.is_defined(*next_var_it);
-    }
-
-    /** Check that the first variable in @p reason is the only unassigned variable in @p model
-     *
-     * @param model current partial assignment of LRA variables
-     * @param reason checked linear constraint
-     * @return true iff @p reason is non-empty and the first variable is the only unassigned
-     * variable
-     */
-    inline bool is_unit(Model<Value_type> const& model, Constraint_type const& reason) const
-    {
-        return !reason.empty() && !model.is_defined(reason.vars().front()) &&
-               std::all_of(++reason.vars().begin(), reason.vars().end(),
-                           [&model](auto v) { return model.is_defined(v); });
-    }
-
-    /** Check if @p reason is a unit constraint that implies an upper bound
-     *
-     * @param model current partial assignment of LRA variables
-     * @param reason linear constraint
-     * @return true iff @p reason is a unit constraint that implies an upper bound
-     */
-    inline bool is_upper_bound(Model<Value_type> const& model, Constraint_type const& reason) const
-    {
-        if (!is_unit(model, reason))
-        {
-            return false;
-        }
-        return (reason.coef().front() > 0 && !reason.lit().is_negation() &&
-                reason.pred() != Order_predicate::EQ) ||
-               (reason.coef().front() < 0 && reason.lit().is_negation() &&
-                reason.pred() != Order_predicate::EQ);
-    }
-
-    /** Check if @p reason is a unit constraint that implies a lower bound
-     *
-     * @param model current partial assignment of LRA variables
-     * @param reason linear constraint
-     * @return true iff @p reason is a unit constraint that implies a lower bound
-     */
-    inline bool is_lower_bound(Model<Value_type> const& model, Constraint_type const& reason) const
-    {
-        if (!is_unit(model, reason))
-        {
-            return false;
-        }
-        return (reason.coef().front() > 0 && reason.lit().is_negation() &&
-                reason.pred() != Order_predicate::EQ) ||
-               (reason.coef().front() < 0 && !reason.lit().is_negation() &&
-                reason.pred() != Order_predicate::EQ);
+        return !models.owned().is_defined(*var_it) && !models.owned().is_defined(*next_var_it);
     }
 };
 
