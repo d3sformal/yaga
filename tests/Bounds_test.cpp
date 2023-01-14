@@ -199,4 +199,37 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
         REQUIRE(!bounds.inequality(models, 10));
         REQUIRE(!bounds.inequality(models, 5));
     }
+
+    SECTION("Backtrack excluded values")
+    {
+        std::array trail{
+            make(x + y != 10),
+            make(x + z != 10),
+        };
+        for (auto const& cons : trail)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+        }
+
+        REQUIRE(!bounds.inequality(models, 10));
+
+        // y = 0
+        models.owned().set_value(y.ord(), 0);
+        bounds.add_inequality(implied(models, trail[0]));
+        REQUIRE(bounds.inequality(models, 10).value().reason().lit() == trail[0].lit());
+        REQUIRE(bounds.inequality(models, 10).value().value() == 10);
+
+        // z = 0
+        models.owned().set_value(z.ord(), 0);
+        bounds.add_inequality(implied(models, trail[1]));
+        REQUIRE(bounds.inequality(models, 10).value().reason().lit() == trail[0].lit());
+
+        // clear y
+        models.owned().clear(y.ord());
+        REQUIRE(bounds.inequality(models, 10).value().reason().lit() == trail[1].lit());
+
+        // clear z
+        models.owned().clear(z.ord());
+        REQUIRE(!bounds.inequality(models, 10));
+    }
 }
