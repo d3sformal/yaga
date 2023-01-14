@@ -372,9 +372,29 @@ void Linear_arithmetic::propagate(Trail& trail, Models_type& models, Constraint_
     trail.propagate(cons.lit().var(), /*reason=*/nullptr, dec_level);
 }
 
-void Linear_arithmetic::decide(Database&, Trail&, Variable)
+void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
 {
-    // TODO
+    if (var.type() == Variable::rational)
+    {
+        auto models = relevant_models(trail);
+        auto& bnds = bounds[var.ord()];
+
+        Value_type value{0};
+        if (!bnds.is_allowed(models, value))
+        {
+            // find an allowed value
+            auto left = bnds.lower_bound(models).value();
+            value = bnds.upper_bound(models).value();
+            while (!bnds.is_allowed(models, value))
+            {
+                value = left / Value_type{2} + value / Value_type{2};
+            }
+        }
+
+        // decide the value
+        models.owned().set_value(var.ord(), value);
+        trail.decide(var);
+    }
 }
 
 } // namespace perun

@@ -196,6 +196,43 @@ public:
         }
     }
 
+    /** Check whether @p value satisfies currently implied lower bound
+     * 
+     * @param models partial assignment of variables
+     * @param value checked value
+     * @return true if @p value is > `lower_bound()` and the bound is strict
+     * @return true if @p value is >= `lower_bound()` and the bound is not strict
+     */
+    inline bool check_lower_bound(Models_type const& models, Value_type value)
+    {
+        auto lb = lower_bound(models);
+        return lb.value() < value || (lb.value() == value && !lb.reason().is_strict());
+    }
+
+    /** Check whether @p value satisfies currently implied uppper bound
+     * 
+     * @param models partial assignment of variables
+     * @param value checked value
+     * @return true if @p value is < `upper_bound()` and the bound is strict
+     * @return true if @p value is <= `upper_bound()` and the bound is not strict
+     */
+    inline bool check_upper_bound(Models_type const& models, Value_type value)
+    {
+        auto ub = upper_bound(models);
+        return value < ub.value() || (ub.value() == value && !ub.reason().is_strict());
+    }
+
+    /** Check whether @p value is between currently implied lower and upper bound and there is no inequality that would disallow @p value
+     * 
+     * @param models partial assignment of variables
+     * @param value checked value
+     * @return true iff @p value is between `lower_bound()` and `upper_bound()` and there is no inequality that would prohibit @p value
+     */
+    inline bool is_allowed(Models_type const& models, Value_type value)
+    {
+        return !inequality(models, value) && check_lower_bound(models, value) && check_upper_bound(models, value);
+    }
+
 private:
     // stack with upper bounds
     std::vector<Implied_value_type> ub;

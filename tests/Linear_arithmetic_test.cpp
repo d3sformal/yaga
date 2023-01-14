@@ -315,16 +315,61 @@ TEST_CASE("Detect a bound conflict", "[linear_constraints]")
     auto linear = factory(lra);
     auto [x, y, z] = real_vars<3>();
 
-    propagate(trail, linear(x <= y));
-    propagate(trail, linear(x > z));
-    propagate(trail, linear(y == 0));
-    propagate(trail, linear(z == 0));
+    SECTION("with strict lower bound")
+    {
+        propagate(trail, linear(x <= y));
+        propagate(trail, linear(z < x));
+        propagate(trail, linear(y == 0));
+        propagate(trail, linear(z == 0));
 
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(conflict);
-    REQUIRE(conflict.value() == clause(-linear(z < x), -linear(x <= y), linear(z < y)));
-    REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
-    REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(z < x), -linear(x <= y), linear(z < y)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
+    }
+
+    SECTION("with strict upper bound")
+    {
+        propagate(trail, linear(x < y));
+        propagate(trail, linear(z <= x));
+        propagate(trail, linear(y == 0));
+        propagate(trail, linear(z == 0));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(z <= x), -linear(x < y), linear(z < y)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
+    }
+
+    SECTION("with both bounds strict")
+    {
+        propagate(trail, linear(x < y));
+        propagate(trail, linear(z < x));
+        propagate(trail, linear(y == 0));
+        propagate(trail, linear(z == 0));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(z < x), -linear(x < y), linear(z < y)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
+    }
+
+    SECTION("with non-strict bounds")
+    {
+        propagate(trail, linear(x <= y));
+        propagate(trail, linear(z <= x));
+        propagate(trail, linear(y == -1));
+        propagate(trail, linear(z == 1));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(z <= x), -linear(x <= y), linear(z <= y)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        REQUIRE(perun::eval(models.owned(), linear(z <= y)) == false);
+    }
 }
 
 TEST_CASE("Detect an inequality conflict", "[linear_constraints]")
@@ -355,4 +400,78 @@ TEST_CASE("Detect an inequality conflict", "[linear_constraints]")
     REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
     REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
     REQUIRE(perun::eval(models.owned(), linear(0 < z)) == false);
+}
+
+TEST_CASE("Decide variable", "[linear_constraints]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 10);
+    trail.set_model<double>(Variable::rational, 10);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, trail.model<double>(Variable::rational).num_vars());
+    auto linear = factory(lra);
+    auto models = lra.relevant_models(trail);
+
+    // variables to decide
+    Variable x{0, Variable::rational};
+    Variable y{1, Variable::rational};
+    Variable z{2, Variable::rational};
+
+    SECTION("decide 0 if possible")
+    {
+        propagate(trail, linear(y <= 10));
+        propagate(trail, linear(y >= -10));
+        lra.propagate(db, trail);
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) == 0);
+
+        lra.decide(db, trail, y);
+        REQUIRE(trail.decision_level(y) == 2);
+        REQUIRE(models.owned().is_defined(y.ord()));
+        REQUIRE(models.owned().value(y.ord()) == 0);
+    }
+
+    SECTION("decide a value within allowed range")
+    {
+        propagate(trail, linear(x <= 8));
+        propagate(trail, linear(0 < x));
+        propagate(trail, linear(x != 8));
+        propagate(trail, linear(x != 4));
+        propagate(trail, linear(x != 2));
+
+        propagate(trail, linear(2 <= y));
+        propagate(trail, linear(y <= 10));
+        propagate(trail, linear(y != 10));
+
+        propagate(trail, linear(-10 < z));
+        propagate(trail, linear(z < -4));
+        lra.propagate(db, trail);
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) < 8);
+        REQUIRE(models.owned().value(x.ord()) > 0);
+        REQUIRE(models.owned().value(x.ord()) != 4);
+        REQUIRE(models.owned().value(x.ord()) != 2);
+
+        lra.decide(db, trail, y);
+        REQUIRE(trail.decision_level(y) == 2);
+        REQUIRE(models.owned().is_defined(y.ord()));
+        REQUIRE(models.owned().value(y.ord()) < 10);
+        REQUIRE(models.owned().value(y.ord()) >= 2);
+
+        lra.decide(db, trail, z);
+        REQUIRE(trail.decision_level(z) == 3);
+        REQUIRE(models.owned().is_defined(z.ord()));
+        REQUIRE(models.owned().value(z.ord()) < -4);
+        REQUIRE(models.owned().value(z.ord()) > -10);
+    }
 }
