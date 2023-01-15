@@ -162,7 +162,7 @@ private:
      * @param lra_var_ord newly assigned LRA variable
      * @return conflict clause if a conflict is detected. None, otherwise.
      */
-    std::optional<Clause> replace_watch(std::vector<int>& assigned, Trail& trail,
+    std::optional<Clause> replace_watch(std::vector<Variable>& assigned, Trail& trail,
                                         Models_type& models, int lra_var_ord);
 
     /** Update bounds using unit constraint @p cons
@@ -202,7 +202,7 @@ private:
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    std::optional<Clause> unit(std::vector<int>& assigned, Trail& trail, Models_type& models,
+    std::optional<Clause> unit(std::vector<Variable>& assigned, Trail& trail, Models_type& models,
                                Constraint_type& cons);
 
     /** Combine @p first and @p second using Fourier-Motzking elimination of the first unassigned 

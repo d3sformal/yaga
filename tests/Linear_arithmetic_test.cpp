@@ -370,6 +370,17 @@ TEST_CASE("Detect a bound conflict", "[linear_constraints]")
         REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
         REQUIRE(perun::eval(models.owned(), linear(z <= y)) == false);
     }
+
+    SECTION("with only one variable")
+    {
+        propagate(trail, linear(x < 0));
+        propagate(trail, linear(x > 1));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(1 < x), -linear(x < 0)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    }
 }
 
 TEST_CASE("Detect an inequality conflict", "[linear_constraints]")

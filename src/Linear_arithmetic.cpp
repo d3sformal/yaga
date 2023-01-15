@@ -16,7 +16,7 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
     auto models = relevant_models(trail);
 
     // detect new unit constraint and all assigned LRA variables
-    std::vector<int> assigned; // newly assigned LRA variables
+    std::vector<Variable> assigned; // newly assigned LRA variables
     for (auto [var, _] : trail.assigned(trail.decision_level()))
     {
         if (var.type() == Variable::boolean && !constraints[var.ord()].empty())
@@ -27,27 +27,34 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
                 assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
                 continue; // skip fully assigned constraints
             }
-
-            if (is_unit(models.owned(), cons))
-            {
-                if (auto conflict = unit(assigned, trail, models, cons))
-                {
-                    return conflict;
-                }
-            }
+            assigned.push_back(var);
         }
         else if (var.type() == Variable::rational)
         {
-            assigned.push_back(var.ord());
+            assigned.push_back(var);
         }
     }
 
     std::optional<Clause> conflict;
     while (!assigned.empty() && !conflict)
     {
-        auto lra_var_ord = assigned.back();
+        auto var = assigned.back();
         assigned.pop_back();
-        conflict = replace_watch(assigned, trail, models, lra_var_ord);
+
+        if (var.type() == Variable::rational)
+        {
+            conflict = replace_watch(assigned, trail, models, var.ord());
+        }
+        else 
+        {
+            assert(var.type() == Variable::boolean);
+
+            auto cons = constraints[var.ord()];
+            if (is_unit(models.owned(), cons))
+            {
+                conflict = unit(assigned, trail, models, cons);
+            }
+        }
     }
     return conflict;
 }
@@ -116,7 +123,7 @@ bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Constr
     return cons.vars()[1] != lra_var_ord;
 }
 
-std::optional<Clause> Linear_arithmetic::replace_watch(std::vector<int>& assigned, Trail& trail,
+std::optional<Clause> Linear_arithmetic::replace_watch(std::vector<Variable>& assigned, Trail& trail,
                                                        Models_type& models, int lra_var_ord)
 {
     assert(models.owned().is_defined(lra_var_ord));
@@ -248,7 +255,7 @@ Linear_arithmetic::check_equality(Models_type const& models, Bounds<Value_type>&
     return {};
 }
 
-std::optional<Clause> Linear_arithmetic::unit(std::vector<int>& assigned, Trail& trail,
+std::optional<Clause> Linear_arithmetic::unit(std::vector<Variable>& assigned, Trail& trail,
                                               Models_type& models, Constraint_type& cons)
 {
     update_bounds(models, cons);
@@ -264,7 +271,7 @@ std::optional<Clause> Linear_arithmetic::unit(std::vector<int>& assigned, Trail&
         trail.propagate(Variable{cons.vars().front(), Variable::rational}, nullptr,
                         trail.decision_level());
         // stop watching the variable in all constraints
-        assigned.push_back(cons.vars().front());
+        assigned.push_back(Variable{cons.vars().front(), Variable::rational});
     }
     return {};
 }
@@ -309,6 +316,12 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
     if (lb.value() < ub.value() || (lb.value() == ub.value() && !is_either_strict))
     {
         return {}; // no conflict
+    }
+
+    // if `lb and ub` imply `false`
+    if (lb.reason().size() == 1 && ub.reason().size() == 1)
+    {
+        return Clause{lb.reason().lit().negate(), ub.reason().lit().negate()};
     }
 
     // create `L < U` and propagate the literal semantically so that the conflict clause if false
