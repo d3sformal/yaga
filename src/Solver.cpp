@@ -6,6 +6,18 @@ std::optional<Clause> Solver::propagate() { return theory->propagate(database, s
 
 std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
 {
+    // notify listeners that number of variables has changed if conflict introduces new variables
+    int new_num_vars = static_cast<int>(trail().model<bool>(Variable::boolean).num_vars());
+    if (num_bool_vars != new_num_vars)
+    {
+        num_bool_vars = new_num_vars;
+        for (auto listener : listeners())
+        {
+            listener->on_variable_resize(Variable::boolean, num_bool_vars);
+        }
+    }
+
+    // derive clause suitable for backtracking
     auto [learned, level] =
         analysis.analyze(trail(), std::move(conflict), [&](auto const& other_clause) {
             for (auto listener : listeners())
@@ -65,8 +77,12 @@ void Solver::decide(Variable var)
 void Solver::init()
 {
     // allocate memory
-    for (auto [type, model] : solver_trail.models())
+    for (auto [type, model] : trail().models())
     {
+        if (type == Variable::boolean)
+        {
+            num_bool_vars = model->num_vars();
+        }
         for (auto listener : listeners())
         {
             listener->on_variable_resize(type, model->num_vars());

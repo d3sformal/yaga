@@ -59,12 +59,12 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+    lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
-    auto lin = factory(lra);
+    auto lin = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
     // prepare test constraints on the trail
@@ -86,12 +86,12 @@ TEST_CASE("Detect implied equality", "[lienar_arithmetic]")
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+    lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
-    auto linear = factory(lra);
+    auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
     // prepare test constraints on the trail
@@ -126,12 +126,12 @@ TEST_CASE("Recursively propagate unit constraints", "[linear_constraints]")
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+    lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
-    auto linear = factory(lra);
+    auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
     propagate(trail, linear(x + y + z <= 4));
@@ -155,12 +155,12 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_c
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+    lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
-    auto linear = factory(lra);
+    auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
     propagate(trail, linear(x + y + z <= 4));
@@ -205,12 +205,12 @@ TEST_CASE("LRA propagation is idempotent", "[linear_constraints]")
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+    lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
-    auto linear = factory(lra);
+    auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
     propagate(trail, linear(x + y + z <= 4));
@@ -240,12 +240,12 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_constra
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+    lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
-    auto linear = factory(lra);
+    auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
     // add a constraint that is not on the trail
@@ -272,12 +272,12 @@ TEST_CASE("Compute bounds corretly after backtracking", "[linear_constraints]")
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+    lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
-    auto linear = factory(lra);
+    auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
     decide(trail, linear(x <= 16));
@@ -307,12 +307,12 @@ TEST_CASE("Detect a bound conflict", "[linear_constraints]")
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+    lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
-    auto linear = factory(lra);
+    auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
     SECTION("with strict lower bound")
@@ -379,12 +379,12 @@ TEST_CASE("Detect an inequality conflict", "[linear_constraints]")
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+    lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
-    auto linear = factory(lra);
+    auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
     propagate(trail, linear(y <= x));
@@ -409,11 +409,11 @@ TEST_CASE("Decide variable", "[linear_constraints]")
 
     Database db;
     Trail trail;
-    trail.set_model<bool>(Variable::boolean, 10);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, trail.model<double>(Variable::rational).num_vars());
-    auto linear = factory(lra);
+    auto linear = factory(lra, trail);
     auto models = lra.relevant_models(trail);
 
     // variables to decide

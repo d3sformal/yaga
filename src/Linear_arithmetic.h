@@ -62,6 +62,7 @@ public:
      *
      * @tparam Var_range range of LRA variable numbers (ints)
      * @tparam Coef_range range of coefficients (Value_types)
+     * @param trail current solver trail
      * @param vars range of LRA variable numbers
      * @param coef range of coefficints of @p vars
      * @param pred predicate of the constraint
@@ -69,12 +70,20 @@ public:
      * @return linear constraint
      */
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline Constraint_type constraint(Var_range&& vars, Coef_range&& coef, Order_predicate pred,
-                                      Value_type rhs)
+    inline Constraint_type constraint(Trail& trail, Var_range&& vars, Coef_range&& coef, 
+                                      Order_predicate pred, Value_type rhs)
     {
+        // create the constraint
         auto cons = constraints.make(std::forward<Var_range>(vars), std::forward<Coef_range>(coef),
                                      pred, rhs);
-        watch(cons);
+
+        // add its boolean variable to trail if it represents a new variable
+        auto models = relevant_models(trail);
+        if (is_new(models, cons.lit().var()))
+        {
+            add_variable(trail, models, cons.lit().var());
+            watch(cons, models.owned());
+        }
         return cons;
     }
 
@@ -122,29 +131,6 @@ private:
      * @param cons new constraint
      */
     void watch(Constraint_type& cons);
-
-    /** Create a constraint or return an existing object that represents the same constraint.
-     *
-     * This method finds unassigned variables in @p var to watch and it moves them to the front of
-     * the returned constraint.
-     *
-     * @tparam Var_range range of LRA variable numbers (ints)
-     * @tparam Coef_range range of coefficients (Value_types)
-     * @param vars range of LRA variable numbers
-     * @param coef range of coefficints of @p vars
-     * @param pred predicate of the constraint
-     * @param rhs constant on the right-hand-side of the constraint
-     * @return linear constraint
-     */
-    template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline Constraint_type constraint(Model<Value_type> const& model, Var_range&& vars,
-                                      Coef_range&& coef, Order_predicate pred, Value_type rhs)
-    {
-        auto cons = constraints.make(std::forward<Var_range>(vars), std::forward<Coef_range>(coef),
-                                     pred, rhs);
-        watch(cons, model);
-        return cons;
-    }
 
     /** Try to replace @p lra_var_ord in watched variables of @p cons
      *
@@ -217,12 +203,12 @@ private:
      * Precondition: the first variable in both @p first and @p second is the only unassigned variable 
      * in either constraint.
      * 
-     * @param model partial assignment of LRA variables
+     * @param trail current solver trail
      * @param first first constraint
      * @param second second constraint
      * @return Constraint_type 
      */
-    Constraint_type eliminate(Model<Value_type> const& model, Constraint_type const& first, Constraint_type const& second);
+    Constraint_type eliminate(Trail& trail, Constraint_type const& first, Constraint_type const& second);
 
     /** Check if there is a bound conflict (i.e., `L <= x && x <= U` and `U < L` or similar
      * conflicts with strict bounds)
@@ -283,6 +269,22 @@ private:
      * @param cons linear constraint to propagate
      */
     void propagate(Trail& trail, Models_type& models, Constraint_type const& cons);
+
+    /** Check if @p var is in @p models
+     * 
+     * @param models partial assignment of variables
+     * @param var checked variables
+     * @return true iff @p var is in @p models
+     */
+    bool is_new(Models_type const& models, Variable var) const;
+
+    /** Add a new boolean variable @p bool_var_ord if @p trail does not already contain such variable.
+     * 
+     * @param trail current solver trail
+     * @param models partial assignment of variables in @p trail
+     * @param var variable to add if it is not already in @p trail
+     */
+    void add_variable(Trail& trail, Models_type const& models, Variable var);
 
     inline bool is_unit(Model<Value_type> const& model, Constraint_type const& cons) const
     {

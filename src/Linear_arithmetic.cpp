@@ -13,10 +13,10 @@ void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
 
 std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 {
-    std::vector<int> assigned;
     auto models = relevant_models(trail);
 
-    // check for new unit constraints on the trail
+    // detect new unit constraint and all assigned LRA variables
+    std::vector<int> assigned; // newly assigned LRA variables
     for (auto [var, _] : trail.assigned(trail.decision_level()))
     {
         if (var.type() == Variable::boolean && !constraints[var.ord()].empty())
@@ -36,12 +36,7 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
                 }
             }
         }
-    }
-
-    // check whether all unit constraints are consistent after new assignments
-    for (auto [var, _] : trail.assigned(trail.decision_level()))
-    {
-        if (var.type() == Variable::rational)
+        else if (var.type() == Variable::rational)
         {
             assigned.push_back(var.ord());
         }
@@ -52,7 +47,6 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
     {
         auto lra_var_ord = assigned.back();
         assigned.pop_back();
-
         conflict = replace_watch(assigned, trail, models, lra_var_ord);
     }
     return conflict;
@@ -275,12 +269,12 @@ std::optional<Clause> Linear_arithmetic::unit(std::vector<int>& assigned, Trail&
     return {};
 }
 
-Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Model<Value_type> const& model, Constraint_type const& first, Constraint_type const& second)
+Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail, Constraint_type const& first, Constraint_type const& second)
 {
     assert(!first.empty());
     assert(!second.empty());
     assert(first.vars().front() == second.vars().front());
-    assert(!model.is_defined(first.vars().front()));
+    assert(!trail.model<Value_type>(Variable::rational).is_defined(first.vars().front()));
 
     // find predicate of the combination
     auto pred = first.is_strict() || second.is_strict() ? Order_predicate::LT : Order_predicate::LEQ;
@@ -303,7 +297,7 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Model<Value_type
             it->second += *coef_it * mult;
         }
     }
-    return constraint(model, std::views::keys(prod), std::views::values(prod), pred, rhs);
+    return constraint(trail, std::views::keys(prod), std::views::values(prod), pred, rhs);
 }
 
 std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Models_type& models,
@@ -318,7 +312,7 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
     }
 
     // create `L < U` and propagate the literal semantically so that the conflict clause if false
-    auto cons = eliminate(models.owned(), lb.reason(), ub.reason());
+    auto cons = eliminate(trail, lb.reason(), ub.reason());
     propagate(trail, models, cons);
 
     // L <= x && x <= U -> L < U
@@ -344,8 +338,8 @@ std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
     }
 
     // create `L < D` and `D < U`
-    auto lb_d = eliminate(models.owned(), lb.reason(), inequality.value().reason());
-    auto d_ub = eliminate(models.owned(), inequality.value().reason(), ub.reason());
+    auto lb_d = eliminate(trail, lb.reason(), inequality.value().reason());
+    auto d_ub = eliminate(trail, inequality.value().reason(), ub.reason());
     propagate(trail, models, lb_d);
     propagate(trail, models, d_ub);
 
@@ -370,6 +364,20 @@ void Linear_arithmetic::propagate(Trail& trail, Models_type& models, Constraint_
     auto value = cons.eval(models.owned());
     models.boolean().set_value(cons.lit().var().ord(), cons.lit().is_negation() ^ value);
     trail.propagate(cons.lit().var(), /*reason=*/nullptr, dec_level);
+}
+
+bool Linear_arithmetic::is_new(Models_type const& models, Variable var) const
+{
+    return (var.type() == Variable::boolean && var.ord() >= static_cast<int>(models.boolean().num_vars())) ||
+           (var.type() == Variable::rational && var.ord() >= static_cast<int>(models.owned().num_vars()));
+}
+
+void Linear_arithmetic::add_variable(Trail& trail, Models_type const& models, Variable var)
+{
+    if (is_new(models, var))
+    {
+        trail.resize(var.type(), var.ord() + 1);
+    }
 }
 
 void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)

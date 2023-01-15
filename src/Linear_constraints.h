@@ -19,7 +19,6 @@
 
 namespace perun {
 
-
 /** Repository of linear constraints.
  *
  * Added constraints are normalized and deduplicated so that there is at most one boolean variable
@@ -32,13 +31,13 @@ public:
 
     /** Create a new linear constraint.
      *
-     * The constraint is normalized. The returned constraint might represent negation of the input
-     * constraint in which case, literal of the returned constraint will be negated.
+     * The constraint is normalized. The returned constraint might represent negation of some 
+     * preexisting constraint in which case, literal of the returned constraint will be negated.
      *
      * @param var_range ordinal numbers of variables in the constraint
      * @param coef_range coefficients of variables in the constraint
      * @param pred predicate of the constraint
-     * @param rhs constant on the right-hand-side of the constrant
+     * @param rhs constant on the right-hand-side of the constraint
      * @return new constraint together with literal that represents that constraint
      */
     template <std::ranges::range Var_range, std::ranges::range Value_range>

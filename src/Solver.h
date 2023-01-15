@@ -132,6 +132,7 @@ private:
     std::unique_ptr<Theory> theory;
     std::unique_ptr<Restart> restart_policy;
     std::unique_ptr<Variable_order> variable_order;
+    int num_bool_vars = 0;
 
     // statistics
     int total_conflicts = 0;

@@ -593,13 +593,13 @@ inline auto factory(Linear_constraints<T>& repository)
 }
 
 // create a factory functor for linear constraints in the LRA plugin
-inline auto factory(Linear_arithmetic& plugin)
+inline auto factory(Linear_arithmetic& plugin, Trail& trail)
 {
-    return [plugin_ptr = &plugin]<std::convertible_to<Linear_arithmetic::Value_type> T>(Linear_predicate<T> const& val) 
+    return [plugin_ptr = &plugin, trail_ptr = &trail]<std::convertible_to<Linear_arithmetic::Value_type> T>(Linear_predicate<T> const& val) 
     {
         // move right-hand-side to left-hand-side
         auto poly = normalize<T>(val);
-        auto cons = plugin_ptr->constraint(std::views::keys(poly), std::views::values(poly), val.pred, val.rhs.constant - val.lhs.constant);
+        auto cons = plugin_ptr->constraint(*trail_ptr, std::views::keys(poly), std::views::values(poly), val.pred, val.rhs.constant - val.lhs.constant);
         return val.is_negation ? cons.negate() : cons;
     };
 }
