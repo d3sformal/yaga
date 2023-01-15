@@ -15,8 +15,8 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 {
     auto models = relevant_models(trail);
 
-    // detect new unit constraint and all assigned LRA variables
-    std::vector<Variable> assigned; // newly assigned LRA variables
+    // detect new unit constraints on the trail
+    std::vector<Variable> unit_cons; 
     for (auto [var, _] : trail.assigned(trail.decision_level()))
     {
         if (var.type() == Variable::boolean && !constraints[var.ord()].empty())
@@ -27,11 +27,33 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
                 assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
                 continue; // skip fully assigned constraints
             }
-            assigned.push_back(var);
+            // we cannot call unit() since it could invalidate trail.assigned() iterators
+            unit_cons.push_back(var); 
         }
-        else if (var.type() == Variable::rational)
+    }
+
+    // find all new assignments of LRA variables
+    std::vector<Variable> assigned;
+    for (auto [var, _] : trail.assigned(trail.decision_level()))
+    {
+        if (var.type() == Variable::rational)
         {
             assigned.push_back(var);
+        }
+    }
+
+    // update bounds using unit constraints on the trail
+    for (auto var : unit_cons)
+    {
+        auto cons = constraints[var.ord()];
+        assert(var.type() == Variable::boolean);
+        assert(!cons.empty());
+        if (is_unit(models.owned(), cons))
+        {
+            if (auto conflict = unit(assigned, trail, models, cons))
+            {
+                return conflict;
+            }
         }
     }
 
@@ -40,21 +62,8 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
     {
         auto var = assigned.back();
         assigned.pop_back();
-
-        if (var.type() == Variable::rational)
-        {
-            conflict = replace_watch(assigned, trail, models, var.ord());
-        }
-        else 
-        {
-            assert(var.type() == Variable::boolean);
-
-            auto cons = constraints[var.ord()];
-            if (is_unit(models.owned(), cons))
-            {
-                conflict = unit(assigned, trail, models, cons);
-            }
-        }
+        assert(var.type() == Variable::rational);
+        conflict = replace_watch(assigned, trail, models, var.ord());
     }
     return conflict;
 }
