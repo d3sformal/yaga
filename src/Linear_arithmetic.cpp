@@ -380,29 +380,83 @@ void Linear_arithmetic::add_variable(Trail& trail, Models_type const& models, Va
     }
 }
 
+int Linear_arithmetic::convert(Value_type value) const
+{
+    if (value > std::numeric_limits<int>::max())
+    {
+        return std::numeric_limits<int>::max();
+    }
+    else if (value < std::numeric_limits<int>::min())
+    {
+        return std::numeric_limits<int>::min();
+    }
+    return static_cast<int>(value);
+}
+
 void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
 {
-    if (var.type() == Variable::rational)
+    if (var.type() != Variable::rational)
     {
-        auto models = relevant_models(trail);
-        auto& bnds = bounds[var.ord()];
+        return;
+    }
 
-        Value_type value{0};
+    auto models = relevant_models(trail);
+    auto& bnds = bounds[var.ord()];
+
+    Value_type value{0};
+    if (!bnds.is_allowed(models, value))
+    {
+        // find an allowed value
+        auto left = bnds.lower_bound(models).value();
+        auto right = bnds.upper_bound(models).value();
+
+        // try integer values first
+        int abs_min_value = 0;
+        int abs_bound = 0;
+        if (left <= Value_type{0} && right >= Value_type{0})
+        {
+            abs_bound = std::max<int>(-convert(left), convert(right));
+        }
+        else if (left > Value_type{0})
+        {
+            abs_min_value = convert(left);
+            abs_bound = convert(right);
+        }
+        else // left <= right < 0
+        {
+            abs_min_value = -convert(right);
+            abs_bound = -convert(left);
+        }
+
+        for (int int_value = abs_min_value; int_value <= abs_bound; ++int_value)
+        {
+            value = static_cast<Value_type>(int_value);
+            if (left <= value && value <= right && bnds.is_allowed(models, value))
+            {
+                break;
+            }
+            
+            value = static_cast<Value_type>(-int_value);
+            if (left <= value && value <= right && bnds.is_allowed(models, value))
+            {
+                break;
+            }
+        }
+
+        // if there is no suitable integer value
         if (!bnds.is_allowed(models, value))
         {
-            // find an allowed value
-            auto left = bnds.lower_bound(models).value();
-            value = bnds.upper_bound(models).value();
+            value = right;
             while (!bnds.is_allowed(models, value))
             {
                 value = left / Value_type{2} + value / Value_type{2};
             }
         }
-
-        // decide the value
-        models.owned().set_value(var.ord(), value);
-        trail.decide(var);
     }
+
+    // decide the value
+    models.owned().set_value(var.ord(), value);
+    trail.decide(var);
 }
 
 } // namespace perun

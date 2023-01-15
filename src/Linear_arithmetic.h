@@ -118,6 +118,14 @@ private:
     // map real variable -> set of allowed values
     std::vector<Bounds<Value_type>> bounds;
 
+    /** Convert @p value to integer 
+     * 
+     * @param value value to convert
+     * @return integer part of @p value 
+     * @return integer value closest to @p value if @p value does not have a representation as an int
+     */
+    int convert(Value_type value) const;
+
     /** Start watching LRA variables in @p cons
      *
      * @param cons new constraint

@@ -474,4 +474,49 @@ TEST_CASE("Decide variable", "[linear_constraints]")
         REQUIRE(models.owned().value(z.ord()) < -4);
         REQUIRE(models.owned().value(z.ord()) > -10);
     }
+
+    SECTION("prefer integer values with a small absolute value")
+    {
+        propagate(trail, linear(x <= 100));
+        propagate(trail, linear(x > 2));
+
+        propagate(trail, linear(y > -8));
+        propagate(trail, linear(y < 8));
+        propagate(trail, linear(y != 0));
+        propagate(trail, linear(y != 1));
+        propagate(trail, linear(y != -1));
+        propagate(trail, linear(y != -2));
+
+        propagate(trail, linear(z < -5));
+        propagate(trail, linear(z > -10));
+        lra.propagate(db, trail);
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) == 3);
+
+        lra.decide(db, trail, y);
+        REQUIRE(trail.decision_level(y) == 2);
+        REQUIRE(models.owned().is_defined(y.ord()));
+        REQUIRE(models.owned().value(y.ord()) == 2);
+
+        lra.decide(db, trail, z);
+        REQUIRE(trail.decision_level(z) == 3);
+        REQUIRE(models.owned().is_defined(z.ord()));
+        REQUIRE(models.owned().value(z.ord()) == -6);
+    }
+
+    SECTION("decide value if there are no integer values allowed")
+    {
+        propagate(trail, linear(x < 1));
+        propagate(trail, linear(x > 0));
+        lra.propagate(db, trail);
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) < 1);
+        REQUIRE(models.owned().value(x.ord()) > 0);
+    }
 }
