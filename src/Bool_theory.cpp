@@ -12,6 +12,14 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
     }
 }
 
+void Bool_theory::on_variable_resize(Variable::Type type, int num_vars)
+{
+    if (type == Variable::boolean)
+    {
+        watched.resize(num_vars);
+    }
+}
+
 void Bool_theory::on_learned_clause(Database& db, Trail&, Clause const& learned)
 {
     // find the learned clause in database (should be exactly one comparison since learned clases
