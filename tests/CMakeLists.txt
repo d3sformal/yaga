@@ -8,6 +8,7 @@ target_sources(test PRIVATE
     Glucose_restart_test.cpp
     Linear_arithmetic_test.cpp
     Linear_constraints_test.cpp
+    Lra_test.cpp
     Luby_restart_test.cpp
     Solver_test.cpp
     Subsumption_test.cpp
