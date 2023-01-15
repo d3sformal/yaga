@@ -263,7 +263,7 @@ private:
     inline bool is_obsolete(Models_type const& models, Constraint_type const& cons) const
     {
         // check that the constraint is still on the trail as a boolean variable
-        if (cons.empty() || !models.boolean().is_defined(cons.lit().var().ord()))
+        if (cons.empty() || perun::eval(models.boolean(), cons.lit()) != true)
         {
             return true;
         }

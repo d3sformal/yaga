@@ -163,6 +163,27 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
         REQUIRE(bounds.upper_bound(models).reason().lit() == trail[0].lit());
     }
 
+    SECTION("Get bounds after backtracking negation of the bound")
+    {
+        auto cons = make(x <= 0);
+        auto not_cons = cons.negate();
+        models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+
+        bounds.add_upper_bound(models, implied(models, cons));
+        REQUIRE(bounds.upper_bound(models).value() == 0);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == cons.lit());
+        REQUIRE(bounds.lower_bound(models).value() == std::numeric_limits<double>::lowest());
+        REQUIRE(bounds.lower_bound(models).reason().empty());
+
+        models.boolean().set_value(not_cons.lit().var().ord(), !not_cons.lit().is_negation());
+        bounds.add_lower_bound(models, implied(models, not_cons));
+
+        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<double>::max());
+        REQUIRE(bounds.upper_bound(models).reason().empty());
+        REQUIRE(bounds.lower_bound(models).value() == 0);
+        REQUIRE(bounds.lower_bound(models).reason().lit() == not_cons.lit());
+    }
+
     SECTION("Exclude values")
     {
         std::array trail{
