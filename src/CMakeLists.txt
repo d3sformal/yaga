@@ -7,4 +7,5 @@ target_sources(perun PRIVATE
     Linear_arithmetic.cpp
     Solver.cpp
     Subsumption.cpp
+    Theory_combination.cpp
 )

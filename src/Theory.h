@@ -7,6 +7,7 @@
 #include "Database.h"
 #include "Event_listener.h"
 #include "Trail.h"
+#include "Variable.h"
 
 namespace perun {
 
