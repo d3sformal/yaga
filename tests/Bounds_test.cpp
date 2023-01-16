@@ -7,7 +7,7 @@
 template<typename Value>
 inline perun::Implied_value<Value> implied(perun::Theory_models<Value> const& models, perun::Linear_constraint<Value>& cons)
 {
-    return {cons.implied_value(models.owned()) / cons.coef().front(), cons};
+    return {cons.implied_value(models.owned()) / cons.coef().front(), cons, models};
 }
 
 TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
@@ -138,6 +138,24 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
 
         REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<double>::max());
         REQUIRE(bounds.upper_bound(models).reason().empty());
+    }
+
+    SECTION("Get upper bound after changing value of an LRA variable")
+    {
+        auto cons = make(x + y <= 8);
+        models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+
+        models.owned().set_value(y.ord(), 0);
+        bounds.add_upper_bound(models, implied(models, cons));
+
+        REQUIRE(bounds.upper_bound(models).value() == 8);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == cons.lit());
+
+        models.owned().set_value(y.ord(), -2);
+        bounds.add_upper_bound(models, implied(models, cons));
+
+        REQUIRE(bounds.upper_bound(models).value() == 10);
+        REQUIRE(bounds.upper_bound(models).reason().lit() == cons.lit());
     }
 
     SECTION("Get upper bounds after backtracking boolean variables")

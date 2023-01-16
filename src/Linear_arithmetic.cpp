@@ -177,21 +177,21 @@ void Linear_arithmetic::update_bounds(Models_type const& models, Constraint_type
 
     if (implies_equality(actual_cons))
     {
-        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons});
-        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons});
+        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons, models});
+        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons, models});
     }
     else if (implies_inequality(actual_cons))
     {
-        bounds[cons.vars().front()].add_inequality({value, actual_cons});
+        bounds[cons.vars().front()].add_inequality({value, actual_cons, models});
     }
     else if (implies_lower_bound(actual_cons))
     {
-        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons});
+        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons, models});
     }
     else // upper bound
     {
         assert(implies_upper_bound(actual_cons));
-        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons});
+        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons, models});
     }
 }
 

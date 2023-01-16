@@ -12,35 +12,6 @@
 
 namespace perun {
 
-/** Value implied by a linear constraint
- *
- * @tparam Value_type
- */
-template <typename Value_type> class Implied_value {
-public:
-    using Constraint_type = Linear_constraint<Value_type>;
-
-    inline Implied_value(Value_type val, Constraint_type cons) : val(val), cons(cons) {}
-
-    /** Get the implied value
-     *
-     * @return implied value
-     */
-    inline Value_type value() const { return val; }
-
-    /** Get linear constraint that implied this bound.
-     *
-     * @return pointer to the linear constraint that implied this bound
-     */
-    inline Constraint_type reason() const { return cons; }
-
-private:
-    // implied bound
-    Value_type val;
-    // linear constraint that implied the bound
-    Constraint_type cons;
-};
-
 /** Reference to models relevant for a theory
  *
  * @tparam Value type of variables of the theory
@@ -81,6 +52,70 @@ private:
     Model<Value>* owned_model;
 };
 
+/** Value implied by a linear constraint
+ *
+ * @tparam Value_type
+ */
+template <typename Value> class Implied_value {
+public:
+    using Constraint_type = Linear_constraint<Value>;
+    using Models_type = Theory_models<Value>;
+
+    inline Implied_value(Value val) : val(val), timestamp(-1) {}
+
+    inline Implied_value(Value val, Constraint_type cons, Models_type const& models) : val(val), cons(cons), timestamp(cons.size() >= 2 ? models.owned().timestamp(*++cons.vars().begin()) : -1) {}
+
+    /** Get the implied value
+     *
+     * @return implied value
+     */
+    inline Value value() const { return val; }
+
+    /** Get linear constraint that implied this bound.
+     *
+     * @return linear constraint that implied this bound
+     */
+    inline Constraint_type reason() const { return cons; }
+
+    /** Check whether this value is obsolete.
+     * 
+     * Value becomes obsolete if `reason()` is no longer on the trail, it is no longer a unit 
+     * constraint, or variables in `reason()` are assigned to different values than when this 
+     * object was created.
+     * 
+     * @param models partial assignment of variables
+     * @return true iff `value()` is no longer a valid implied value from `reason()`
+     */
+    inline bool is_obsolete(Models_type const& models) const
+    {
+        if (reason().empty() || perun::eval(models.boolean(), reason().lit()) != true)
+        {
+            return true; // reason() is no longer on the trail
+        }
+
+        // check that the constraint is still unit
+        auto [var_it, var_end] = cons.vars();
+        assert(var_it != var_end);
+        assert(!models.owned().is_defined(*var_it));
+
+        auto next_var_it = var_it + 1;
+        if (next_var_it == var_end)
+        {
+            return false; // unit constraint
+        }
+
+        return !models.owned().is_defined(*next_var_it) || models.owned().timestamp(*next_var_it) != timestamp;
+    }
+
+private:
+    // implied bound
+    Value val;
+    // linear constraint that implied the bound
+    Constraint_type cons;
+    // timestamp of the most recently assigned variable in cons
+    int timestamp;
+};
+
 /** This class keeps track of implied bounds and inequalities for a variable.
  *
  * Obsolete bounds are removed lazily when a bound is requested.
@@ -106,7 +141,7 @@ public:
 
         if (ub.empty()) // no bound
         {
-            return {std::numeric_limits<Value_type>::max(), Constraint_type{}};
+            return {std::numeric_limits<Value_type>::max()};
         }
         else // there is at least one implied upper bound
         {
@@ -125,7 +160,7 @@ public:
 
         if (lb.empty()) // no bound
         {
-            return {std::numeric_limits<Value_type>::lowest(), Constraint_type{}};
+            return {std::numeric_limits<Value_type>::lowest()};
         }
         else // there is at least one implied lower bound
         {
@@ -143,7 +178,7 @@ public:
     {
         // remove obsolete values
         disallowed.erase(std::remove_if(disallowed.begin(), disallowed.end(),
-                                        [&](auto v) { return is_obsolete(models, v.reason()); }),
+                                        [&](auto v) { return v.is_obsolete(models); }),
                          disallowed.end());
 
         // check if value is in the list
@@ -248,37 +283,10 @@ private:
      */
     inline void remove_obsolete(std::vector<Implied_value_type>& bounds, Models_type const& models)
     {
-        while (!bounds.empty() && is_obsolete(models, bounds.back().reason()))
+        while (!bounds.empty() && bounds.back().is_obsolete(models))
         {
             bounds.pop_back();
         }
-    }
-
-    /** Check whether @p cons is obsolete given @p models
-     *
-     * @param models partial assignment of variables
-     * @param cons checked constraint
-     * @return true iff both watched variables (the first two variables) in @p cons are unassigned
-     */
-    inline bool is_obsolete(Models_type const& models, Constraint_type const& cons) const
-    {
-        // check that the constraint is still on the trail as a boolean variable
-        if (cons.empty() || perun::eval(models.boolean(), cons.lit()) != true)
-        {
-            return true;
-        }
-
-        // check that the constraint is still unit
-        auto [var_it, var_end] = cons.vars();
-        assert(var_it != var_end);
-        auto next_var_it = var_it + 1;
-        if (next_var_it == var_end)
-        {
-            assert(!models.owned().is_defined(*var_it));
-            return false;
-        }
-
-        return !models.owned().is_defined(*var_it) && !models.owned().is_defined(*next_var_it);
     }
 };
 

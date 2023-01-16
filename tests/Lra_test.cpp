@@ -45,6 +45,30 @@ TEST_CASE("Check a satisfiable formula in LRA", "[lra][sat][integration]")
     REQUIRE((x_val < 0 || y_val < 0));
 }
 
+TEST_CASE("Solve system of equations in LRA", "[lra][sat][integration]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Solver solver;
+    solver.trail().set_model<bool>(Variable::boolean, 0);
+    solver.trail().set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
+    solver.set_restart_policy<No_restart>();
+    solver.set_variable_order<First_unassigned>();
+    auto& theories = solver.set_theory<Theory_combination>();
+    theories.add_theory<Bool_theory>();
+    auto& lra = theories.add_theory<Linear_arithmetic>();
+    lra.on_variable_resize(Variable::rational, 2); // TODO: user should not be required to call this
+    auto linear = factory(lra, solver.trail());
+    auto [x, y] = real_vars<2>();
+
+    solver.db().assert_clause(clause(linear(2 * x + 5 * y == 10)));
+    solver.db().assert_clause(clause(linear(4 * x - 2 * y == 5)));
+
+    auto result = solver.check();
+    REQUIRE(result == Solver::Result::sat);
+}
+
 TEST_CASE("Check an unsatisfiable formula in LRA", "[lra][usnat][integration]")
 {
     using namespace perun;

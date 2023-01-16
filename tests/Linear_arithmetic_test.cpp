@@ -426,6 +426,40 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
     REQUIRE(perun::eval(models.owned(), linear(0 < z)) == false);
 }
 
+TEST_CASE("Replace obsolete bounds", "[linear_arithmetic]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<double>(Variable::rational, 3);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, 3);
+    auto models = lra.relevant_models(trail);
+    auto linear = factory(lra, trail);
+    auto [x, y] = real_vars<2>();
+
+    propagate(trail, linear(x + y <= 8));
+    REQUIRE(!lra.propagate(db, trail));
+
+    // x = 0
+    models.owned().set_value(x.ord(), 0);
+    trail.decide(x);
+    REQUIRE(!lra.propagate(db, trail));
+    auto [lb, ub] = lra.find_bounds(models, y.ord());
+    REQUIRE(ub.value() == 8);
+
+    // x = -2
+    trail.backtrack(0);
+    models.owned().set_value(x.ord(), -2);
+    trail.decide(x);
+    REQUIRE(!lra.propagate(db, trail));
+    std::tie(lb, ub) = lra.find_bounds(models, y.ord());
+    REQUIRE(ub.value() == 10);
+}
+
 TEST_CASE("Decide variable", "[linear_arithmetic]")
 {
     using namespace perun;
