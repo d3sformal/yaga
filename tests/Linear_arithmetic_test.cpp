@@ -381,6 +381,19 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         REQUIRE(conflict.value() == clause(-linear(1 < x), -linear(x < 0)));
         REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
     }
+
+    SECTION("with two equalities")
+    {
+        propagate(trail, linear(x + y == 2));
+        propagate(trail, linear(2 * x + 4 * y == 4));
+        propagate(trail, linear(x == 0));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(x + y == 2), -linear(2 * x + 4 * y == 4), linear(x == 2)));
+        REQUIRE(perun::eval(models.owned(), linear(x == 2)) == false);
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    }
 }
 
 TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")

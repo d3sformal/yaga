@@ -278,7 +278,16 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail, Co
     assert(!trail.model<Value_type>(Variable::rational).is_defined(first.vars().front()));
 
     // find predicate of the combination
-    auto pred = first.is_strict() || second.is_strict() ? Order_predicate::LT : Order_predicate::LEQ;
+    auto pred = Order_predicate::LEQ;
+    if (first.pred() == Order_predicate::EQ && second.pred() == Order_predicate::EQ &&
+        !first.lit().is_negation() && !second.lit().is_negation())
+    {
+        pred = Order_predicate::EQ;
+    }
+    else if (first.is_strict() || second.is_strict())
+    {
+        pred = Order_predicate::LT;
+    }
 
     // compute constants such that `poly(first) * first_mult + poly(second) * second_mult` 
     // eliminates the first variable
@@ -318,11 +327,11 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
         return Clause{lb.reason().lit().negate(), ub.reason().lit().negate()};
     }
 
-    // create `L < U` and propagate the literal semantically so that the conflict clause if false
+    // create `L <= U` and propagate the literal semantically so that the conflict clause if false
     auto cons = eliminate(trail, lb.reason(), ub.reason());
     propagate(trail, models, cons);
 
-    // L <= x && x <= U -> L < U
+    // L <= x && x <= U -> L <= U
     return Clause{lb.reason().lit().negate(), ub.reason().lit().negate(), cons.lit()};
 }
 

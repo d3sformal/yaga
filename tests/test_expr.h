@@ -150,7 +150,7 @@ inline Linear_polynomial<T> operator-(Linear_polynomial<T> const& lhs, Linear_po
     return {
         .vars = std::vector<int>{vars.begin(), vars.end()},
         .coef = std::vector<T>{coef.begin(), coef.end()},
-        .constant = lhs.constant() - rhs.constant(),
+        .constant = lhs.constant - rhs.constant,
     };
 }
 
