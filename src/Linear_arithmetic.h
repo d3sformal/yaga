@@ -77,7 +77,7 @@ public:
         auto cons = constraints.make(std::forward<Var_range>(vars), std::forward<Coef_range>(coef),
                                      pred, rhs);
 
-        // add its boolean variable to trail if it represents a new variable
+        // create a new variable in trail if the constraint represents a new variable
         auto models = relevant_models(trail);
         if (is_new(models, cons.lit().var()))
         {
@@ -117,6 +117,9 @@ private:
     std::vector<std::vector<Constraint_type>> watched;
     // map real variable -> set of allowed values
     std::vector<Bounds<Value_type>> bounds;
+
+    // stack witch assigned variables together with a value to propagate
+    using Assigned_stack = std::vector<std::pair<Variable, std::optional<Value_type>>>;
 
     /** Convert @p value to integer 
      * 
@@ -162,7 +165,7 @@ private:
      * @param lra_var_ord newly assigned LRA variable
      * @return conflict clause if a conflict is detected. None, otherwise.
      */
-    std::optional<Clause> replace_watch(std::vector<Variable>& assigned, Trail& trail,
+    std::optional<Clause> replace_watch(Assigned_stack& assigned, Trail& trail,
                                         Models_type& models, int lra_var_ord);
 
     /** Update bounds using unit constraint @p cons
@@ -202,7 +205,7 @@ private:
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    std::optional<Clause> unit(std::vector<Variable>& assigned, Trail& trail, Models_type& models,
+    std::optional<Clause> unit(Assigned_stack& assigned, Trail& trail, Models_type& models,
                                Constraint_type& cons);
 
     /** Combine @p first and @p second using Fourier-Motzking elimination of the first unassigned 

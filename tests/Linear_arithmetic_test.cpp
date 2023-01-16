@@ -79,7 +79,7 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
     REQUIRE(ub.value() == 10);
 }
 
-TEST_CASE("Detect implied equality", "[lienar_arithmetic]")
+TEST_CASE("Detect implied equality", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -119,7 +119,7 @@ TEST_CASE("Detect implied equality", "[lienar_arithmetic]")
     REQUIRE(!trail.decision_level(z));
 }
 
-TEST_CASE("Recursively propagate unit constraints", "[linear_constraints]")
+TEST_CASE("Recursively propagate unit constraints", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -148,7 +148,7 @@ TEST_CASE("Recursively propagate unit constraints", "[linear_constraints]")
     REQUIRE(ub.value() == 4);
 }
 
-TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_constraints]")
+TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -198,7 +198,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_c
     }
 }
 
-TEST_CASE("LRA propagation is idempotent", "[linear_constraints]")
+TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -233,7 +233,7 @@ TEST_CASE("LRA propagation is idempotent", "[linear_constraints]")
     REQUIRE(ub.value() == 4);
 }
 
-TEST_CASE("Propagate fully assigned constraints in the system", "[linear_constraints]")
+TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -265,7 +265,7 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_constra
     REQUIRE(perun::eval(models.owned(), linear(x + y + z <= 0)) == false);
 }
 
-TEST_CASE("Compute bounds corretly after backtracking", "[linear_constraints]")
+TEST_CASE("Compute bounds corretly after backtracking", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -300,7 +300,7 @@ TEST_CASE("Compute bounds corretly after backtracking", "[linear_constraints]")
     REQUIRE(ub.value() == 12);
 }
 
-TEST_CASE("Detect a bound conflict", "[linear_constraints]")
+TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -383,7 +383,7 @@ TEST_CASE("Detect a bound conflict", "[linear_constraints]")
     }
 }
 
-TEST_CASE("Detect an inequality conflict", "[linear_constraints]")
+TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -413,7 +413,7 @@ TEST_CASE("Detect an inequality conflict", "[linear_constraints]")
     REQUIRE(perun::eval(models.owned(), linear(0 < z)) == false);
 }
 
-TEST_CASE("Decide variable", "[linear_constraints]")
+TEST_CASE("Decide variable", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
