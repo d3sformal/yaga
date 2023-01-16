@@ -34,6 +34,13 @@ public:
      */
     inline void clear() { defined.assign(defined.size(), false); }
 
+    /** Get timestamp of a variable -- logical time when @p ord was assigned its most recent value
+     * 
+     * @param ord ordinal number of a variable
+     * @return current timestamp of the value of variable @p ord
+     */
+    inline int timestamp(int ord) const { return ts[ord]; }
+
     /** Get number of variables in this model
      *
      * @return number of variables
@@ -49,6 +56,10 @@ public:
 protected:
     // bitset which represents subset of defined variables
     std::vector<bool> defined;
+    // map variable ordinal -> timestamp
+    std::vector<int> ts;
+    // current timestamp of values in this model
+    int global_ts = 0;
 };
 
 /** Partial model.
@@ -73,6 +84,7 @@ public:
     {
         values.resize(num_vars, Value_type{});
         defined.resize(num_vars, false);
+        ts.resize(num_vars, -1);
     }
 
     /** Get value of a variable regardless if `is_defined()` is true.
@@ -91,6 +103,7 @@ public:
     {
         values[ord] = val;
         defined[ord] = true;
+        ts[ord] = global_ts++;
     }
 
 private:
