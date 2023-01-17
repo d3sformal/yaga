@@ -49,8 +49,15 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
         assigned.pop_back();
         if (val)
         {
-            models.owned().set_value(var.ord(), val.value());
-            trail.propagate(var, nullptr, trail.decision_level());
+            if (!models.owned().is_defined(var.ord()))
+            {
+                models.owned().set_value(var.ord(), val.value());
+                trail.propagate(var, nullptr, trail.decision_level());
+            }
+            else
+            {
+                assert(models.owned().value(var.ord()) == val.value());
+            }
         }
         assert(var.type() == Variable::rational);
         conflict = replace_watch(assigned, trail, models, var.ord());

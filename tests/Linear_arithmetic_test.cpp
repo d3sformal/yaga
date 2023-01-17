@@ -233,6 +233,34 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     REQUIRE(ub.value() == 4);
 }
 
+TEST_CASE("Only propagate equality once if there are multiple sources", "[linear_arithmetic][debug]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, 3);
+    auto models = lra.relevant_models(trail);
+    auto linear = factory(lra, trail);
+    auto [x, y, z] = real_vars<3>();
+
+    propagate(trail, linear(x + y == 4));
+    propagate(trail, linear(x + z == 5));
+    propagate(trail, linear(y == 0));
+    propagate(trail, linear(z == 1));
+
+    REQUIRE(!lra.propagate(db, trail));
+
+    REQUIRE(trail.assigned(trail.decision_level()).size() == 7);
+    REQUIRE(trail.decision_level(x) == 0);
+    REQUIRE(trail.decision_level(y) == 0);
+    REQUIRE(trail.decision_level(z) == 0);
+}
+
 TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")
 {
     using namespace perun;
