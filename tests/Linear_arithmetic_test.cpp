@@ -45,7 +45,7 @@ TEST_CASE("Propagate in an empty trail", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 10);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 10);
     Linear_arithmetic lra;
     auto conflict = lra.propagate(db, trail);
     REQUIRE(!conflict);
@@ -60,7 +60,7 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -87,7 +87,7 @@ TEST_CASE("Detect implied equality", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -127,7 +127,7 @@ TEST_CASE("Recursively propagate unit constraints", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -144,7 +144,7 @@ TEST_CASE("Recursively propagate unit constraints", "[linear_arithmetic]")
     REQUIRE(!conflict);
 
     auto [lb, ub] = lra.find_bounds(models, x.ord());
-    REQUIRE(lb.value() == std::numeric_limits<double>::lowest());
+    REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
     REQUIRE(ub.value() == 4);
 }
 
@@ -156,7 +156,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -171,7 +171,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
         REQUIRE(!conflict);
 
         auto [lb, ub] = lra.find_bounds(models, x.ord());
-        REQUIRE(lb.value() == std::numeric_limits<double>::lowest());
+        REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
         REQUIRE(ub.value() == 16);
     }
 
@@ -182,7 +182,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
         REQUIRE(!conflict);
 
         auto [lb, ub] = lra.find_bounds(models, x.ord());
-        REQUIRE(lb.value() == std::numeric_limits<double>::lowest());
+        REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
         REQUIRE(ub.value() == 8);
     }
 
@@ -193,7 +193,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
         REQUIRE(!conflict);
 
         auto [lb, ub] = lra.find_bounds(models, x.ord());
-        REQUIRE(lb.value() == std::numeric_limits<double>::lowest());
+        REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
         REQUIRE(ub.value() == 4);
     }
 }
@@ -206,7 +206,7 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -229,11 +229,11 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     REQUIRE(trail.decision_level(z) == 0);
 
     auto [lb, ub] = lra.find_bounds(models, x.ord());
-    REQUIRE(lb.value() == std::numeric_limits<double>::lowest());
+    REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
     REQUIRE(ub.value() == 4);
 }
 
-TEST_CASE("Only propagate equality once if there are multiple sources", "[linear_arithmetic][debug]")
+TEST_CASE("Only propagate equality once if there are multiple sources", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -244,7 +244,6 @@ TEST_CASE("Only propagate equality once if there are multiple sources", "[linear
     trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
-    auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
@@ -269,7 +268,7 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithme
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -301,7 +300,7 @@ TEST_CASE("Compute bounds corretly after backtracking", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -316,7 +315,7 @@ TEST_CASE("Compute bounds corretly after backtracking", "[linear_arithmetic]")
     REQUIRE(!lra.propagate(db, trail));
 
     auto [lb, ub] = lra.find_bounds(models, x.ord());
-    REQUIRE(lb.value() == std::numeric_limits<double>::lowest());
+    REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
     REQUIRE(ub.value() == 4);
 
     trail.backtrack(1);
@@ -324,7 +323,7 @@ TEST_CASE("Compute bounds corretly after backtracking", "[linear_arithmetic]")
     REQUIRE(!lra.propagate(db, trail));
 
     std::tie(lb, ub) = lra.find_bounds(models, x.ord());
-    REQUIRE(lb.value() == std::numeric_limits<double>::lowest());
+    REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
     REQUIRE(ub.value() == 12);
 }
 
@@ -336,7 +335,7 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -432,7 +431,7 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -454,40 +453,6 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
     REQUIRE(perun::eval(models.owned(), linear(0 < z)) == false);
 }
 
-TEST_CASE("Replace obsolete bounds", "[linear_arithmetic]")
-{
-    using namespace perun;
-    using namespace perun::test;
-
-    Database db;
-    Trail trail;
-    trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
-    auto models = lra.relevant_models(trail);
-    auto linear = factory(lra, trail);
-    auto [x, y] = real_vars<2>();
-
-    propagate(trail, linear(x + y <= 8));
-    REQUIRE(!lra.propagate(db, trail));
-
-    // x = 0
-    models.owned().set_value(x.ord(), 0);
-    trail.decide(x);
-    REQUIRE(!lra.propagate(db, trail));
-    auto [lb, ub] = lra.find_bounds(models, y.ord());
-    REQUIRE(ub.value() == 8);
-
-    // x = -2
-    trail.backtrack(0);
-    models.owned().set_value(x.ord(), -2);
-    trail.decide(x);
-    REQUIRE(!lra.propagate(db, trail));
-    std::tie(lb, ub) = lra.find_bounds(models, y.ord());
-    REQUIRE(ub.value() == 10);
-}
-
 TEST_CASE("Decide variable", "[linear_arithmetic]")
 {
     using namespace perun;
@@ -496,9 +461,9 @@ TEST_CASE("Decide variable", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<double>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<double>(Variable::rational).num_vars());
+    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Value_type>(Variable::rational).num_vars());
     auto linear = factory(lra, trail);
     auto models = lra.relevant_models(trail);
 

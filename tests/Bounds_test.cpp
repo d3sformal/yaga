@@ -15,13 +15,15 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
     using namespace perun;
     using namespace perun::test;
 
+    using Value_type = Fraction<int>;
+
     Model<bool> bool_model;
-    Model<double> lra_model;
+    Model<Value_type> lra_model;
     bool_model.resize(10);
     lra_model.resize(5);
-    Theory_models<double> models{&bool_model, &lra_model};
-    Bounds<double> bounds;
-    Linear_constraints<double> constraints;
+    Theory_models<Value_type> models{&bool_model, &lra_model};
+    Bounds<Value_type> bounds;
+    Linear_constraints<Value_type> constraints;
     auto make = factory(constraints);
     auto [x, y, z, w, a] = real_vars<5>();
 
@@ -38,7 +40,7 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
             models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
         }
 
-        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<double>::max());
+        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<Value_type>::max());
         REQUIRE(bounds.upper_bound(models).reason().empty());
 
         models.owned().set_value(y.ord(), 0);
@@ -75,7 +77,7 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
             models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
         }
 
-        REQUIRE(bounds.lower_bound(models).value() == std::numeric_limits<double>::lowest());
+        REQUIRE(bounds.lower_bound(models).value() == std::numeric_limits<Value_type>::lowest());
         REQUIRE(bounds.lower_bound(models).reason().empty());
 
         models.owned().set_value(y.ord(), 0);
@@ -136,7 +138,7 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
         // backtrack before y = 0
         models.owned().clear(y.ord());
 
-        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<double>::max());
+        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<Value_type>::max());
         REQUIRE(bounds.upper_bound(models).reason().empty());
     }
 
@@ -190,13 +192,13 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
         bounds.add_upper_bound(models, implied(models, cons));
         REQUIRE(bounds.upper_bound(models).value() == 0);
         REQUIRE(bounds.upper_bound(models).reason().lit() == cons.lit());
-        REQUIRE(bounds.lower_bound(models).value() == std::numeric_limits<double>::lowest());
+        REQUIRE(bounds.lower_bound(models).value() == std::numeric_limits<Value_type>::lowest());
         REQUIRE(bounds.lower_bound(models).reason().empty());
 
         models.boolean().set_value(not_cons.lit().var().ord(), !not_cons.lit().is_negation());
         bounds.add_lower_bound(models, implied(models, not_cons));
 
-        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<double>::max());
+        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<Value_type>::max());
         REQUIRE(bounds.upper_bound(models).reason().empty());
         REQUIRE(bounds.lower_bound(models).value() == 0);
         REQUIRE(bounds.lower_bound(models).reason().lit() == not_cons.lit());

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "test.h"
+#include "Fraction.h"
 #include "Linear_constraints.h"
 
 TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
@@ -8,7 +9,9 @@ TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
     using namespace perun;
     using namespace perun::test;
 
-    Linear_constraints<double> repo;
+    using Value_type = Fraction<int>;
+
+    Linear_constraints<Value_type> repo;
     auto make = factory(repo);
     auto [x, y, z] = real_vars<3>();
 
@@ -24,7 +27,7 @@ TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
     for (auto [cons, exp_pred, exp_polarity] : constraints)
     {
         REQUIRE(std::ranges::equal(cons.vars(), std::vector<int>{x.ord()}));
-        REQUIRE(std::ranges::equal(cons.coef(), std::vector<double>{1}));
+        REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1}));
         REQUIRE(cons.pred() == exp_pred);
         REQUIRE(cons.rhs() == 1);
         REQUIRE(cons.lit().is_negation() == exp_polarity);
@@ -32,7 +35,7 @@ TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
     
     auto cons = make(2 * x < 4);
     REQUIRE(std::ranges::equal(cons.vars(), std::vector<int>{x.ord()}));
-    REQUIRE(std::ranges::equal(cons.coef(), std::vector<double>{1})); // normalized by Linear_constraints
+    REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1})); // normalized by Linear_constraints
     REQUIRE(cons.pred() == Order_predicate::LT);
     REQUIRE(cons.rhs() == 2);
     REQUIRE(!cons.lit().is_negation());
@@ -43,7 +46,9 @@ TEST_CASE("Create complicated predicates", "[test_expr]")
     using namespace perun;
     using namespace perun::test;
 
-    Linear_constraints<double> repo;
+    using Value_type = Fraction<int>;
+
+    Linear_constraints<Value_type> repo;
     auto make = factory(repo);
     auto [x, y, z] = real_vars<3>();
 
@@ -59,7 +64,7 @@ TEST_CASE("Create complicated predicates", "[test_expr]")
     for (auto [cons, exp_pred, exp_polarity] : constraints)
     {
         REQUIRE(std::ranges::equal(cons.vars(), std::vector<int>{x.ord(), y.ord(), z.ord()}));
-        REQUIRE(std::ranges::equal(cons.coef(), std::vector<double>{1, 4, 8}));
+        REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1, 4, 8}));
         REQUIRE(cons.pred() == exp_pred);
         REQUIRE(cons.rhs() == 0);
         REQUIRE(cons.lit().is_negation() == exp_polarity);
@@ -70,22 +75,25 @@ TEST_CASE("Create normalized constraints", "[linear_constraints]")
 {
     using namespace perun;
     using namespace perun::test;
+    using namespace perun::literals;
 
-    Linear_constraints<double> repo;
+    using Value_type = Fraction<int>;
+
+    Linear_constraints<Value_type> repo;
     auto make = factory(repo);
     auto [x, y] = real_vars<2>();
 
     auto cons = make(x < 10);
     REQUIRE(std::ranges::equal(cons.vars(), std::vector{x.ord()}));
-    REQUIRE(std::ranges::equal(cons.coef(), std::vector{1}));
-    REQUIRE(cons.rhs() == 10.0);
+    REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1}));
+    REQUIRE(cons.rhs() == 10);
     REQUIRE(cons.pred() == Order_predicate::LT);
     REQUIRE(cons.lit() == Literal{0});
 
     cons = make(2 * x + 3 * y <= -5);
     REQUIRE(std::ranges::equal(cons.vars(), std::vector{x.ord(), y.ord()}));
-    REQUIRE(std::ranges::equal(cons.coef(), std::vector{1,       3.0 / 2}));
-    REQUIRE(cons.rhs() == -5.0 / 2);
+    REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1, 3_r / 2}));
+    REQUIRE(cons.rhs() == -5_r / 2);
     REQUIRE(cons.pred() == Order_predicate::LEQ);
     REQUIRE(cons.lit() == Literal{1});
 }
@@ -94,15 +102,18 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
 {
     using namespace perun;
     using namespace perun::test;
+    using namespace perun::literals;
 
-    Linear_constraints<double> repo;
+    using Value_type = Fraction<int>;
+
+    Linear_constraints<Value_type> repo;
     auto make = factory(repo);
     auto [x, y] = real_vars<2>();
 
     auto cons = make(-4 * x + 2 * y <= 8);
     // coefficient of the lowest variable is 1 after normalization
     REQUIRE(std::ranges::equal(cons.vars(), std::vector{x.ord(), y.ord()}));
-    REQUIRE(std::ranges::equal(cons.coef(), std::vector{1.0,     -1.0 / 2}));
+    REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1,     -1_r / 2}));
     REQUIRE(cons.rhs() == -2);
     REQUIRE(cons.pred() == Order_predicate::LT);
     REQUIRE(cons.lit() == Literal{0}.negate());
@@ -119,8 +130,10 @@ TEST_CASE("Constraints with different right-hand-side are different", "[linear_c
 {
     using namespace perun;
     using namespace perun::test;
+    
+    using Value_type = Fraction<int>;
 
-    Linear_constraints<double> repo;
+    Linear_constraints<Value_type> repo;
     auto make = factory(repo);
     auto [x, y] = real_vars<2>();
     auto cons1 = make(-2 * x + 4 * y <= 8);
@@ -132,8 +145,10 @@ TEST_CASE("Constraints with different predicate are different", "[linear_constra
 {
     using namespace perun;
     using namespace perun::test;
+    
+    using Value_type = Fraction<int>;
 
-    Linear_constraints<double> repo;
+    Linear_constraints<Value_type> repo;
     auto make = factory(repo);
     auto [x, y] = real_vars<2>();
     auto cons1 = make(-2 * x + 4 * y <= 8);
@@ -148,8 +163,10 @@ TEST_CASE("Constraints with different nubmer of variables are different", "[line
 {
     using namespace perun;
     using namespace perun::test;
+    
+    using Value_type = Fraction<int>;
 
-    Linear_constraints<double> repo;
+    Linear_constraints<Value_type> repo;
     auto make = factory(repo);
     auto [x, y, z] = real_vars<3>();
     auto cons1 = make(x <= 0);
@@ -164,13 +181,15 @@ TEST_CASE("Evaluate negation of a linear constraint", "[linear_constraints]")
 {
     using namespace perun;
     using namespace perun::test;
+    
+    using Value_type = Fraction<int>;
 
-    Linear_constraints<double> repo;
+    Linear_constraints<Value_type> repo;
     auto make = factory(repo);
     auto [x, y, z] = real_vars<3>();
     auto cons = make(x >= y).negate();
 
-    Model<double> model;
+    Model<Value_type> model;
     model.resize(3);
     REQUIRE(!perun::eval(model, cons));
     model.set_value(x.ord(), 0);

@@ -5,6 +5,7 @@ target_sources(test PRIVATE
     Bounds_test.cpp
     Conflict_analysis_test.cpp
     Evsids_test.cpp
+    Fraction_test.cpp
     Glucose_restart_test.cpp
     Linear_arithmetic_test.cpp
     Linear_constraints_test.cpp

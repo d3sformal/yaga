@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "Bounds.h"
+#include "Fraction.h"
 #include "Linear_constraints.h"
 #include "Model.h"
 #include "Theory.h"
@@ -20,7 +21,7 @@ namespace perun {
 class Linear_arithmetic final : public Theory {
 public:
     // types of variable values
-    using Value_type = double;
+    using Value_type = Fraction<int>;
     // bound object that keeps bounds of variables
     using Bounds_type = Bounds<Value_type>;
     // models relevant to this theory
@@ -70,7 +71,7 @@ public:
      * @return linear constraint
      */
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline Constraint_type constraint(Trail& trail, Var_range&& vars, Coef_range&& coef, 
+    inline Constraint_type constraint(Trail& trail, Var_range&& vars, Coef_range&& coef,
                                       Order_predicate pred, Value_type rhs)
     {
         // create the constraint
@@ -121,11 +122,12 @@ private:
     // stack witch assigned variables together with a value to propagate
     using Assigned_stack = std::vector<std::pair<Variable, std::optional<Value_type>>>;
 
-    /** Convert @p value to integer 
-     * 
+    /** Convert @p value to integer
+     *
      * @param value value to convert
-     * @return integer part of @p value 
-     * @return integer value closest to @p value if @p value does not have a representation as an int
+     * @return integer part of @p value
+     * @return integer value closest to @p value if @p value does not have a representation as an
+     * int
      */
     int convert(Value_type value) const;
 
@@ -165,8 +167,8 @@ private:
      * @param lra_var_ord newly assigned LRA variable
      * @return conflict clause if a conflict is detected. None, otherwise.
      */
-    std::optional<Clause> replace_watch(Assigned_stack& assigned, Trail& trail,
-                                        Models_type& models, int lra_var_ord);
+    std::optional<Clause> replace_watch(Assigned_stack& assigned, Trail& trail, Models_type& models,
+                                        int lra_var_ord);
 
     /** Update bounds using unit constraint @p cons
      *
@@ -208,18 +210,19 @@ private:
     std::optional<Clause> unit(Assigned_stack& assigned, Trail& trail, Models_type& models,
                                Constraint_type& cons);
 
-    /** Combine @p first and @p second using Fourier-Motzking elimination of the first unassigned 
+    /** Combine @p first and @p second using Fourier-Motzking elimination of the first unassigned
      * variable in @p first and @p second
-     * 
-     * Precondition: the first variable in both @p first and @p second is the only unassigned variable 
-     * in either constraint.
-     * 
+     *
+     * Precondition: the first variable in both @p first and @p second is the only unassigned
+     * variable in either constraint.
+     *
      * @param trail current solver trail
      * @param first first constraint
      * @param second second constraint
-     * @return Constraint_type 
+     * @return Constraint_type
      */
-    Constraint_type eliminate(Trail& trail, Constraint_type const& first, Constraint_type const& second);
+    Constraint_type eliminate(Trail& trail, Constraint_type const& first,
+                              Constraint_type const& second);
 
     /** Check if there is a bound conflict (i.e., `L <= x && x <= U` and `U < L` or similar
      * conflicts with strict bounds)
@@ -282,15 +285,16 @@ private:
     void propagate(Trail& trail, Models_type& models, Constraint_type const& cons);
 
     /** Check if @p var is in @p models
-     * 
+     *
      * @param models partial assignment of variables
      * @param var checked variables
      * @return true iff @p var is in @p models
      */
     bool is_new(Models_type const& models, Variable var) const;
 
-    /** Add a new boolean variable @p bool_var_ord if @p trail does not already contain such variable.
-     * 
+    /** Add a new boolean variable @p bool_var_ord if @p trail does not already contain such
+     * variable.
+     *
      * @param trail current solver trail
      * @param models partial assignment of variables in @p trail
      * @param var variable to add if it is not already in @p trail

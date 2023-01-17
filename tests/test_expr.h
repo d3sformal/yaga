@@ -12,10 +12,23 @@
 
 namespace perun::test {
 
+template<typename T>
+struct Is_arithmetic {
+    inline static constexpr bool value = std::is_arithmetic_v<T>;
+};
+
+template<typename T>
+    requires std::is_integral_v<T>
+struct Is_arithmetic<Fraction<T>> {
+    inline static constexpr bool value = true;
+};
+
+template<typename T>
+concept Arithmetic = Is_arithmetic<T>::value;
+
 // structures to create ad-hoc linear constraints for tests
 // represents a linear polynomial
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 struct Linear_polynomial {
     std::vector<int> vars;
     std::vector<T> coef;
@@ -31,8 +44,7 @@ struct Linear_polynomial {
     }
 };
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 struct Linear_predicate {
     Linear_polynomial<T> lhs;
     Linear_polynomial<T> rhs;
@@ -42,8 +54,7 @@ struct Linear_predicate {
 
 // conversion
 // create a linear polynomial from a constant multiple of a variable
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_polynomial<T> operator*(T value, Variable var)
 {
     return {
@@ -54,8 +65,7 @@ inline Linear_polynomial<T> operator*(T value, Variable var)
 }
 
 // create a linear polynomial from a constant multiple of a variable
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_polynomial<T> operator*(Variable var, T value)
 {
     assert(var.type() == Variable::rational);
@@ -63,8 +73,7 @@ inline Linear_polynomial<T> operator*(Variable var, T value)
 }
 
 // add linear polynomials
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_polynomial<T> operator+(Linear_polynomial<T> const& lhs, Linear_polynomial<T> const& rhs)
 {
     std::unordered_map<int, T> result;
@@ -89,8 +98,7 @@ inline Linear_polynomial<T> operator+(Linear_polynomial<T> const& lhs, Linear_po
 }
 
 // add a 1 * variable to a linear polynomial 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_polynomial<T> operator+(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
@@ -109,88 +117,94 @@ inline Linear_polynomial<T> operator+(Linear_polynomial<T> const& lhs, Variable 
 }
 
 // add a 1 * variable to a linear polynomial 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_polynomial<T> operator+(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     return rhs + lhs;
 }
 
 // create linear polynomial from addition of two variables
-inline Linear_polynomial<double> operator+(Variable lhs, Variable rhs)
+inline Linear_polynomial<Linear_arithmetic::Value_type> operator+(Variable lhs, Variable rhs)
 {
     return {
         .vars = {lhs.ord(), rhs.ord()},
-        .coef = {1, 1},
-        .constant = 0,
+        .coef = {Linear_arithmetic::Value_type{1}, Linear_arithmetic::Value_type{1}},
+        .constant = Linear_arithmetic::Value_type{0},
     };
 }
 
 // subtract two linear polynomials
-template<typename T>
-    requires std::is_arithmetic_v<T>
-inline Linear_polynomial<T> operator-(Linear_polynomial<T> const& lhs, Linear_polynomial<T> const& rhs)
+template<Arithmetic L, Arithmetic R>
+inline Linear_polynomial<std::common_type_t<L, R>> operator-(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
 {
-    T mult{1};
-    std::unordered_map<int, T> result;
-    for (auto poly_ptr : {&lhs, &rhs})
+    using Common_type = std::common_type_t<L, R>;
+
+    std::unordered_map<int, Common_type> result;
     {
-        auto var_it = poly_ptr->vars.begin();
-        auto coef_it = poly_ptr->coef.begin();
-        for (; var_it != poly_ptr->vars.end(); ++var_it, ++coef_it)
+        Common_type mult{1};
+        auto var_it = lhs.vars.begin();
+        auto coef_it = lhs.coef.begin();
+        for (; var_it != lhs.vars.end(); ++var_it, ++coef_it)
         {
-            auto [it, _] = result.insert({*var_it, T{0}});
+            auto [it, _] = result.insert({*var_it, Common_type{0}});
             it->second += *coef_it * mult;
         }
-        mult = T{-1};
     }
 
+    {
+        Common_type mult{-1};
+        auto var_it = rhs.vars.begin();
+        auto coef_it = rhs.coef.begin();
+        for (; var_it != rhs.vars.end(); ++var_it, ++coef_it)
+        {
+            auto [it, _] = result.insert({*var_it, Common_type{0}});
+            it->second += *coef_it * mult;
+        }
+    }
+    
     auto vars = std::views::keys(result);
     auto coef = std::views::values(result);
     return {
         .vars = std::vector<int>{vars.begin(), vars.end()},
-        .coef = std::vector<T>{coef.begin(), coef.end()},
+        .coef = std::vector<Common_type>{coef.begin(), coef.end()},
         .constant = lhs.constant - rhs.constant,
     };
 }
 
 // subtract 1 * variable from a linear polynomial
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_polynomial<T> operator-(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     return lhs + Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{-1}}, .constant = T{0}};
 }
 
 // subtract linear polynomial from 1 * variable
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_polynomial<T> operator-(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}} - rhs;
 }
 
 // create linear polynomial from a subtraction of two variables
-inline Linear_polynomial<double> operator-(Variable lhs, Variable rhs)
+inline Linear_polynomial<Linear_arithmetic::Value_type> operator-(Variable lhs, Variable rhs)
 {
     assert(lhs != rhs);
-    return {.vars = {lhs.ord(), rhs.ord()}, .coef = {1, -1}, .constant = 0.0};
+    return {.vars = {lhs.ord(), rhs.ord()}, .coef = {1, -1}, .constant = Linear_arithmetic::Value_type{0}};
 }
 
 // create linear polynomial from -1 * variable
-inline Linear_polynomial<double> operator-(Variable var)
+inline Linear_polynomial<Linear_arithmetic::Value_type> operator-(Variable var)
 {
     assert(var.type() == Variable::rational);
     return {
         .vars = {var.ord()},
         .coef = {-1},
-        .constant = 0
+        .constant = Linear_arithmetic::Value_type{0}
     };
 }
 
 // create a linear predicate `lhs <= rhs`
-template<typename L, typename R>
-    requires std::is_arithmetic_v<L> && std::is_arithmetic_v<R>
+template<Arithmetic L, Arithmetic R>
 inline Linear_predicate<std::common_type_t<L, R>> operator<=(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
 {
     using Result_type = Linear_polynomial<std::common_type_t<L, R>>;
@@ -203,8 +217,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator<=(Linear_polynomial<L
 }
 
 // create a linear predicate `lhs >= rhs`
-template<typename L, typename R>
-    requires std::is_arithmetic_v<L> && std::is_arithmetic_v<R>
+template<Arithmetic L, Arithmetic R>
 inline Linear_predicate<std::common_type_t<L, R>> operator>=(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
 {
     using Result_type = Linear_polynomial<std::common_type_t<L, R>>;
@@ -217,8 +230,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator>=(Linear_polynomial<L
 }
 
 // create a linear predicate `lhs < rhs`
-template<typename L, typename R>
-    requires std::is_arithmetic_v<L> && std::is_arithmetic_v<R>
+template<Arithmetic L, Arithmetic R>
 inline Linear_predicate<std::common_type_t<L, R>> operator<(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
 {
     using Result_type = Linear_polynomial<std::common_type_t<L, R>>;
@@ -231,8 +243,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator<(Linear_polynomial<L>
 }
 
 // create a linear predicate `lhs > rhs`
-template<typename L, typename R>
-    requires std::is_arithmetic_v<L> && std::is_arithmetic_v<R>
+template<Arithmetic L, Arithmetic R>
 inline Linear_predicate<std::common_type_t<L, R>> operator>(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
 {
     using Result_type = Linear_polynomial<std::common_type_t<L, R>>;
@@ -245,8 +256,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator>(Linear_polynomial<L>
 }
 
 // create a linear predicate `lhs = rhs`
-template<typename L, typename R>
-    requires std::is_arithmetic_v<L> && std::is_arithmetic_v<R>
+template<Arithmetic L, Arithmetic R>
 inline Linear_predicate<std::common_type_t<L, R>> operator==(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
 {
     using Result_type = Linear_polynomial<std::common_type_t<L, R>>;
@@ -259,8 +269,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator==(Linear_polynomial<L
 }
 
 // create a linear predicate `lhs != rhs`
-template<typename L, typename R>
-    requires std::is_arithmetic_v<L> && std::is_arithmetic_v<R>
+template<Arithmetic L, Arithmetic R>
 inline Linear_predicate<std::common_type_t<L, R>> operator!=(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
 {
     using Result_type = Linear_polynomial<std::common_type_t<L, R>>;
@@ -273,272 +282,247 @@ inline Linear_predicate<std::common_type_t<L, R>> operator!=(Linear_polynomial<L
 }
 
 // create a linear predicate `lhs <= rhs` if rhs is a constant
-template<typename T, typename R>
-    requires std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::is_convertible_v<R, T>
+template<Arithmetic T, Arithmetic R>
 inline Linear_predicate<T> operator<=(Linear_polynomial<T> const& lhs, R rhs)
 {
     return lhs <= Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
 }
 
 // create a linear predicate `lhs >= rhs` if rhs is a constant
-template<typename T, typename R>
-    requires std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::is_convertible_v<R, T>
+template<Arithmetic T, Arithmetic R>
+    requires std::is_convertible_v<R, T>
 inline Linear_predicate<T> operator>=(Linear_polynomial<T> const& lhs, R rhs)
 {
     return lhs >= Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
 }
 
 // create a linear predicate `lhs < rhs` if rhs is a constant
-template<typename T, typename R>
-    requires std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::is_convertible_v<R, T>
+template<Arithmetic T, Arithmetic R>
+    requires std::is_convertible_v<R, T>
 inline Linear_predicate<T> operator<(Linear_polynomial<T> const& lhs, R rhs)
 {
     return lhs < Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
 }
 
 // create a linear predicate `lhs > rhs` if rhs is a constant
-template<typename T, typename R>
-    requires std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::is_convertible_v<R, T>
+template<Arithmetic T, Arithmetic R>
+    requires std::is_convertible_v<R, T>
 inline Linear_predicate<T> operator>(Linear_polynomial<T> const& lhs, R rhs)
 {
     return lhs > Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
 }
 
 // create a linear predicate `lhs = rhs` if rhs is a constant
-template<typename T, typename R>
-    requires std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::is_convertible_v<R, T>
+template<Arithmetic T, Arithmetic R>
+    requires std::is_convertible_v<R, T>
 inline Linear_predicate<T> operator==(Linear_polynomial<T> const& lhs, R rhs)
 {
     return lhs == Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
 }
 
 // create a linear predicate `lhs != rhs` if rhs is a constant
-template<typename T, typename R>
-    requires std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::is_convertible_v<R, T>
+template<Arithmetic T, Arithmetic R>
+    requires std::is_convertible_v<R, T>
 inline Linear_predicate<T> operator!=(Linear_polynomial<T> const& lhs, R rhs)
 {
     return lhs != Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator<=(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return lhs <= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator<(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return lhs < Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator>(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return lhs > Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator>=(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return lhs >= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator==(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return lhs == Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator!=(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return lhs != Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator<=(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} <= rhs;
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator<(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} < rhs;
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator>=(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} >= rhs;
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator>(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} > rhs;
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator==(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} == rhs;
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator!=(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} != rhs;
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator<=(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} <= Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator>=(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} >= Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator<(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} < Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator>(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} > Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator==(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} == Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator<=(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} <= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator<(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} < Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator>(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} > Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator>=(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} >= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator==(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} == Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator!=(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} != Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
 }
 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline Linear_predicate<T> operator!=(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
     return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} != Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
 }
 
-inline Linear_predicate<double> operator<=(Variable lhs, Variable rhs)
+inline Linear_predicate<Linear_arithmetic::Value_type> operator<=(Variable lhs, Variable rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<double>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} <= Linear_polynomial<double>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
+    return Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} <= Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
 }
 
-inline Linear_predicate<double> operator<(Variable lhs, Variable rhs)
+inline Linear_predicate<Linear_arithmetic::Value_type> operator<(Variable lhs, Variable rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<double>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} < Linear_polynomial<double>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
+    return Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} < Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
 }
 
-inline Linear_predicate<double> operator>(Variable lhs, Variable rhs)
+inline Linear_predicate<Linear_arithmetic::Value_type> operator>(Variable lhs, Variable rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<double>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} > Linear_polynomial<double>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
+    return Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} > Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
 }
 
-inline Linear_predicate<double> operator>=(Variable lhs, Variable rhs)
+inline Linear_predicate<Linear_arithmetic::Value_type> operator>=(Variable lhs, Variable rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<double>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} >= Linear_polynomial<double>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
+    return Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} >= Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
 }
 
 // normalize the polynomial in a linear predicate by moving all non-constant terms on the right-hand-side to the left-hand-side
-template<typename T, typename R>
-    requires std::is_arithmetic_v<T> && std::is_arithmetic_v<R> && std::convertible_to<R, T>
+template<Arithmetic T, Arithmetic R>
+    requires std::convertible_to<R, T>
 inline std::vector<std::pair<int, T>> normalize(Linear_predicate<R> const& val)
 {
     std::vector<std::pair<int, T>> poly;
@@ -579,8 +563,7 @@ inline std::vector<std::pair<int, T>> normalize(Linear_predicate<R> const& val)
 }
 
 // create a factory functor for linear constraints 
-template<typename T>
-    requires std::is_arithmetic_v<T>
+template<Arithmetic T>
 inline auto factory(Linear_constraints<T>& repository)
 {
     return [rep_ptr = &repository]<std::convertible_to<T> R>(Linear_predicate<R> const& val)
