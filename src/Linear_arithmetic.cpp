@@ -270,7 +270,9 @@ std::optional<Clause> Linear_arithmetic::unit(Assigned_stack& assigned, Trail& t
     return {};
 }
 
-Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail, Constraint_type const& first, Constraint_type const& second)
+Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
+                                                                Constraint_type const& first,
+                                                                Constraint_type const& second)
 {
     assert(!first.empty());
     assert(!second.empty());
@@ -289,12 +291,12 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail, Co
         pred = Order_predicate::LT;
     }
 
-    // compute constants such that `poly(first) * first_mult + poly(second) * second_mult` 
+    // compute constants such that `poly(first) * first_mult + poly(second) * second_mult`
     // eliminates the first variable
     auto first_mult = first.coef().front() < Value_type{0} ? Value_type{1} : Value_type{-1};
-    auto second_mult = std::abs(first.coef().front()) / second.coef().front();
+    auto second_mult = -first_mult * first.coef().front() / second.coef().front();
 
-    // compute `poly(first) * first_mult + poly(second) * second_mult` 
+    // compute `poly(first) * first_mult + poly(second) * second_mult`
     auto rhs = first.rhs() * first_mult + second.rhs() * second_mult;
     std::unordered_map<int, Value_type> prod;
     for (auto [cons_ptr, mult] : {std::pair{&first, first_mult}, std::pair{&second, second_mult}})
@@ -335,7 +337,8 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
     return Clause{lb.reason().lit().negate(), ub.reason().lit().negate(), cons.lit()};
 }
 
-std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail, Models_type& models,
+std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
+                                                                   Models_type& models,
                                                                    Bounds<Value_type>& bounds)
 {
     // check if `L <= x && x <= U` and `L = U`
@@ -359,8 +362,8 @@ std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
     propagate(trail, models, lb_d);
     propagate(trail, models, d_ub);
 
-    return Clause{lb.reason().lit().negate(), ub.reason().lit().negate(), 
-                  inequality.value().reason().lit().negate(), lb_d.lit(), d_ub.lit()}; 
+    return Clause{lb.reason().lit().negate(), ub.reason().lit().negate(),
+                  inequality.value().reason().lit().negate(), lb_d.lit(), d_ub.lit()};
 }
 
 void Linear_arithmetic::propagate(Trail& trail, Models_type& models, Constraint_type const& cons)
@@ -384,8 +387,10 @@ void Linear_arithmetic::propagate(Trail& trail, Models_type& models, Constraint_
 
 bool Linear_arithmetic::is_new(Models_type const& models, Variable var) const
 {
-    return (var.type() == Variable::boolean && var.ord() >= static_cast<int>(models.boolean().num_vars())) ||
-           (var.type() == Variable::rational && var.ord() >= static_cast<int>(models.owned().num_vars()));
+    return (var.type() == Variable::boolean &&
+            var.ord() >= static_cast<int>(models.boolean().num_vars())) ||
+           (var.type() == Variable::rational &&
+            var.ord() >= static_cast<int>(models.owned().num_vars()));
 }
 
 void Linear_arithmetic::add_variable(Trail& trail, Models_type const& models, Variable var)
@@ -451,7 +456,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
             {
                 break;
             }
-            
+
             value = static_cast<Value_type>(-int_value);
             if (left <= value && value <= right && bnds.is_allowed(models, value))
             {

@@ -72,4 +72,4 @@ void Theory_combination::on_restart(Database& db, Trail& trail)
     }
 }
 
-}
+} // namespace perun

@@ -12,8 +12,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "Literal.h"
 #include "Linear_constraint.h"
+#include "Literal.h"
 #include "Model.h"
 #include "Variable.h"
 
@@ -31,7 +31,7 @@ public:
 
     /** Create a new linear constraint.
      *
-     * The constraint is normalized. The returned constraint might represent negation of some 
+     * The constraint is normalized. The returned constraint might represent negation of some
      * preexisting constraint in which case, literal of the returned constraint will be negated.
      *
      * @param var_range ordinal numbers of variables in the constraint

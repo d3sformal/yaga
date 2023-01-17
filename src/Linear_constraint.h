@@ -107,7 +107,10 @@ public:
 
     /** Create an empty linear constraint
      */
-    inline Linear_constraint() : position({0, 0}), predicate(Order_predicate::EQ), constant(0), constraints(nullptr) {}
+    inline Linear_constraint()
+        : position({0, 0}), predicate(Order_predicate::EQ), constant(0), constraints(nullptr)
+    {
+    }
 
     /** Create a new linear constraint
      *
@@ -342,8 +345,7 @@ private:
  */
 template <typename Value> class Linear_constraint_equal {
 public:
-    bool operator()(Linear_constraint<Value> const& lhs,
-                    Linear_constraint<Value> const& rhs) const
+    bool operator()(Linear_constraint<Value> const& lhs, Linear_constraint<Value> const& rhs) const
     {
         if (lhs.size() != rhs.size() || lhs.pred() != rhs.pred() || lhs.rhs() != rhs.rhs())
         {
@@ -375,6 +377,6 @@ public:
     }
 };
 
-}
+} // namespace perun
 
 #endif // PERUN_LINEAR_CONSTRAINT_H

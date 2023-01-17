@@ -43,11 +43,12 @@ public:
     void on_learned_clause(Database& db, Trail& trail, Clause const& learned) override;
 
     /** Allocates memory for @p num_vars watch lists if @p type is boolean
-     * 
+     *
      * @param type variable type
      * @param num_vars new number of variables of type @p type
      */
     void on_variable_resize(Variable::Type, int) override;
+
 private:
     // we move the watched literals to the first two position in each clause
     struct Watched_clause {

@@ -35,7 +35,7 @@ public:
     inline void clear() { defined.assign(defined.size(), false); }
 
     /** Get timestamp of a variable -- logical time when @p ord was assigned its most recent value
-     * 
+     *
      * @param ord ordinal number of a variable
      * @return current timestamp of the value of variable @p ord
      */

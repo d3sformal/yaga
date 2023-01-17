@@ -17,4 +17,4 @@ std::optional<Variable> First_unassigned::pick(Database&, Trail& trail)
     return {};
 }
 
-}
+} // namespace perun

@@ -63,7 +63,11 @@ public:
 
     inline Implied_value(Value val) : val(val), timestamp(-1) {}
 
-    inline Implied_value(Value val, Constraint_type cons, Models_type const& models) : val(val), cons(cons), timestamp(cons.size() >= 2 ? models.owned().timestamp(*++cons.vars().begin()) : -1) {}
+    inline Implied_value(Value val, Constraint_type cons, Models_type const& models)
+        : val(val), cons(cons),
+          timestamp(cons.size() >= 2 ? models.owned().timestamp(*++cons.vars().begin()) : -1)
+    {
+    }
 
     /** Get the implied value
      *
@@ -78,11 +82,11 @@ public:
     inline Constraint_type reason() const { return cons; }
 
     /** Check whether this value is obsolete.
-     * 
-     * Value becomes obsolete if `reason()` is no longer on the trail, it is no longer a unit 
-     * constraint, or variables in `reason()` are assigned to different values than when this 
+     *
+     * Value becomes obsolete if `reason()` is no longer on the trail, it is no longer a unit
+     * constraint, or variables in `reason()` are assigned to different values than when this
      * object was created.
-     * 
+     *
      * @param models partial assignment of variables
      * @return true iff `value()` is no longer a valid implied value from `reason()`
      */
@@ -104,7 +108,8 @@ public:
             return false; // unit constraint
         }
 
-        return !models.owned().is_defined(*next_var_it) || models.owned().timestamp(*next_var_it) != timestamp;
+        return !models.owned().is_defined(*next_var_it) ||
+               models.owned().timestamp(*next_var_it) != timestamp;
     }
 
 private:
@@ -169,7 +174,7 @@ public:
     }
 
     /** Check whether there is an inequality of type `x != value`
-     * 
+     *
      * @param models partial assignment of variables
      * @param value checked value
      * @return implied inequality or none, if there is none.
@@ -232,7 +237,7 @@ public:
     }
 
     /** Check whether @p value satisfies currently implied lower bound
-     * 
+     *
      * @param models partial assignment of variables
      * @param value checked value
      * @return true if @p value is > `lower_bound()` and the bound is strict
@@ -245,7 +250,7 @@ public:
     }
 
     /** Check whether @p value satisfies currently implied uppper bound
-     * 
+     *
      * @param models partial assignment of variables
      * @param value checked value
      * @return true if @p value is < `upper_bound()` and the bound is strict
@@ -257,15 +262,18 @@ public:
         return value < ub.value() || (ub.value() == value && !ub.reason().is_strict());
     }
 
-    /** Check whether @p value is between currently implied lower and upper bound and there is no inequality that would disallow @p value
-     * 
+    /** Check whether @p value is between currently implied lower and upper bound and there is no
+     * inequality that would disallow @p value
+     *
      * @param models partial assignment of variables
      * @param value checked value
-     * @return true iff @p value is between `lower_bound()` and `upper_bound()` and there is no inequality that would prohibit @p value
+     * @return true iff @p value is between `lower_bound()` and `upper_bound()` and there is no
+     * inequality that would prohibit @p value
      */
     inline bool is_allowed(Models_type const& models, Value_type value)
     {
-        return !inequality(models, value) && check_lower_bound(models, value) && check_upper_bound(models, value);
+        return !inequality(models, value) && check_lower_bound(models, value) &&
+               check_upper_bound(models, value);
     }
 
 private:
