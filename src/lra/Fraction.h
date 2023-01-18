@@ -397,8 +397,10 @@ template <typename L, typename R>
     requires std::is_integral_v<L> && std::is_integral_v<R>
 inline Fraction<std::common_type_t<L, R>> operator+(Fraction<L> lhs, Fraction<R> rhs)
 {
-    return {lhs.numerator() * rhs.denominator() + rhs.numerator() * lhs.denominator(),
-            lhs.denominator() * rhs.denominator()};
+    auto lcm = std::lcm(lhs.denominator(), rhs.denominator());
+    auto lhs_mult = lcm / lhs.denominator();
+    auto rhs_mult = lcm / rhs.denominator();
+    return {lhs.numerator() * lhs_mult + rhs.numerator() * rhs_mult, lcm};
 }
 
 /** Subtract two fractions

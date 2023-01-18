@@ -23,6 +23,7 @@ TEST_CASE("Arithmetic operations with fractions", "[fraction]")
         REQUIRE(1_r / 4 + 1_r / 6 == 5_r / 12);
         REQUIRE(1_r / 4 + 2 == 9_r / 4);
         REQUIRE(2 + 1_r / 4 == 9_r / 4);
+        REQUIRE(1_r / 1073741824 + 1_r / 2 == 536870913_r / 1073741824);
     }
 
     SECTION("Subtract fractions")
@@ -30,6 +31,7 @@ TEST_CASE("Arithmetic operations with fractions", "[fraction]")
         REQUIRE(1_r / 4 - 1_r / 6 == 1_r / 12);
         REQUIRE(1_r / 4 - 2 == -7_r / 4);
         REQUIRE(2 - 1_r / 4 == 7_r / 4);
+        REQUIRE(1_r / 1073741824 - 1_r / 2 == -536870911_r / 1073741824);
     }
 
     SECTION("Multiply fractions")
