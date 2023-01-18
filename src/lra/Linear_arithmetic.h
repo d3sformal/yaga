@@ -59,8 +59,6 @@ public:
 
     /** Create a constraint or return an existing object that represents the same constraint.
      *
-     * Precondition: the frist two variables in @p vars are unassigned.
-     *
      * @tparam Var_range range of LRA variable numbers (ints)
      * @tparam Coef_range range of coefficients (Value_types)
      * @param trail current solver trail
