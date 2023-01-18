@@ -71,6 +71,27 @@ TEST_CASE("Create complicated predicates", "[test_expr]")
     }
 }
 
+TEST_CASE("Combine coefficients of variables", "[test_expr]")
+{
+    using namespace perun;
+    using namespace perun::test;
+    using namespace perun::literals;
+
+    using Value_type = Fraction<int>;
+
+    Linear_constraints<Value_type> repo;
+    auto make = factory(repo);
+    auto [x, y, z, w] = real_vars<4>();
+
+    auto cons = make(x + 2 * y + 3 * x + y + w <= x + y + z);
+
+    REQUIRE(std::ranges::equal(cons.vars(), std::vector<int>{x.ord(), y.ord(), z.ord(), w.ord()}));
+    REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1, 2_r / 3, -1_r / 3, 1_r / 3}));
+    REQUIRE(cons.pred() == Order_predicate::leq);
+    REQUIRE(cons.rhs() == 0);
+    REQUIRE(!cons.lit().is_negation());
+}
+
 TEST_CASE("Create normalized constraints", "[linear_constraints]")
 {
     using namespace perun;
@@ -110,20 +131,22 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
     auto make = factory(repo);
     auto [x, y] = real_vars<2>();
 
-    auto cons = make(-4 * x + 2 * y <= 8);
-    // coefficient of the lowest variable is 1 after normalization
-    REQUIRE(std::ranges::equal(cons.vars(), std::vector{x.ord(), y.ord()}));
-    REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1,     -1_r / 2}));
-    REQUIRE(cons.rhs() == -2);
-    REQUIRE(cons.pred() == Order_predicate::lt);
-    REQUIRE(cons.lit() == Literal{0}.negate());
+    SECTION("coefficient of the lowest variable is 1 after normalization")
+    {
+        auto cons = make(2 * y - 4 * x <= 8);
+        REQUIRE(std::ranges::equal(cons.vars(), std::vector{x.ord(), y.ord()}));
+        REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1, -1_r / 2}));
+        REQUIRE(cons.rhs() == -2);
+        REQUIRE(cons.pred() == Order_predicate::lt);
+        REQUIRE(cons.lit() == Literal{0}.negate());
 
-    auto cons2 = make(2 * x - y < -4);
-    REQUIRE(cons.lit() == cons2.lit().negate());
-    REQUIRE(std::ranges::equal(cons.vars(), cons2.vars()));
-    REQUIRE(std::ranges::equal(cons.vars(), cons2.vars()));
-    REQUIRE(cons.rhs() == cons2.rhs());
-    REQUIRE(cons.pred() == cons2.pred());
+        auto cons2 = make(-y + 2 * x < -4);
+        REQUIRE(cons.lit() == cons2.lit().negate());
+        REQUIRE(std::ranges::equal(cons.vars(), cons2.vars()));
+        REQUIRE(std::ranges::equal(cons.vars(), cons2.vars()));
+        REQUIRE(cons.rhs() == cons2.rhs());
+        REQUIRE(cons.pred() == cons2.pred());
+    }
 }
 
 TEST_CASE("Constraints with different right-hand-side are different", "[linear_constraints]")

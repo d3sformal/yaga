@@ -4,6 +4,7 @@
 #include <concepts>
 #include <type_traits>
 #include <unordered_map>
+#include <map>
 #include <ranges>
 
 #include "Clause.h"
@@ -52,151 +53,144 @@ struct Linear_predicate {
     bool is_negation;
 };
 
-// conversion
-// create a linear polynomial from a constant multiple of a variable
+// create linear polynomial from a variable
+inline Linear_polynomial<Linear_arithmetic::Value_type> poly(Variable var)
+{
+    assert(var.type() == Variable::rational);
+    return {
+        .vars = {var.ord()},
+        .coef = {Linear_arithmetic::Value_type{1}},
+        .constant = Linear_arithmetic::Value_type{0}
+    };
+}
+
+// create linear polynomial from a constant
 template<Arithmetic T>
-inline Linear_polynomial<T> operator*(T value, Variable var)
+inline Linear_polynomial<T> poly(T value)
 {
     return {
-        .vars = {var.ord()}, 
-        .coef = {value},
-        .constant = T{0},
+        .vars = std::vector<int>{},
+        .coef = std::vector<T>{},
+        .constant = value
+    };
+}
+
+// combine two linear polynomials using a binary operator to combine coefficients of variables
+template<Arithmetic L, Arithmetic R, typename Bin_op>
+inline Linear_polynomial<std::common_type_t<L, R>> 
+combine(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs, Bin_op&& op)
+{
+    using Common_type = std::common_type_t<L, R>;
+
+    std::map<int, Common_type> values;
+    // add lhs
+    {
+        auto var_it = lhs.vars.begin();
+        auto coef_it = lhs.coef.begin();
+        for (; var_it != lhs.vars.end(); ++var_it, ++coef_it)
+        {
+            values.insert({*var_it, static_cast<Common_type>(*coef_it)});
+        }
+    }
+    // add rhs
+    {
+        auto var_it = rhs.vars.begin();
+        auto coef_it = rhs.coef.begin();
+        for (; var_it != rhs.vars.end(); ++var_it, ++coef_it)
+        {
+            auto [it, _] = values.insert({*var_it, Common_type{0}});
+            it->second = op(it->second, static_cast<Common_type>(*coef_it));
+        }
+    }
+
+    auto vars = std::views::keys(values);
+    auto coef = std::views::values(values);
+    return {
+        .vars = std::vector<int>{vars.begin(), vars.end()},
+        .coef = std::vector<Common_type>{coef.begin(), coef.end()},
+        .constant = op(static_cast<Common_type>(lhs.constant), static_cast<Common_type>(rhs.constant)),
     };
 }
 
 // create a linear polynomial from a constant multiple of a variable
 template<Arithmetic T>
-inline Linear_polynomial<T> operator*(Variable var, T value)
+inline Linear_polynomial<Linear_arithmetic::Value_type> operator*(T value, Variable var)
+{
+    return {
+        .vars = {var.ord()},
+        .coef = {value},
+        .constant = Linear_arithmetic::Value_type{0},
+    };
+}
+
+// create a linear polynomial from a constant multiple of a variable
+template<Arithmetic T>
+inline auto operator*(Variable var, T value)
 {
     assert(var.type() == Variable::rational);
     return value * var;
 }
 
 // add linear polynomials
-template<Arithmetic T>
-inline Linear_polynomial<T> operator+(Linear_polynomial<T> const& lhs, Linear_polynomial<T> const& rhs)
+template<Arithmetic L, Arithmetic R>
+inline auto operator+(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
 {
-    std::unordered_map<int, T> result;
-    for (auto poly_ptr : {&lhs, &rhs})
-    {
-        auto var_it = poly_ptr->vars.begin();
-        auto coef_it = poly_ptr->coef.begin();
-        for (; var_it != poly_ptr->vars.end(); ++var_it, ++coef_it)
-        {
-            auto [it, _] = result.insert({*var_it, T{0}});
-            it->second += *coef_it;
-        }
-    }
-
-    auto vars = std::views::keys(result);
-    auto coef = std::views::values(result);
-    return {
-        .vars = std::vector<int>{vars.begin(), vars.end()},
-        .coef = std::vector<T>{coef.begin(), coef.end()},
-        .constant = lhs.constant + rhs.constant,
-    };
+    return combine(lhs, rhs, [](auto l, auto r) { return l + r; });
 }
 
 // add a 1 * variable to a linear polynomial 
 template<Arithmetic T>
-inline Linear_polynomial<T> operator+(Linear_polynomial<T> const& lhs, Variable rhs)
+inline auto operator+(Linear_polynomial<T> const& lhs, Variable rhs)
 {
-    assert(rhs.type() == Variable::rational);
-    auto res = lhs;
-    auto it = std::find(res.vars.begin(), res.vars.end(), rhs.ord());
-    if (it == res.vars.end())
-    {
-        res.vars.push_back(rhs.ord());
-        res.coef.push_back(T{1});
-        return res;
-    }
-    auto coef_it = res.coef.begin() + std::distance(res.vars.begin(), it);
-    *coef_it = *coef_it + 1;
-    
-    return res;
+    return lhs + poly(rhs);
 }
 
 // add a 1 * variable to a linear polynomial 
 template<Arithmetic T>
-inline Linear_polynomial<T> operator+(Variable lhs, Linear_polynomial<T> const& rhs)
+inline auto operator+(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     return rhs + lhs;
 }
 
 // create linear polynomial from addition of two variables
-inline Linear_polynomial<Linear_arithmetic::Value_type> operator+(Variable lhs, Variable rhs)
+inline auto operator+(Variable lhs, Variable rhs)
 {
-    return {
-        .vars = {lhs.ord(), rhs.ord()},
-        .coef = {Linear_arithmetic::Value_type{1}, Linear_arithmetic::Value_type{1}},
-        .constant = Linear_arithmetic::Value_type{0},
-    };
+    return poly(lhs) + poly(rhs);
 }
 
-// subtract two linear polynomials
+// subtract linear polynomials
 template<Arithmetic L, Arithmetic R>
-inline Linear_polynomial<std::common_type_t<L, R>> operator-(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
+inline auto operator-(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs)
 {
-    using Common_type = std::common_type_t<L, R>;
-
-    std::unordered_map<int, Common_type> result;
-    {
-        Common_type mult{1};
-        auto var_it = lhs.vars.begin();
-        auto coef_it = lhs.coef.begin();
-        for (; var_it != lhs.vars.end(); ++var_it, ++coef_it)
-        {
-            auto [it, _] = result.insert({*var_it, Common_type{0}});
-            it->second += *coef_it * mult;
-        }
-    }
-
-    {
-        Common_type mult{-1};
-        auto var_it = rhs.vars.begin();
-        auto coef_it = rhs.coef.begin();
-        for (; var_it != rhs.vars.end(); ++var_it, ++coef_it)
-        {
-            auto [it, _] = result.insert({*var_it, Common_type{0}});
-            it->second += *coef_it * mult;
-        }
-    }
-    
-    auto vars = std::views::keys(result);
-    auto coef = std::views::values(result);
-    return {
-        .vars = std::vector<int>{vars.begin(), vars.end()},
-        .coef = std::vector<Common_type>{coef.begin(), coef.end()},
-        .constant = lhs.constant - rhs.constant,
-    };
+    return combine(lhs, rhs, [](auto l, auto r) { return l - r; });
 }
 
 // subtract 1 * variable from a linear polynomial
 template<Arithmetic T>
-inline Linear_polynomial<T> operator-(Linear_polynomial<T> const& lhs, Variable rhs)
+inline auto operator-(Linear_polynomial<T> const& lhs, Variable rhs)
 {
-    return lhs + Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{-1}}, .constant = T{0}};
+    return lhs + poly(rhs);
 }
 
 // subtract linear polynomial from 1 * variable
 template<Arithmetic T>
-inline Linear_polynomial<T> operator-(Variable lhs, Linear_polynomial<T> const& rhs)
+inline auto operator-(Variable lhs, Linear_polynomial<T> const& rhs)
 {
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}} - rhs;
+    return poly(lhs) - rhs;
 }
 
 // create linear polynomial from a subtraction of two variables
-inline Linear_polynomial<Linear_arithmetic::Value_type> operator-(Variable lhs, Variable rhs)
+inline auto operator-(Variable lhs, Variable rhs)
 {
     assert(lhs != rhs);
-    return {.vars = {lhs.ord(), rhs.ord()}, .coef = {1, -1}, .constant = Linear_arithmetic::Value_type{0}};
+    return poly(lhs) - poly(rhs);
 }
 
 // create linear polynomial from -1 * variable
-inline Linear_polynomial<Linear_arithmetic::Value_type> operator-(Variable var)
+inline auto operator-(Variable var)
 {
     assert(var.type() == Variable::rational);
-    return {
+    return Linear_polynomial<Linear_arithmetic::Value_type>{
         .vars = {var.ord()},
         .coef = {-1},
         .constant = Linear_arithmetic::Value_type{0}
@@ -283,283 +277,241 @@ inline Linear_predicate<std::common_type_t<L, R>> operator!=(Linear_polynomial<L
 
 // create a linear predicate `lhs <= rhs` if rhs is a constant
 template<Arithmetic T, Arithmetic R>
-inline Linear_predicate<T> operator<=(Linear_polynomial<T> const& lhs, R rhs)
+inline auto operator<=(Linear_polynomial<T> const& lhs, R rhs)
 {
-    return lhs <= Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
+    return lhs <= poly(rhs);
 }
 
 // create a linear predicate `lhs >= rhs` if rhs is a constant
 template<Arithmetic T, Arithmetic R>
     requires std::is_convertible_v<R, T>
-inline Linear_predicate<T> operator>=(Linear_polynomial<T> const& lhs, R rhs)
+inline auto operator>=(Linear_polynomial<T> const& lhs, R rhs)
 {
-    return lhs >= Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
+    return lhs >= poly(rhs);
 }
 
 // create a linear predicate `lhs < rhs` if rhs is a constant
 template<Arithmetic T, Arithmetic R>
     requires std::is_convertible_v<R, T>
-inline Linear_predicate<T> operator<(Linear_polynomial<T> const& lhs, R rhs)
+inline auto operator<(Linear_polynomial<T> const& lhs, R rhs)
 {
-    return lhs < Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
+    return lhs < poly(rhs);
 }
 
 // create a linear predicate `lhs > rhs` if rhs is a constant
 template<Arithmetic T, Arithmetic R>
     requires std::is_convertible_v<R, T>
-inline Linear_predicate<T> operator>(Linear_polynomial<T> const& lhs, R rhs)
+inline auto operator>(Linear_polynomial<T> const& lhs, R rhs)
 {
-    return lhs > Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
+    return lhs > poly(rhs);
 }
 
 // create a linear predicate `lhs = rhs` if rhs is a constant
 template<Arithmetic T, Arithmetic R>
     requires std::is_convertible_v<R, T>
-inline Linear_predicate<T> operator==(Linear_polynomial<T> const& lhs, R rhs)
+inline auto operator==(Linear_polynomial<T> const& lhs, R rhs)
 {
-    return lhs == Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
+    return lhs == poly(rhs);
 }
 
 // create a linear predicate `lhs != rhs` if rhs is a constant
 template<Arithmetic T, Arithmetic R>
     requires std::is_convertible_v<R, T>
-inline Linear_predicate<T> operator!=(Linear_polynomial<T> const& lhs, R rhs)
+inline auto operator!=(Linear_polynomial<T> const& lhs, R rhs)
 {
-    return lhs != Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = static_cast<T>(rhs)};
+    return lhs != poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator<=(Linear_polynomial<T> const& lhs, Variable rhs)
+inline auto operator<=(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return lhs <= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
+    return lhs <= poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator<(Linear_polynomial<T> const& lhs, Variable rhs)
+inline auto operator<(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return lhs < Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
+    return lhs < poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator>(Linear_polynomial<T> const& lhs, Variable rhs)
+inline auto operator>(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return lhs > Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
+    return lhs > poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator>=(Linear_polynomial<T> const& lhs, Variable rhs)
+inline auto operator>=(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return lhs >= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
+    return lhs >= poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator==(Linear_polynomial<T> const& lhs, Variable rhs)
+inline auto operator==(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return lhs == Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
+    return lhs == poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator!=(Linear_polynomial<T> const& lhs, Variable rhs)
+inline auto operator!=(Linear_polynomial<T> const& lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return lhs != Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {1}, .constant = T{0}};
+    return lhs != poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator<=(Variable lhs, Linear_polynomial<T> const& rhs)
+inline auto operator<=(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} <= rhs;
+    return poly(lhs) <= rhs;
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator<(Variable lhs, Linear_polynomial<T> const& rhs)
+inline auto operator<(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} < rhs;
+    return poly(lhs) < rhs;
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator>=(Variable lhs, Linear_polynomial<T> const& rhs)
+inline auto operator>=(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} >= rhs;
+    return poly(lhs) >= rhs;
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator>(Variable lhs, Linear_polynomial<T> const& rhs)
+inline auto operator>(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} > rhs;
+    return poly(lhs) > rhs;
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator==(Variable lhs, Linear_polynomial<T> const& rhs)
+inline auto operator==(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} == rhs;
+    return poly(lhs) == rhs;
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator!=(Variable lhs, Linear_polynomial<T> const& rhs)
+inline auto operator!=(Variable lhs, Linear_polynomial<T> const& rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {1}, .constant = T{0}} != rhs;
+    return poly(lhs) != rhs;
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator<=(Variable lhs, T rhs)
+inline auto operator<=(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} <= Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
+    return poly(lhs) <= poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator>=(Variable lhs, T rhs)
+inline auto operator>=(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} >= Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
+    return poly(lhs) >= poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator<(Variable lhs, T rhs)
+inline auto operator<(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} < Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
+    return poly(lhs) < poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator>(Variable lhs, T rhs)
+inline auto operator>(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} > Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
+    return poly(lhs) > poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator==(Variable lhs, T rhs)
+inline auto operator==(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} == Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
+    return poly(lhs) == poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator<=(T lhs, Variable rhs)
+inline auto operator<=(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} <= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+    return poly(lhs) <= poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator<(T lhs, Variable rhs)
+inline auto operator<(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} < Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+    return poly(lhs) < poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator>(T lhs, Variable rhs)
+inline auto operator>(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} > Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+    return poly(lhs) > poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator>=(T lhs, Variable rhs)
+inline auto operator>=(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} >= Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+    return poly(lhs) >= poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator==(T lhs, Variable rhs)
+inline auto operator==(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} == Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+    return poly(lhs) == poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator!=(T lhs, Variable rhs)
+inline auto operator!=(T lhs, Variable rhs)
 {
     assert(rhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = lhs} != Linear_polynomial<T>{.vars = {rhs.ord()}, .coef = {T{1}}, .constant = T{0}};
+    return poly(lhs) != poly(rhs);
 }
 
 template<Arithmetic T>
-inline Linear_predicate<T> operator!=(Variable lhs, T rhs)
+inline auto operator!=(Variable lhs, T rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<T>{.vars = {lhs.ord()}, .coef = {T{1}}, .constant = T{0}} != Linear_polynomial<T>{.vars = {}, .coef = {}, .constant = rhs};
+    return poly(lhs) != poly(rhs);
 }
 
-inline Linear_predicate<Linear_arithmetic::Value_type> operator<=(Variable lhs, Variable rhs)
+inline auto operator<=(Variable lhs, Variable rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} <= Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
+    return poly(lhs) <= poly(rhs);
 }
 
-inline Linear_predicate<Linear_arithmetic::Value_type> operator<(Variable lhs, Variable rhs)
+inline auto operator<(Variable lhs, Variable rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} < Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
+    return poly(lhs) < poly(rhs);
 }
 
-inline Linear_predicate<Linear_arithmetic::Value_type> operator>(Variable lhs, Variable rhs)
+inline auto operator>(Variable lhs, Variable rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} > Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
+    return poly(lhs) > poly(rhs);
 }
 
-inline Linear_predicate<Linear_arithmetic::Value_type> operator>=(Variable lhs, Variable rhs)
+inline auto operator>=(Variable lhs, Variable rhs)
 {
     assert(lhs.type() == Variable::rational);
-    return Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {lhs.ord()}, .coef = {1}, .constant = 0} >= Linear_polynomial<Linear_arithmetic::Value_type>{.vars = {rhs.ord()}, .coef = {1}, .constant = 0};
-}
-
-// normalize the polynomial in a linear predicate by moving all non-constant terms on the right-hand-side to the left-hand-side
-template<Arithmetic T, Arithmetic R>
-    requires std::convertible_to<R, T>
-inline std::vector<std::pair<int, T>> normalize(Linear_predicate<R> const& val)
-{
-    std::vector<std::pair<int, T>> poly;
-
-    // add all variables and coefficients
-    T mult{1};
-    for (auto poly_ptr : {&val.lhs, &val.rhs})
-    {
-        auto var_it = poly_ptr->vars.begin();
-        auto coef_it = poly_ptr->coef.begin();
-        for (; var_it != poly_ptr->vars.end(); ++var_it, ++coef_it)
-        {
-            poly.push_back({*var_it, static_cast<T>(*coef_it) * mult});
-        }
-        mult = T{-1};
-    }
-
-    // combine coefficients of variables
-    std::sort(poly.begin(), poly.end());
-    if (poly.size() > 1)
-    {
-        auto out_it = poly.begin();
-        for (auto next = poly.begin(), it = next++; next != poly.end(); ++next, ++it)
-        {
-            if (next->first != it->first)
-            {
-                *out_it++ = *it;
-            }
-            else
-            {
-                next->second += it->second;
-            }
-        }
-        *out_it++ = poly.back();
-        poly.erase(out_it, poly.end());
-    }
-    return poly;
+    return poly(lhs) >= poly(rhs);
 }
 
 // create a factory functor for linear constraints 
@@ -569,8 +521,8 @@ inline auto factory(Linear_constraints<T>& repository)
     return [rep_ptr = &repository]<std::convertible_to<T> R>(Linear_predicate<R> const& val)
     {
         // move right-hand-side to left-hand-side
-        auto poly = normalize<T>(val);
-        auto cons = rep_ptr->make(std::views::keys(poly), std::views::values(poly), val.pred, val.rhs.constant - val.lhs.constant);
+        auto poly = val.lhs - val.rhs;
+        auto cons = rep_ptr->make(poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
         return val.is_negation ? cons.negate() : cons;
     };
 }
@@ -581,8 +533,8 @@ inline auto factory(Linear_arithmetic& plugin, Trail& trail)
     return [plugin_ptr = &plugin, trail_ptr = &trail]<std::convertible_to<Linear_arithmetic::Value_type> T>(Linear_predicate<T> const& val) 
     {
         // move right-hand-side to left-hand-side
-        auto poly = normalize<T>(val);
-        auto cons = plugin_ptr->constraint(*trail_ptr, std::views::keys(poly), std::views::values(poly), val.pred, val.rhs.constant - val.lhs.constant);
+        auto poly = val.lhs - val.rhs;
+        auto cons = plugin_ptr->constraint(*trail_ptr, poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
         return val.is_negation ? cons.negate() : cons;
     };
 }
