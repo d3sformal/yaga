@@ -211,7 +211,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator<=(Linear_polynomial<L
     return {
         .lhs = static_cast<Result_type>(lhs),
         .rhs = static_cast<Result_type>(rhs),
-        .pred = Order_predicate::LEQ,
+        .pred = Order_predicate::leq,
         .is_negation = false,
     };
 }
@@ -224,7 +224,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator>=(Linear_polynomial<L
     return {
         .lhs = static_cast<Result_type>(lhs),
         .rhs = static_cast<Result_type>(rhs),
-        .pred = Order_predicate::LT,
+        .pred = Order_predicate::lt,
         .is_negation = true,
     };
 }
@@ -237,7 +237,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator<(Linear_polynomial<L>
     return {
         .lhs = static_cast<Result_type>(lhs),
         .rhs = static_cast<Result_type>(rhs),
-        .pred = Order_predicate::LT,
+        .pred = Order_predicate::lt,
         .is_negation = false,
     };
 }
@@ -250,7 +250,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator>(Linear_polynomial<L>
     return {
         .lhs = static_cast<Result_type>(lhs),
         .rhs = static_cast<Result_type>(rhs),
-        .pred = Order_predicate::LEQ,
+        .pred = Order_predicate::leq,
         .is_negation = true,
     };
 }
@@ -263,7 +263,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator==(Linear_polynomial<L
     return {
         .lhs = static_cast<Result_type>(lhs),
         .rhs = static_cast<Result_type>(rhs),
-        .pred = Order_predicate::EQ,
+        .pred = Order_predicate::eq,
         .is_negation = false,
     };
 }
@@ -276,7 +276,7 @@ inline Linear_predicate<std::common_type_t<L, R>> operator!=(Linear_polynomial<L
     return {
         .lhs = static_cast<Result_type>(lhs),
         .rhs = static_cast<Result_type>(rhs),
-        .pred = Order_predicate::EQ,
+        .pred = Order_predicate::eq,
         .is_negation = true,
     };
 }

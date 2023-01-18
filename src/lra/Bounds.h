@@ -202,7 +202,7 @@ public:
      */
     inline void add_inequality(Implied_value_type value)
     {
-        assert(value.reason().pred() == Order_predicate::EQ && value.reason().lit().is_negation());
+        assert(value.reason().pred() == Order_predicate::eq && value.reason().lit().is_negation());
         disallowed.push_back(value);
     }
 

@@ -16,12 +16,12 @@ TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
     auto [x, y, z] = real_vars<3>();
 
     auto constraints = std::array{
-        std::tuple{make(x < 1), Order_predicate::LT, false},
-        std::tuple{make(x <= 1), Order_predicate::LEQ, false},
-        std::tuple{make(x == 1), Order_predicate::EQ, false},
-        std::tuple{make(x > 1), Order_predicate::LEQ, true},
-        std::tuple{make(x >= 1), Order_predicate::LT, true},
-        std::tuple{make(x != 1), Order_predicate::EQ, true},
+        std::tuple{make(x < 1), Order_predicate::lt, false},
+        std::tuple{make(x <= 1), Order_predicate::leq, false},
+        std::tuple{make(x == 1), Order_predicate::eq, false},
+        std::tuple{make(x > 1), Order_predicate::leq, true},
+        std::tuple{make(x >= 1), Order_predicate::lt, true},
+        std::tuple{make(x != 1), Order_predicate::eq, true},
     };
 
     for (auto [cons, exp_pred, exp_polarity] : constraints)
@@ -36,7 +36,7 @@ TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
     auto cons = make(2 * x < 4);
     REQUIRE(std::ranges::equal(cons.vars(), std::vector<int>{x.ord()}));
     REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1})); // normalized by Linear_constraints
-    REQUIRE(cons.pred() == Order_predicate::LT);
+    REQUIRE(cons.pred() == Order_predicate::lt);
     REQUIRE(cons.rhs() == 2);
     REQUIRE(!cons.lit().is_negation());
 }
@@ -53,12 +53,12 @@ TEST_CASE("Create complicated predicates", "[test_expr]")
     auto [x, y, z] = real_vars<3>();
 
     auto constraints = std::array{
-        std::tuple{make(2 * x + 5 * y + 8 * z < x + y), Order_predicate::LT, false},
-        std::tuple{make(2 * x + 5 * y + 8 * z <= x + y), Order_predicate::LEQ, false},
-        std::tuple{make(2 * x + 5 * y + 8 * z == x + y), Order_predicate::EQ, false},
-        std::tuple{make(2 * x + 5 * y + 8 * z > x + y), Order_predicate::LEQ, true},
-        std::tuple{make(2 * x + 5 * y + 8 * z >= x + y), Order_predicate::LT, true},
-        std::tuple{make(2 * x + 5 * y + 8 * z != x + y), Order_predicate::EQ, true},
+        std::tuple{make(2 * x + 5 * y + 8 * z < x + y), Order_predicate::lt, false},
+        std::tuple{make(2 * x + 5 * y + 8 * z <= x + y), Order_predicate::leq, false},
+        std::tuple{make(2 * x + 5 * y + 8 * z == x + y), Order_predicate::eq, false},
+        std::tuple{make(2 * x + 5 * y + 8 * z > x + y), Order_predicate::leq, true},
+        std::tuple{make(2 * x + 5 * y + 8 * z >= x + y), Order_predicate::lt, true},
+        std::tuple{make(2 * x + 5 * y + 8 * z != x + y), Order_predicate::eq, true},
     };
 
     for (auto [cons, exp_pred, exp_polarity] : constraints)
@@ -87,14 +87,14 @@ TEST_CASE("Create normalized constraints", "[linear_constraints]")
     REQUIRE(std::ranges::equal(cons.vars(), std::vector{x.ord()}));
     REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1}));
     REQUIRE(cons.rhs() == 10);
-    REQUIRE(cons.pred() == Order_predicate::LT);
+    REQUIRE(cons.pred() == Order_predicate::lt);
     REQUIRE(cons.lit() == Literal{0});
 
     cons = make(2 * x + 3 * y <= -5);
     REQUIRE(std::ranges::equal(cons.vars(), std::vector{x.ord(), y.ord()}));
     REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1, 3_r / 2}));
     REQUIRE(cons.rhs() == -5_r / 2);
-    REQUIRE(cons.pred() == Order_predicate::LEQ);
+    REQUIRE(cons.pred() == Order_predicate::leq);
     REQUIRE(cons.lit() == Literal{1});
 }
 
@@ -115,7 +115,7 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
     REQUIRE(std::ranges::equal(cons.vars(), std::vector{x.ord(), y.ord()}));
     REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1,     -1_r / 2}));
     REQUIRE(cons.rhs() == -2);
-    REQUIRE(cons.pred() == Order_predicate::LT);
+    REQUIRE(cons.pred() == Order_predicate::lt);
     REQUIRE(cons.lit() == Literal{0}.negate());
 
     auto cons2 = make(2 * x - y < -4);

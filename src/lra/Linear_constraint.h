@@ -22,9 +22,9 @@ namespace perun {
 class Order_predicate {
 public:
     enum Type {
-        EQ,  // =
-        LT,  // <
-        LEQ, // <=
+        eq,  // =
+        lt,  // <
+        leq, // <=
     };
 
     inline Order_predicate(Type type) : type(type) {}
@@ -74,11 +74,11 @@ public:
     {
         switch (type)
         {
-        case EQ:
+        case eq:
             return lhs == rhs;
-        case LT:
+        case lt:
             return lhs < rhs;
-        case LEQ:
+        case leq:
             return lhs <= rhs;
         }
         assert(false);
@@ -108,7 +108,7 @@ public:
     /** Create an empty linear constraint
      */
     inline Linear_constraint()
-        : position({0, 0}), predicate(Order_predicate::EQ), constant(0), constraints(nullptr)
+        : position({0, 0}), predicate(Order_predicate::eq), constant(0), constraints(nullptr)
     {
     }
 
@@ -182,9 +182,9 @@ public:
      */
     inline bool is_strict() const
     {
-        return (lit().is_negation() && pred() == Order_predicate::LEQ) ||
-               (!lit().is_negation() && pred() == Order_predicate::LT) ||
-               (lit().is_negation() && pred() == Order_predicate::EQ);
+        return (lit().is_negation() && pred() == Order_predicate::leq) ||
+               (!lit().is_negation() && pred() == Order_predicate::lt) ||
+               (lit().is_negation() && pred() == Order_predicate::eq);
     }
 
     /** Evaluate this constraint in @p model
@@ -276,13 +276,13 @@ inline std::ostream& operator<<(std::ostream& out, Linear_constraint<Value> cons
     {
         switch (cons.pred())
         {
-        case Order_predicate::EQ:
+        case Order_predicate::eq:
             out << " = ";
             break;
-        case Order_predicate::LT:
+        case Order_predicate::lt:
             out << " < ";
             break;
-        case Order_predicate::LEQ:
+        case Order_predicate::leq:
             out << " <= ";
             break;
         }
@@ -291,13 +291,13 @@ inline std::ostream& operator<<(std::ostream& out, Linear_constraint<Value> cons
     {
         switch (cons.pred())
         {
-        case Order_predicate::EQ:
+        case Order_predicate::eq:
             out << " != ";
             break;
-        case Order_predicate::LT:
+        case Order_predicate::lt:
             out << " >= ";
             break;
-        case Order_predicate::LEQ:
+        case Order_predicate::leq:
             out << " > ";
             break;
         }

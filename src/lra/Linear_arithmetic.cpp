@@ -204,17 +204,17 @@ void Linear_arithmetic::update_bounds(Models_type const& models, Constraint_type
 
 bool Linear_arithmetic::implies_equality(Constraint_type const& cons) const
 {
-    return cons.pred() == Order_predicate::EQ && !cons.lit().is_negation();
+    return cons.pred() == Order_predicate::eq && !cons.lit().is_negation();
 }
 
 bool Linear_arithmetic::implies_inequality(Constraint_type const& cons) const
 {
-    return cons.pred() == Order_predicate::EQ && cons.lit().is_negation();
+    return cons.pred() == Order_predicate::eq && cons.lit().is_negation();
 }
 
 bool Linear_arithmetic::implies_lower_bound(Constraint_type const& cons) const
 {
-    if (cons.pred() == Order_predicate::EQ)
+    if (cons.pred() == Order_predicate::eq)
     {
         return false;
     }
@@ -225,7 +225,7 @@ bool Linear_arithmetic::implies_lower_bound(Constraint_type const& cons) const
 
 bool Linear_arithmetic::implies_upper_bound(Constraint_type const& cons) const
 {
-    if (cons.pred() == Order_predicate::EQ)
+    if (cons.pred() == Order_predicate::eq)
     {
         return false;
     }
@@ -287,15 +287,15 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
     assert(!trail.model<Value_type>(Variable::rational).is_defined(first.vars().front()));
 
     // find predicate of the combination
-    auto pred = Order_predicate::LEQ;
-    if (first.pred() == Order_predicate::EQ && second.pred() == Order_predicate::EQ &&
+    auto pred = Order_predicate::leq;
+    if (first.pred() == Order_predicate::eq && second.pred() == Order_predicate::eq &&
         !first.lit().is_negation() && !second.lit().is_negation())
     {
-        pred = Order_predicate::EQ;
+        pred = Order_predicate::eq;
     }
     else if (first.is_strict() || second.is_strict())
     {
-        pred = Order_predicate::LT;
+        pred = Order_predicate::lt;
     }
 
     // compute constants such that `poly(first) * first_mult + poly(second) * second_mult`

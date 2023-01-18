@@ -58,7 +58,7 @@ public:
 
         // negate literal if `*it` represents negation of the input constraint
         lit = it->lit();
-        if (pred != Order_predicate::EQ && mult < Value_type{0})
+        if (pred != Order_predicate::eq && mult < Value_type{0})
         {
             lit = lit.negate();
         }
@@ -220,12 +220,12 @@ private:
         {
             switch (pred)
             {
-            case Order_predicate::LT:
-                return Order_predicate::LEQ;
-            case Order_predicate::LEQ:
-                return Order_predicate::LT;
+            case Order_predicate::lt:
+                return Order_predicate::leq;
+            case Order_predicate::leq:
+                return Order_predicate::lt;
             default:
-                assert(pred == Order_predicate::EQ);
+                assert(pred == Order_predicate::eq);
             }
         }
         return pred;
