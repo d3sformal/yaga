@@ -45,6 +45,14 @@ TEST_CASE("Arithmetic operations with fractions", "[fraction]")
         REQUIRE((3_r / 4) / 2 == 3_r / 8);
         REQUIRE(2 / (3_r / 4) == 8_r / 3);
     }
+
+    SECTION("normalize inverse")
+    {
+        REQUIRE((-1_r / 2).inv().numerator() == -2);
+        REQUIRE((-1_r / 2).inv().denominator() == 1);
+        REQUIRE((1_r / -2).inv().numerator() == -2);
+        REQUIRE((1_r / -2).inv().denominator() == 1);
+    }
 }
 
 TEST_CASE("Compare fractions", "[fraction]")

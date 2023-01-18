@@ -127,7 +127,10 @@ public:
      *
      * @return new fraction which represents inverse of this fraction
      */
-    inline Fraction<T> inv() const { return {denom, num, Normalized_tag{}}; }
+    inline Fraction<T> inv() const 
+    { 
+        return {(std::signbit(num) ? T{-1} : T{1}) * denom, std::abs(num), Normalized_tag{}}; 
+    }
 
 private:
     T num;
