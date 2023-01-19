@@ -156,6 +156,25 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
         REQUIRE(cons.rhs() == 4);
         REQUIRE(cons.pred() == Order_predicate::leq);
     }
+
+    SECTION("minimal variable has 0 coefficient")
+    {
+        auto cons = make(0 * x + y < 0);
+        REQUIRE(std::ranges::equal(cons.vars(), std::vector{y.ord()}));
+        REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1}));
+        REQUIRE(cons.rhs() == 0);
+        REQUIRE(cons.pred() == Order_predicate::lt);
+    }
+
+    SECTION("constraint without variables")
+    {
+        auto cons = make(x + y < x + y);
+        REQUIRE(cons.vars().empty());
+        REQUIRE(cons.coef().empty());
+        REQUIRE(cons.rhs() == 0);
+        REQUIRE(cons.pred() == Order_predicate::lt);
+        REQUIRE(cons.empty());
+    }
 }
 
 TEST_CASE("Constraints with different right-hand-side are different", "[linear_constraints]")

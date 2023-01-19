@@ -44,12 +44,24 @@ public:
     Constraint_type make(Var_range&& var_range, Value_range&& coef_range, Order_predicate pred,
                          Value_type rhs)
     {
+        // normalize the input and add it to the constraints list
         auto mult = find_norm_constant(var_range, coef_range);
-        auto [lit, range] = add(mult, var_range, coef_range);
+        Constraint_type cons;
+        if (mult) // constraint with variables
+        {
+            auto [lit, range] = add(mult.value(), var_range, coef_range);
+            cons = constraints.emplace_back(lit, range, norm_pred(mult.value(), pred), mult.value() * rhs, this);
+        }
+        else // constraint without variables
+        {
+            Literal lit{static_cast<int>(constraints.size())};
+            cons = constraints.emplace_back(lit, std::pair{0, 0}, pred, rhs, this);
+            mult = Value_type{1};
+        }
 
-        auto cons = constraints.emplace_back(lit, range, norm_pred(mult, pred), mult * rhs, this);
+        // check whether the constraint is a duplicate
         auto [it, is_inserted] = cons_set.insert(cons);
-        if (!is_inserted) // remove the new constraint if it is a duplicate
+        if (!is_inserted)
         {
             variables.erase(cons.vars().begin(), cons.vars().end());
             coefficients.erase(cons.coef().begin(), cons.coef().end());
@@ -57,8 +69,8 @@ public:
         }
 
         // negate literal if `*it` represents negation of the input constraint
-        lit = it->lit();
-        if (pred != Order_predicate::eq && mult < Value_type{0})
+        auto lit = it->lit();
+        if (pred != Order_predicate::eq && mult.value() < Value_type{0})
         {
             lit = lit.negate();
         }
@@ -195,20 +207,24 @@ private:
 
     // find a constant by which the constraint will be multiplied in order to normalize coefficients
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline Value_type find_norm_constant(Var_range&& var_range, Coef_range&& coef_range) const
+    inline std::optional<Value_type> find_norm_constant(Var_range&& var_range, Coef_range&& coef_range) const
     {
-        int min_var = var_range.front();
-        auto min_coef = coef_range.front();
+        int min_var = std::numeric_limits<int>::max();
+        Value_type min_coef{0};
 
         auto var_it = std::begin(var_range);
         auto coef_it = std::begin(coef_range);
         for (; var_it != std::end(var_range); ++var_it, ++coef_it)
         {
-            if (*var_it < min_var)
+            if (*var_it < min_var && *coef_it != 0)
             {
                 min_var = *var_it;
                 min_coef = *coef_it;
             }
+        }
+        if (min_coef == 0)
+        {
+            return {}; // none
         }
         return Value_type{1} / min_coef;
     }
