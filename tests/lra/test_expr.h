@@ -152,6 +152,20 @@ inline auto operator+(Variable lhs, Linear_polynomial<T> const& rhs)
     return rhs + lhs;
 }
 
+// add constant to linear polynomial
+template<Arithmetic L, Arithmetic R>
+inline auto operator+(Linear_polynomial<L> const& lhs, R rhs)
+{
+    return lhs + poly(rhs);
+}
+
+// add constant to linear polynomial
+template<Arithmetic L, Arithmetic R>
+inline auto operator+(L lhs, Linear_polynomial<R> const& rhs)
+{
+    return poly(lhs) + rhs;
+}
+
 // create linear polynomial from addition of two variables
 inline auto operator+(Variable lhs, Variable rhs)
 {
@@ -175,6 +189,20 @@ inline auto operator-(Linear_polynomial<T> const& lhs, Variable rhs)
 // subtract linear polynomial from 1 * variable
 template<Arithmetic T>
 inline auto operator-(Variable lhs, Linear_polynomial<T> const& rhs)
+{
+    return poly(lhs) - rhs;
+}
+
+// subtract a constant from linear polynomial
+template<Arithmetic L, Arithmetic R>
+inline auto operator-(Linear_polynomial<L> const& lhs, R rhs)
+{
+    return lhs - poly(rhs);
+}
+
+// subtract linear polynomial from a constant
+template<Arithmetic L, Arithmetic R>
+inline auto operator-(L lhs, Linear_polynomial<R> const& rhs)
 {
     return poly(lhs) - rhs;
 }

@@ -247,6 +247,23 @@ private:
         std::copy(std::begin(var_range), std::end(var_range), variables.begin() + range.first);
         std::copy(std::begin(coef_range), std::end(coef_range), coefficients.begin() + range.first);
 
+        // remove variables with 0 coefficient
+        auto out_var_it = variables.begin() + range.first;
+        auto out_coef_it = coefficients.begin() + range.first;
+        auto var_it = out_var_it;
+        auto coef_it = out_coef_it;
+        for (; var_it != variables.end(); ++var_it, ++coef_it)
+        {
+            if (*coef_it != Value_type{0})
+            {
+                *out_var_it++ = *var_it;
+                *out_coef_it++ = *coef_it;
+            }
+        }
+        variables.erase(out_var_it, variables.end());
+        coefficients.erase(out_coef_it, coefficients.end());
+        range.second = static_cast<int>(variables.size());
+
         // normalize coefficients of the constraint
         for (auto& c : coefficients | std::views::drop(range.first))
         {

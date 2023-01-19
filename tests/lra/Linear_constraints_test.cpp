@@ -129,7 +129,7 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
-    auto [x, y] = real_vars<2>();
+    auto [x, y, z, w] = real_vars<4>();
 
     SECTION("coefficient of the lowest variable is 1 after normalization")
     {
@@ -146,6 +146,15 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
         REQUIRE(std::ranges::equal(cons.vars(), cons2.vars()));
         REQUIRE(cons.rhs() == cons2.rhs());
         REQUIRE(cons.pred() == cons2.pred());
+    }
+
+    SECTION("variables with 0 coefficients are removed")
+    {
+        auto cons = make(2 * x + y + 0 * w <= y + z + 8);
+        REQUIRE(std::ranges::equal(cons.vars(), std::vector{x.ord(), z.ord()}));
+        REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1, -1_r / 2}));
+        REQUIRE(cons.rhs() == 4);
+        REQUIRE(cons.pred() == Order_predicate::leq);
     }
 }
 
