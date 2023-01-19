@@ -321,17 +321,20 @@ public:
      */
     std::size_t operator()(Linear_constraint<Value> const& cons) const
     {
-        std::size_t hash = coef_hash(cons.rhs());
+        std::size_t hash_var = 0;
         for (auto var : cons.vars())
         {
-            hash ^= var_hash(var);
+            hash_var += var_hash(var);
         }
 
+        std::size_t hash_const = coef_hash(cons.rhs());
         for (auto coef : cons.coef())
         {
-            hash ^= coef_hash(coef);
+            hash_const += coef_hash(coef);
         }
-        return hash;
+
+        constexpr std::size_t combine_mult = 3;
+        return hash_var * combine_mult + hash_const;
     }
 
 private:
