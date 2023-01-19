@@ -355,7 +355,27 @@ public:
             return false;
         }
 
-        // check equality using a brute force algorithm
+        constexpr int bf_threshold = 4;
+        if (lhs.size() <= bf_threshold)
+        {
+            assert(rhs.size() <= bf_threshold);
+            return brute_force_equal(lhs, rhs);
+        }
+
+        return sort_equal(lhs, rhs);
+    }
+
+    /** Check whether @p lhs == @p rhs without allocating extra memory.
+     * 
+     * Since we have to search variables in an unsorted array, the worst case complexity of this 
+     * solution is `O(n^2)` where `n` is the length of @p lhs and @p rhs
+     * 
+     * @param lhs first constraint
+     * @param rhs second constraint
+     * @return true iff @p lhs == @p rhs
+     */
+    bool brute_force_equal(Linear_constraint<Value> const& lhs, Linear_constraint<Value> const& rhs) const
+    {
         auto lhs_var_it = lhs.vars().begin();
         auto lhs_coef_it = lhs.coef().begin();
         for (; lhs_var_it != lhs.vars().end(); ++lhs_var_it, ++lhs_coef_it)
@@ -372,6 +392,36 @@ public:
             // find the corresponding coefficient of the variable in rhs
             auto rhs_coef_it = rhs.coef().begin() + std::distance(rhs.vars().begin(), rhs_var_it);
             if (*lhs_coef_it != *rhs_coef_it)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Check whether @p lhs == @p rhs using auxiliary memory to sort one constraint.
+     * 
+     * @param lhs first constraint
+     * @param rhs second constraint
+     * @return true iff @p lhs == @p rhs
+     */
+    bool sort_equal(Linear_constraint<Value> const& lhs, Linear_constraint<Value> const& rhs) const
+    {
+        std::vector<std::pair<int, Value>> values;
+        auto lhs_var_it = lhs.vars().begin();
+        auto lhs_coef_it = lhs.coef().begin();
+        for (; lhs_var_it != lhs.vars().end(); ++lhs_var_it, ++lhs_coef_it)
+        {
+            values.emplace_back(*lhs_var_it, *lhs_coef_it);
+        }
+        std::sort(values.begin(), values.end());
+
+        auto rhs_var_it = rhs.vars().begin();
+        auto rhs_coef_it = rhs.coef().begin();
+        for (; rhs_var_it != rhs.vars().end(); ++rhs_var_it, ++rhs_coef_it)
+        {
+            auto it = std::lower_bound(values.begin(), values.end(), std::pair{*rhs_var_it, *rhs_coef_it});
+            if (it == values.end() || it->first != *rhs_var_it || it->second != *rhs_coef_it)
             {
                 return false;
             }

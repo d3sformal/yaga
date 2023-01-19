@@ -1,4 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/benchmark/catch_benchmark_all.hpp>
+
+#include <random>
 
 #include "test.h"
 #include "Fraction.h"
@@ -249,4 +252,119 @@ TEST_CASE("Evaluate negation of a linear constraint", "[linear_constraints]")
     REQUIRE(perun::eval(model, cons) == false);
     model.set_value(y.ord(), 1);
     REQUIRE(perun::eval(model, cons) == true);
+}
+
+template<int num_vars, int min_var_per_const, int max_var_per_const, int num_const>
+std::vector<perun::test::Linear_predicate<perun::Fraction<int>>> generate()
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    using Value_type = Fraction<int>;
+
+    std::default_random_engine eng{42};
+    eng.discard(1 << 12);
+
+    std::uniform_int_distribution<int> const_size_dist{min_var_per_const, max_var_per_const};
+    std::uniform_int_distribution<int> var_dist{0, num_vars};
+    std::uniform_int_distribution<int> val_dist{-100, 100};
+
+    std::vector<Linear_predicate<Value_type>> preds;
+    for (int i = 0; i < num_const; ++i)
+    {
+        Linear_predicate<Value_type> pred{
+            .lhs = Linear_polynomial<Value_type>{
+                .vars = std::vector<int>{},
+                .coef = std::vector<Value_type>{},
+                .constant = 0
+            },
+            .rhs = poly<Value_type>(0),
+            .pred = Order_predicate::leq,
+            .is_negation = false
+        };
+
+        auto size = const_size_dist(eng);
+        for (int j = 0; j < size; ++j)
+        {
+            int denom = val_dist(eng);
+            for (; denom == 0; denom = val_dist(eng))
+            {
+            }
+            pred.lhs.vars.push_back(var_dist(eng));
+            pred.lhs.coef.emplace_back(val_dist(eng), denom);
+        }
+        preds.push_back(pred);
+    }
+    return preds;
+}
+
+
+TEST_CASE("Microbenchmark of small constraints", "[.][linear_constraints][bench]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    using Value_type = Fraction<int>;
+
+    constexpr int num_vars = 100;
+    constexpr int num_vars_per_pred = 10;
+    constexpr int num_const = 10000;
+    auto preds = generate<num_vars, num_vars_per_pred, num_vars_per_pred, num_const>();
+
+    Linear_constraints<Value_type> repo;
+
+    BENCHMARK("normalize and deduplicate")
+    {
+        for (auto& pred : preds)
+        {
+            repo.make(pred.lhs.vars, pred.lhs.coef, pred.pred, pred.rhs.constant);
+        }
+    };
+}
+
+TEST_CASE("Microbenchmark of large constraints", "[.][linear_constraints][bench]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    using Value_type = Fraction<int>;
+
+    constexpr int num_vars = 10000;
+    constexpr int num_vars_per_pred = 1000;
+    constexpr int num_const = 1000;
+    auto preds = generate<num_vars, num_vars_per_pred, num_vars_per_pred, num_const>();
+
+    Linear_constraints<Value_type> repo;
+
+    BENCHMARK("normalize and deduplicate")
+    {
+        for (auto& pred : preds)
+        {
+            repo.make(pred.lhs.vars, pred.lhs.coef, pred.pred, pred.rhs.constant);
+        }
+    };
+}
+
+TEST_CASE("Microbenchmark of mixed constraints", "[.][linear_constraints][bench][mixed]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    using Value_type = Fraction<int>;
+
+    constexpr int num_vars = 10000;
+    constexpr int min_vars_per_const = 2;
+    constexpr int max_vars_per_const = 100;
+    constexpr int num_const = 10000;
+    auto preds = generate<num_vars, min_vars_per_const, max_vars_per_const, num_const>();
+
+    Linear_constraints<Value_type> repo;
+
+    BENCHMARK("normalize and deduplicate")
+    {
+        for (auto& pred : preds)
+        {
+            repo.make(pred.lhs.vars, pred.lhs.coef, pred.pred, pred.rhs.constant);
+        }
+    };
 }
