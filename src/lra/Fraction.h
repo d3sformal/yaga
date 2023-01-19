@@ -619,15 +619,12 @@ struct common_type<T, perun::Fraction<T>> {
 };
 
 template <typename T>
-    requires std::is_integral_v<T>
+    requires std::is_integral_v<T> && (2 * sizeof(T) <= sizeof(std::uint64_t))
 struct hash<perun::Fraction<T>> {
     inline std::size_t operator()(perun::Fraction<T> frac) const
     {
-        constexpr std::size_t golden_ratio = 0x9e3779b9;
-
-        auto result = std::hash<T>{}(frac.numerator());
-        result ^= std::hash<T>{}(frac.denominator()) + golden_ratio + (result << 6) + (result >> 2);
-        return result;
+        return std::hash<std::uint64_t>{}((static_cast<std::uint64_t>(frac.numerator()) << 32) | 
+                                           static_cast<std::uint64_t>(frac.denominator()));
     }
 };
 
