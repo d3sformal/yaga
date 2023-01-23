@@ -9,6 +9,10 @@ void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
         bounds.resize(num_vars);
         watched.resize(num_vars);
     }
+    else if (type == Variable::boolean)
+    {
+        constraints.resize(num_vars);
+    }
 }
 
 std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
@@ -336,7 +340,7 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
         return Clause{lb.reason().lit().negate(), ub.reason().lit().negate()};
     }
 
-    // create `L <= U` and propagate the literal semantically so that the conflict clause if false
+    // create `L <= U` and propagate the literal semantically so that the conflict clause is false
     auto cons = eliminate(trail, lb.reason(), ub.reason());
     propagate(trail, models, cons);
 

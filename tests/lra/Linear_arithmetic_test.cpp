@@ -423,6 +423,35 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
     }
 }
 
+TEST_CASE("Always choose a new boolean variable for unique derived constraints", "[linear_arithmetic]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 1);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, 3);
+    lra.on_variable_resize(Variable::boolean, 1);
+    auto models = lra.relevant_models(trail);
+    auto linear = factory(lra, trail);
+    auto [x, y] = real_vars<2>();
+
+    propagate(trail, Literal{0});
+    propagate(trail, linear(y == 0));
+    propagate(trail, linear(x > 0));
+    propagate(trail, linear(x + y < 0));
+
+    auto conflict = lra.propagate(db, trail);
+    REQUIRE(conflict);
+    REQUIRE(conflict.value() == clause(-linear(x > 0), -linear(x + y < 0), linear(y < 0)));
+    REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
+    REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    REQUIRE(linear(y < 0).lit().var().ord() == 4);
+}
+
 TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
 {
     using namespace perun;

@@ -31,9 +31,11 @@ public:
 
     /** Create a new linear constraint.
      *
-     * The constraint is normalized. The returned constraint might represent negation of some
-     * preexisting constraint in which case, literal of the returned constraint will be negated.
+     * The constraint is normalized. It might be negated (check if `lit().is_negation()` is true).
      *
+     * If the returned constraint is unique, its boolean variable will be set to the next ordinal 
+     * number of boolean variables.
+     * 
      * @param var_range ordinal numbers of variables in the constraint
      * @param coef_range coefficients of variables in the constraint
      * @param pred predicate of the constraint
@@ -76,6 +78,15 @@ public:
         }
 
         return {lit, it->pos(), it->pred(), it->rhs(), this};
+    }
+
+    /** Allocate memory for @p num_bool_vars boolean variables
+     * 
+     * @param num_bool_vars new number of boolean variables
+     */
+    void resize(int num_bool_vars)
+    {
+        constraints.resize(num_bool_vars);
     }
 
     /** Find boolean constraint which implements @p bool_var_ord
