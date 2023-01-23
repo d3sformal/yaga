@@ -89,6 +89,29 @@ private:
     Type type;
 };
 
+/** Print order predicate to @p out
+ * 
+ * @param out output stream
+ * @param pred predicate to print
+ * @return @p out
+ */
+inline std::ostream& operator<<(std::ostream& out, Order_predicate pred)
+{
+    switch (pred)
+    {
+        case Order_predicate::eq:
+            out << "=";
+            break;
+        case Order_predicate::leq:
+            out << "<=";
+            break;
+        case Order_predicate::lt:
+            out << "<";
+            break;
+    }
+    return out;
+}
+
 template <typename Value> class Linear_constraints;
 
 /** Represents a linear constraint of the type `<x, c> @ b` where:
@@ -268,7 +291,12 @@ inline std::ostream& operator<<(std::ostream& out, Linear_constraint<Value> cons
     auto coef_it = cons.coef().begin();
     for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
     {
-        out << delim << *coef_it << " * " << Variable{*var_it, Variable::rational};
+        out << delim;
+        if (*coef_it != 1)
+        {
+            out << *coef_it << " * ";
+        }
+        out << Variable{*var_it, Variable::rational};
         delim = " + ";
     }
 
