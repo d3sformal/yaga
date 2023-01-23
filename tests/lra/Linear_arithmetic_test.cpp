@@ -439,7 +439,6 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
-    propagate(trail, Literal{0});
     propagate(trail, linear(y == 0));
     propagate(trail, linear(x > 0));
     propagate(trail, linear(x + y < 0));

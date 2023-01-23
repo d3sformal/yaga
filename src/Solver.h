@@ -61,6 +61,11 @@ public:
     inline T& set_theory(Args&&... args)
     {
         auto concrete_theory = std::make_unique<T>(std::forward<Args>(args)...);
+        for (auto [type, model] : trail().models())
+        {
+            concrete_theory->on_variable_resize(type, model->num_vars());
+        }
+
         auto concrete_theory_ptr = concrete_theory.get();
         theory = std::move(concrete_theory);
         return *concrete_theory_ptr;

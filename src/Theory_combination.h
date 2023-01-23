@@ -3,6 +3,7 @@
 
 #include <deque>
 #include <memory>
+#include <concepts>
 
 #include "Clause.h"
 #include "Database.h"
@@ -83,6 +84,13 @@ public:
     inline T& add_theory(Args&&... args)
     {
         auto theory = std::make_unique<T>(std::forward<Args>(args)...);
+        for (std::size_t type = 0; type < current_num_vars.size(); ++type)
+        {
+            if (current_num_vars[type] > 0)
+            {
+                theory->on_variable_resize(static_cast<Variable::Type>(type), current_num_vars[type]);
+            }
+        }
         auto conc_theory_ptr = theory.get();
         theories.emplace_back(std::move(theory));
         return *conc_theory_ptr;
@@ -90,6 +98,7 @@ public:
 
 private:
     std::deque<std::unique_ptr<Theory>> theories;
+    std::vector<int> current_num_vars;
 };
 
 } // namespace perun
