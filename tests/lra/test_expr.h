@@ -1,3 +1,6 @@
+#ifndef PERUN_TEST_EXPR_H
+#define PERUN_TEST_EXPR_H
+
 #include <vector>
 #include <algorithm>
 #include <cassert>
@@ -568,3 +571,5 @@ inline auto factory(Linear_arithmetic& plugin, Trail& trail)
 }
 
 }
+
+#endif // PERUN_TEST_EXPR_H
