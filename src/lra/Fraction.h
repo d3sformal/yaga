@@ -372,6 +372,54 @@ inline bool operator!=(Fraction<L> lhs, R rhs)
     return !operator==(lhs, rhs);
 }
 
+/** Check whether @p lhs <= @p rhs
+ *
+ * @tparam L type of an integer constant
+ * @tparam R type of numerator/denominator of the fraction
+ * @param lhs constant on the left-hand-side
+ * @param rhs fraction on the right-hand-side
+ * @return true iff @p lhs <= @p rhs
+ */
+template <typename L, typename R>
+    requires std::is_integral_v<L> && std::is_integral_v<R>
+inline bool operator<=(L lhs, Fraction<R> rhs) { return rhs >= lhs; }
+
+/** Check whether @p lhs < @p rhs
+ *
+ * @tparam L type of an integer constant
+ * @tparam R type of numerator/denominator of the fraction
+ * @param lhs constant on the left-hand-side
+ * @param rhs fraction on the right-hand-side
+ * @return true iff @p lhs < @p rhs
+ */
+template <typename L, typename R>
+    requires std::is_integral_v<L> && std::is_integral_v<R>
+inline bool operator<(L lhs, Fraction<R> rhs) { return rhs > lhs; }
+
+/** Check whether @p lhs >= @p rhs
+ *
+ * @tparam L type of an integer constant
+ * @tparam R type of numerator/denominator of the fraction
+ * @param lhs constant on the left-hand-side
+ * @param rhs fraction on the right-hand-side
+ * @return true iff @p lhs >= @p rhs
+ */
+template <typename L, typename R>
+    requires std::is_integral_v<L> && std::is_integral_v<R>
+inline bool operator>=(L lhs, Fraction<R> rhs) { return rhs <= lhs; }
+
+/** Check whether @p lhs > @p rhs
+ *
+ * @tparam L type of an integer constant
+ * @tparam R type of numerator/denominator of the fraction
+ * @param lhs constant on the left-hand-side
+ * @param rhs fraction on the right-hand-side
+ * @return true iff @p lhs > @p rhs
+ */
+template <typename L, typename R>
+    requires std::is_integral_v<L> && std::is_integral_v<R>
+inline bool operator>(L lhs, Fraction<R> rhs) { return rhs < lhs; }
+
 /** Create a negation of a fraction
  *
  * @tparam Integer type of numerator/denominator of the fraction
