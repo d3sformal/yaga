@@ -451,7 +451,7 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
     REQUIRE(linear(y < 0).lit().var().ord() == 4);
 }
 
-TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
+TEST_CASE("Detect an inequality conflict", "[linear_arithmetic][debug]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -466,19 +466,63 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
-    propagate(trail, linear(y <= x));
-    propagate(trail, linear(x <= z));
-    propagate(trail, linear(x != 0));
-    propagate(trail, linear(y == 0));
-    propagate(trail, linear(z == 0));
+    SECTION("with non-trivial derivations")
+    {
+        propagate(trail, linear(y <= x));
+        propagate(trail, linear(x <= z));
+        propagate(trail, linear(x != 0));
+        propagate(trail, linear(y == 0));
+        propagate(trail, linear(z == 0));
 
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(conflict);
-    REQUIRE(conflict.value() ==
-            clause(-linear(y <= x), -linear(x <= z), linear(x == 0), linear(y < 0), linear(0 < z)));
-    REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
-    REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
-    REQUIRE(perun::eval(models.owned(), linear(0 < z)) == false);
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() ==
+                clause(-linear(y <= x), -linear(x <= z), linear(x == 0), linear(y < 0), linear(0 < z)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
+        REQUIRE(perun::eval(models.owned(), linear(0 < z)) == false);
+    }
+
+    SECTION("with both derived constraints trivial")
+    {
+        propagate(trail, linear(x <= 4));
+        propagate(trail, linear(x >= 4));
+        propagate(trail, linear(x != 4));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() ==
+                clause(-linear(4 <= x), -linear(x <= 4), linear(x == 4)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    }
+
+    SECTION("with trivial derivation from upper bound")
+    {
+        propagate(trail, linear(x <= 4));
+        propagate(trail, linear(x + y >= 4));
+        propagate(trail, linear(x != 4));
+        propagate(trail, linear(y == 0));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() ==
+                clause(-linear(x + y >= 4), -linear(x <= 4), linear(x == 4), linear(y > 0)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    }
+
+    SECTION("with trivial derivation from lower bound")
+    {
+        propagate(trail, linear(x + y <= 4));
+        propagate(trail, linear(x >= 4));
+        propagate(trail, linear(x != 4));
+        propagate(trail, linear(y == 0));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() ==
+                clause(-linear(x >= 4), -linear(x + y <= 4), linear(x == 4), linear(y < 0)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    }
 }
 
 TEST_CASE("Decide variable", "[linear_arithmetic]")
