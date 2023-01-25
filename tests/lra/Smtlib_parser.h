@@ -107,7 +107,7 @@ public:
     }
 
     // end parsing a function in SMTLIB assert
-    inline void exit_fun(std::string const& name) 
+    inline void exit_fun(std::string const& name, int num_args) 
     {
         if (name == "not")
         {
@@ -116,6 +116,10 @@ public:
         else if (name == "ite")
         {
             ite();
+        }
+        else if (name == "-" && num_args == 1)
+        {
+            unary_minus();
         }
         else if (name == "+" || name == "-" || name == "*" || name == "/")
         {
@@ -127,7 +131,7 @@ public:
         }
         else if (name == "and" || name == "or")
         {
-            boolean(name);
+            boolean(name, num_args);
         }
     }
 
@@ -155,26 +159,30 @@ private:
     Trail* trail;
 
     // encode a boolean function (and/or)
-    inline void boolean(std::string const& name)
+    inline void boolean(std::string const& name, int num_args)
     {
-        auto rhs = pop_lit();
-        auto lhs = pop_lit();
-
-        if (lhs == rhs)
+        for (; num_args > 1; --num_args)
         {
-            push(lhs);
-            return;
-        }
+            auto rhs = pop_lit();
+            auto lhs = pop_lit();
 
-        push(Literal{new_bool_var().ord()});
+            if (lhs == rhs)
+            {
+                push(lhs);
+            }
+            else
+            {
+                push(Literal{new_bool_var().ord()});
 
-        if ((name == "or" && !negate) || (name == "and" && negate))
-        {
-            encode_or(lhs, rhs, lits.back());
-        }
-        else 
-        {
-            encode_and(lhs, rhs, lits.back());
+                if ((name == "or" && !negate) || (name == "and" && negate))
+                {
+                    encode_or(lhs, rhs, lits.back());
+                }
+                else 
+                {
+                    encode_and(lhs, rhs, lits.back());
+                }
+            }
         }
     }
 
@@ -228,6 +236,18 @@ private:
             cons = cons.negate();
         }
         push(cons.lit());
+    }
+
+    // translate unary -
+    inline void unary_minus()
+    {
+        auto val = pop_poly();
+        for (auto& c : val.coef)
+        {
+            c = -c;
+        }
+        val.constant = -val.constant;
+        push(val);
     }
 
     // encode an arithmetic operation +, -, *, /
@@ -452,6 +472,7 @@ public:
             else
             {
                 listener().enter_fun(id);
+                int num_args = 0;
                 for (;;)
                 {
                     skip_space(in);
@@ -460,8 +481,9 @@ public:
                         break;
                     }
                     parse_term(in);
+                    ++num_args;
                 }
-                listener().exit_fun(id);
+                listener().exit_fun(id, num_args);
             }
             eat(in, ')');
         }
