@@ -97,19 +97,16 @@ public:
             return true; // reason() is no longer on the trail
         }
 
-        // check that the constraint is still unit
+        // find the assigned watched variable
         auto [var_it, var_end] = cons.vars();
         assert(var_it != var_end);
-        assert(!models.owned().is_defined(*var_it));
-
-        auto next_var_it = var_it + 1;
-        if (next_var_it == var_end)
+        if (!models.owned().is_defined(*var_it))
         {
-            return false; // unit constraint
+            ++var_it;
         }
 
-        return !models.owned().is_defined(*next_var_it) ||
-               models.owned().timestamp(*next_var_it) != timestamp;
+        return var_it != var_end && (!models.owned().is_defined(*var_it) ||
+               models.owned().timestamp(*var_it) != timestamp);
     }
 
 private:

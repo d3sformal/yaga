@@ -183,7 +183,7 @@ void Linear_arithmetic::update_bounds(Models_type const& models, Constraint_type
     assert(cons.coef().front() != 0);
 
     auto value = cons.implied_value(models.owned()) / cons.coef().front();
-    // find constraint that should be true in current model (according to bool model)
+    // find constraint which should be true in current model (according to bool model)
     auto actual_cons = perun::eval(models.boolean(), cons.lit()).value() ? cons : cons.negate();
 
     if (implies_equality(actual_cons))

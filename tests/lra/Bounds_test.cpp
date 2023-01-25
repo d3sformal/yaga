@@ -274,3 +274,38 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
         REQUIRE(!bounds.inequality(models, 10));
     }
 }
+
+TEST_CASE("Any watched variable can be the unassigned variable in reason()", "[bounds]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    using Value_type = Fraction<int>;
+
+    Model<bool> bool_model;
+    Model<Value_type> lra_model;
+    bool_model.resize(10);
+    lra_model.resize(2);
+    Theory_models<Value_type> models{&bool_model, &lra_model};
+    Bounds<Value_type> bounds;
+    Linear_constraints<Value_type> constraints;
+    auto make = factory(constraints);
+    auto [x, y] = real_vars<2>();
+
+    auto cons = make(x + y <= 8);
+    models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+    models.owned().set_value(y.ord(), 0);
+    bounds.add_upper_bound(models, implied(models, cons));
+
+    REQUIRE(bounds.upper_bound(models).value() == 8);
+
+    std::iter_swap(cons.vars().begin(), cons.vars().begin() + 1);
+    std::iter_swap(cons.coef().begin(), cons.coef().begin() + 1);
+
+    REQUIRE(bounds.upper_bound(models).value() == 8);
+
+    models.owned().clear(y.ord());
+    models.owned().set_value(x.ord(), 0);
+
+    REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<Value_type>::max());
+}

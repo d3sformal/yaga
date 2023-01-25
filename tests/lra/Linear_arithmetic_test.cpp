@@ -451,7 +451,7 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
     REQUIRE(linear(y < 0).lit().var().ord() == 4);
 }
 
-TEST_CASE("Detect an inequality conflict", "[linear_arithmetic][debug]")
+TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
