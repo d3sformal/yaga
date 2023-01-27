@@ -117,7 +117,7 @@ private:
     // map real variable -> set of allowed values
     std::vector<Bounds<Value_type>> bounds;
 
-    // stack witch assigned variables together with a value to propagate
+    // stack with assigned variables and a value to propagate
     using Assigned_stack = std::vector<std::pair<Variable, std::optional<Value_type>>>;
 
     /** Convert @p value to integer
@@ -182,8 +182,7 @@ private:
      * @param bounds bounds object to check
      * @return conflict clause if @p bounds is empty. None, otherwise.
      */
-    std::optional<Clause> check_bounds(Trail& trail, Models_type& models,
-                                       Bounds<Value_type>& bounds);
+    std::optional<Clause> check_bounds(Trail& trail, Models_type& models, Bounds_type& bounds);
 
     /** Check if @p bounds implies an equality (i.e., `L <= x <= U`  and `L = U`)
      *
@@ -191,13 +190,14 @@ private:
      * @param bounds bounds object to check
      * @return implied constant if @p bounds implies that `x == constant`. None, otherwise.
      */
-    std::optional<Value_type> check_equality(Models_type const& models, Bounds<Value_type>& bounds);
+    std::optional<Value_type> check_equality(Models_type const& models, Bounds_type& bounds);
 
     /** Report a new unit constraint @p cons and check for conflicts/implied values.
-     *
-     * If the set of appropriate values for the unassigned variable in @p cons becomes empty, this
-     * method returns a conflict. If the set becomes a singleton (i.e., exactly one value is
-     * permitted), it is propagated to @p trail
+     * 
+     * -# If the unassigned variable in @p cons cannot be assigned any value, this method returns a 
+     * conflict clause. 
+     * -# If constraints for the unassigned variable in @p cons imply an equality, the implied 
+     * value is added to the @p assigned stack.
      *
      * @param assigned stack with assigned variables (add only if bounds for the unassigned variable
      * imply an equality)
@@ -208,16 +208,16 @@ private:
     std::optional<Clause> unit(Assigned_stack& assigned, Trail& trail, Models_type& models,
                                Constraint_type& cons);
 
-    /** Combine @p first and @p second using Fourier-Motzking elimination of the first unassigned
+    /** Combine @p first and @p second using Fourier-Motzkin elimination of the first unassigned
      * variable in @p first and @p second
      *
      * Precondition: the first variable in both @p first and @p second is the only unassigned
-     * variable in either constraint.
+     * variable in both constraints.
      *
      * @param trail current solver trail
      * @param first first constraint
      * @param second second constraint
-     * @return Constraint_type
+     * @return Fourier-Motzkin derivation from @p first and @p second
      */
     Constraint_type eliminate(Trail& trail, Constraint_type const& first,
                               Constraint_type const& second);
@@ -228,10 +228,10 @@ private:
      * @param trail current solver trail
      * @param models partial assignment of variables
      * @param bounds implied bounds for a variable
-     * @return conflict clause if a conflict is detected. None, otherwise.
+     * @return conflict clause if a bound conflict is detected. None, otherwise.
      */
     std::optional<Clause> check_bound_conflict(Trail& trail, Models_type& models,
-                                               Bounds<Value_type>& bounds);
+                                               Bounds_type& bounds);
 
     /** Check if there is an inequality conflict (i.e., `L <= x && x <= U` and `L = U` and `x != L`)
      *
@@ -240,7 +240,7 @@ private:
      * @return conflict clause if a conflict is detected. None, otherwise.
      */
     std::optional<Clause> check_inequality_conflict(Trail& trail, Models_type& models,
-                                                    Bounds<Value_type>& bounds);
+                                                    Bounds_type& bounds);
 
     /** Check whether the unit constraint @p cons implies an equality for the only unassigned
      * variable (e.g., `x == 5`)
@@ -275,6 +275,8 @@ private:
     bool implies_upper_bound(Constraint_type const& cons) const;
 
     /** Propagate a fully assigned constraint @p cons to @p trail
+     * 
+     * Precondition: @p cons (its boolean variable) is not on the trail
      *
      * @param trail current solver trail
      * @param models partial assignment of variables
@@ -290,8 +292,7 @@ private:
      */
     bool is_new(Models_type const& models, Variable var) const;
 
-    /** Add a new boolean variable @p bool_var_ord if @p trail does not already contain such
-     * variable.
+    /** Allocate space for a new variable @p var in @p trail if it is necessary.
      *
      * @param trail current solver trail
      * @param models partial assignment of variables in @p trail

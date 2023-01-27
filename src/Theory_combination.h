@@ -1,9 +1,9 @@
 #ifndef PERUN_THEORY_COMBINATION_H
 #define PERUN_THEORY_COMBINATION_H
 
+#include <concepts>
 #include <deque>
 #include <memory>
-#include <concepts>
 
 #include "Clause.h"
 #include "Database.h"
@@ -88,7 +88,8 @@ public:
         {
             if (current_num_vars[type] > 0)
             {
-                theory->on_variable_resize(static_cast<Variable::Type>(type), current_num_vars[type]);
+                theory->on_variable_resize(static_cast<Variable::Type>(type),
+                                           current_num_vars[type]);
             }
         }
         auto conc_theory_ptr = theory.get();

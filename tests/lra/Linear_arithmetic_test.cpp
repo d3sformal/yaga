@@ -431,7 +431,7 @@ TEST_CASE("Detect trivial bound conflict with several variables", "[linear_arith
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 2);
     auto linear = factory(lra, trail);
@@ -445,7 +445,7 @@ TEST_CASE("Detect trivial bound conflict with several variables", "[linear_arith
     REQUIRE(conflict.value() == clause(-linear(x - y < 1), -linear(x - y > 1)));
 }
 
-TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_arithmetic][debug]")
+TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -453,7 +453,7 @@ TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 2);
     auto linear = factory(lra, trail);

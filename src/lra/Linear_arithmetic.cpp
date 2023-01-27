@@ -239,7 +239,7 @@ bool Linear_arithmetic::implies_upper_bound(Constraint_type const& cons) const
 }
 
 std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, Models_type& models,
-                                                      Bounds<Value_type>& bounds)
+                                                      Bounds_type& bounds)
 {
     if (auto conflict = check_bound_conflict(trail, models, bounds))
     {
@@ -254,7 +254,7 @@ std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, Models_type&
 }
 
 std::optional<Linear_arithmetic::Value_type>
-Linear_arithmetic::check_equality(Models_type const& models, Bounds<Value_type>& bounds)
+Linear_arithmetic::check_equality(Models_type const& models, Bounds_type& bounds)
 {
     auto lb = bounds.lower_bound(models);
     auto ub = bounds.upper_bound(models);
@@ -343,7 +343,7 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
 }
 
 std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Models_type& models,
-                                                              Bounds<Value_type>& bounds)
+                                                              Bounds_type& bounds)
 {
     auto lb = bounds.lower_bound(models);
     auto ub = bounds.upper_bound(models);
@@ -378,7 +378,7 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
 
 std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
                                                                    Models_type& models,
-                                                                   Bounds<Value_type>& bounds)
+                                                                   Bounds_type& bounds)
 {
     // check if `L <= x && x <= U` and `L = U` where `x` is the unassigned variable
     auto lb = bounds.lower_bound(models);
