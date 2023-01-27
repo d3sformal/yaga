@@ -423,6 +423,51 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
     }
 }
 
+TEST_CASE("Detect trivial bound conflict with several variables", "[linear_arithmetic]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, 2);
+    auto linear = factory(lra, trail);
+    auto [x, y] = real_vars<2>();
+
+    decide(trail, linear(x - y > 1));
+    decide(trail, linear(x - y < 1));
+    decide(trail, linear(x == 0));
+    auto conflict = lra.propagate(db, trail);
+    REQUIRE(conflict);
+    REQUIRE(conflict.value() == clause(-linear(x - y < 1), -linear(x - y > 1)));
+}
+
+TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_arithmetic][debug]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, 2);
+    auto linear = factory(lra, trail);
+    auto [x, y] = real_vars<2>();
+
+    decide(trail, linear(x - y >= 1));
+    decide(trail, linear(x - y <= 1));
+    decide(trail, linear(x - y != 1));
+    decide(trail, linear(x == 0));
+    auto conflict = lra.propagate(db, trail);
+    REQUIRE(conflict);
+    REQUIRE(conflict.value() == clause(-linear(x - y <= 1), -linear(x - y >= 1), linear(x - y == 1)));
+}
+
 TEST_CASE("Always choose a new boolean variable for unique derived constraints", "[linear_arithmetic]")
 {
     using namespace perun;

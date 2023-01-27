@@ -320,6 +320,25 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
             it->second += *coef_it * mult;
         }
     }
+
+    // remove variables with 0 coefficient
+    for (auto it = prod.begin(); it != prod.end();)
+    {
+        if (it->second == Value_type{0})
+        {
+            it = prod.erase(it);
+        }
+        else 
+        {
+            ++it;
+        }
+    }
+
+    if (prod.empty())
+    {
+        return {};
+    }
+
     return constraint(trail, std::views::keys(prod), std::views::values(prod), pred, rhs);
 }
 
@@ -334,19 +353,27 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
         return {}; // no conflict
     }
 
+    Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate()};
+
     // if `lb and ub` imply `false`
     if (lb.reason().size() == 1 && ub.reason().size() == 1)
     {
-        return Clause{lb.reason().lit().negate(), ub.reason().lit().negate()};
+        return conflict;
     }
 
     // create `L <= U` and propagate the literal semantically so that the conflict clause is false
     auto cons = eliminate(trail, lb.reason(), ub.reason());
+    if (cons.empty())
+    {
+        return conflict;
+    }
+
+    // propagate the new constraint semantically
     assert(!cons.vars().empty());
     propagate(trail, models, cons);
+    conflict.push_back(cons.lit());
 
-    // L <= x && x <= U -> L <= U
-    return Clause{lb.reason().lit().negate(), ub.reason().lit().negate(), cons.lit()};
+    return conflict;
 }
 
 std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
@@ -376,10 +403,11 @@ std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
     {
         // create and propagate `L < D` semantically
         auto cons = eliminate(trail, lb.reason(), inequality.value().reason());
-        assert(!cons.vars().empty());
-        propagate(trail, models, cons);
-        // add the constraint to the conflict clause
-        conflict.push_back(cons.lit());
+        if (!cons.empty())
+        {
+            propagate(trail, models, cons);
+            conflict.push_back(cons.lit());
+        }
     }
 
     // if `D < U` is non-trivial (i.e., it contains at least one variable)
@@ -387,10 +415,11 @@ std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
     {
         // create and propagate `D < U` semantically
         auto cons = eliminate(trail, inequality.value().reason(), ub.reason());
-        assert(!cons.vars().empty());
-        propagate(trail, models, cons);
-        // add the constraint to the conflict clause
-        conflict.push_back(cons.lit());
+        if (!cons.empty())
+        {
+            propagate(trail, models, cons);
+            conflict.push_back(cons.lit());
+        }
     }
 
     return conflict;
