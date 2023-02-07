@@ -483,6 +483,14 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     auto models = relevant_models(trail);
     auto& bnds = bounds[var.ord()];
 
+    auto abs = [](int val) -> int {
+        if (val == std::numeric_limits<int>::min())
+        {
+            return std::numeric_limits<int>::max();
+        }
+        return val >= 0 ? val : -val;
+    };
+
     Value_type value{0};
     if (!bnds.is_allowed(models, value))
     {
@@ -495,14 +503,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
         int abs_bound = 0;
         if (left <= Value_type{0} && right >= Value_type{0})
         {
-            if (convert(left) == std::numeric_limits<int>::lowest())
-            {
-                abs_bound = std::numeric_limits<int>::max();
-            }
-            else
-            {
-                abs_bound = std::max<int>(-convert(left), convert(right));
-            }
+            abs_bound = std::max<int>(abs(convert(left)), convert(right));
         }
         else if (left > Value_type{0})
         {
@@ -511,23 +512,8 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
         }
         else // left <= right < 0
         {
-            if (convert(left) == std::numeric_limits<int>::lowest())
-            {
-                abs_bound = std::numeric_limits<int>::max();
-            }
-            else
-            {
-                abs_bound = -convert(left);
-            }
-
-            if (convert(right) == std::numeric_limits<int>::lowest())
-            {
-                abs_min_value = std::numeric_limits<int>::max();
-            }
-            else
-            {
-                abs_min_value = -convert(right);
-            }
+            abs_bound = abs(convert(left));
+            abs_min_value = abs(convert(right));
         }
 
         for (int int_value = abs_min_value; int_value <= abs_bound; ++int_value)
