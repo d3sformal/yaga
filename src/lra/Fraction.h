@@ -442,13 +442,21 @@ inline Fraction<Integer> operator-(Fraction<Integer> frac)
  * @return new fraction which represents @p lhs + @p rhs
  */
 template <typename L, typename R>
-    requires std::is_integral_v<L> && std::is_integral_v<R>
+    requires std::is_integral_v<L> && std::is_integral_v<R> && product_fits_in<L, R, std::int64_t>
 inline Fraction<std::common_type_t<L, R>> operator+(Fraction<L> lhs, Fraction<R> rhs)
 {
-    auto lcm = std::lcm(lhs.denominator(), rhs.denominator());
-    auto lhs_mult = lcm / lhs.denominator();
-    auto rhs_mult = lcm / rhs.denominator();
-    return {lhs.numerator() * lhs_mult + rhs.numerator() * rhs_mult, lcm};
+    std::int64_t lhs_num = lhs.numerator();
+    std::int64_t rhs_num = rhs.numerator();
+    std::int64_t num = lhs_num * rhs.denominator() + rhs_num * lhs.denominator();
+    std::int64_t denom = static_cast<std::int64_t>(lhs.denominator()) * rhs.denominator();
+    std::int64_t gcd = std::gcd(num, denom);
+    num /= gcd;
+    denom /= gcd;
+    assert(std::numeric_limits<int>::lowest() <= num);
+    assert(num <= std::numeric_limits<int>::max());
+    assert(std::numeric_limits<int>::lowest() <= denom);
+    assert(denom <= std::numeric_limits<int>::max());
+    return {static_cast<int>(num), static_cast<int>(denom), Normalized_tag{}};
 }
 
 /** Subtract two fractions
@@ -475,10 +483,19 @@ inline Fraction<std::common_type_t<L, R>> operator-(Fraction<L> lhs, Fraction<R>
  * @return new fraction which represents @p lhs * @p rhs
  */
 template <typename L, typename R>
-    requires std::is_integral_v<L> && std::is_integral_v<R>
+    requires std::is_integral_v<L> && std::is_integral_v<R> && product_fits_in<L, R, std::int64_t>
 inline Fraction<std::common_type_t<L, R>> operator*(Fraction<L> lhs, Fraction<R> rhs)
 {
-    return {lhs.numerator() * rhs.numerator(), lhs.denominator() * rhs.denominator()};
+    std::int64_t num = static_cast<std::int64_t>(lhs.numerator()) * rhs.numerator();
+    std::int64_t denom = static_cast<std::int64_t>(lhs.denominator()) * rhs.denominator();
+    std::int64_t gcd = std::gcd(num, denom);
+    num /= gcd;
+    denom /= gcd;
+    assert(std::numeric_limits<int>::lowest() <= num);
+    assert(num <= std::numeric_limits<int>::max());
+    assert(std::numeric_limits<int>::lowest() <= denom);
+    assert(denom <= std::numeric_limits<int>::max());
+    return {static_cast<int>(num), static_cast<int>(denom), Normalized_tag{}};
 }
 
 /** Divide two fractions
@@ -508,7 +525,7 @@ template <typename L, typename R>
     requires std::is_integral_v<L> && std::is_integral_v<R>
 inline Fraction<std::common_type_t<L, R>> operator+(Fraction<L> lhs, R rhs)
 {
-    return {lhs.numerator() + rhs * lhs.denominator(), lhs.denominator()};
+    return lhs + Fraction<R>{rhs};
 }
 
 /** Subtract an integer constant from a fraction
@@ -538,7 +555,7 @@ template <typename L, typename R>
     requires std::is_integral_v<L> && std::is_integral_v<R>
 inline Fraction<std::common_type_t<L, R>> operator*(Fraction<L> lhs, R rhs)
 {
-    return {lhs.numerator() * rhs, lhs.denominator()};
+    return lhs * Fraction<R>{rhs};
 }
 
 /** Divide a fraction by an integer constant
@@ -553,7 +570,7 @@ template <typename L, typename R>
     requires std::is_integral_v<L> && std::is_integral_v<R>
 inline Fraction<std::common_type_t<L, R>> operator/(Fraction<L> lhs, R rhs)
 {
-    return {lhs.numerator(), lhs.denominator() * rhs};
+    return lhs / Fraction<R>{rhs};
 }
 
 /** Add a fraction and an integer constant
