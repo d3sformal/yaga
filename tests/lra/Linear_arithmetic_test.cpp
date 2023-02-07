@@ -687,4 +687,26 @@ TEST_CASE("Decide variable", "[linear_arithmetic]")
         REQUIRE(models.owned().value(x.ord()) < 1);
         REQUIRE(models.owned().value(x.ord()) > 0);
     }
+
+    SECTION("decide integer value with negative lower bound and non-negative upper bound")
+    {
+        propagate(trail, linear(x < 0));
+        lra.propagate(db, trail);
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) == -1);
+    }
+
+    SECTION("decide integer value with negative lower bound and negative upper bound")
+    {
+        propagate(trail, linear(x < -1));
+        lra.propagate(db, trail);
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) == -2);
+    }
 }
