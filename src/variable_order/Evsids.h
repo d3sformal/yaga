@@ -22,7 +22,7 @@ public:
      */
     void on_init(Database& db, Trail& trail) override;
 
-    /** Allocate memory for VSIDS scores/
+    /** Allocate memory for VSIDS scores.
      *
      * @param type type of variable
      * @param num_vars new number of variables of type @p type
@@ -65,9 +65,9 @@ public:
 private:
     // map boolean variable ordinal -> VSIDS score
     std::vector<float> vsids;
-    // score grow factor (inverse dacay factor)
+    // score grow factor (inverse decay factor)
     float grow = 1.05f;
-    // current ammount by which a variable VSIDS is increased in `bump()`
+    // current amount by which a variable VSIDS is increased in `bump()`
     float inc = 1.0f;
 
     // when a score exceeds this threshold, all scores are rescaled
