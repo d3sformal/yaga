@@ -570,6 +570,38 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
     }
 }
 
+TEST_CASE("Backtrack-decide a constraint", "[linear_arithmetic]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Value_type>(Variable::rational).num_vars());
+    auto models = lra.relevant_models(trail);
+    auto linear = factory(lra, trail);
+    auto [x, y] = real_vars<2>();
+
+    auto cons = linear(x + y <= 0);
+
+    models.owned().set_value(x.ord(), 0);
+    trail.decide(x);
+    REQUIRE(!lra.propagate(db, trail));
+
+    models.owned().set_value(y.ord(), 0);
+    trail.decide(y);
+    REQUIRE(!lra.propagate(db, trail));
+
+    trail.backtrack(1);
+    trail.propagate(cons.lit().var(), nullptr, trail.decision_level());
+    models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+
+    REQUIRE(!lra.propagate(db, trail));
+}
+
 TEST_CASE("Decide variable", "[linear_arithmetic]")
 {
     using namespace perun;

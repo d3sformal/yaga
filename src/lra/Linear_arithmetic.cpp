@@ -107,13 +107,24 @@ bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Constr
         return false;
     }
 
-    // move the assigned variable to the second position
-    if (cons.vars()[1] != lra_var_ord)
+    // if both watched variables are assigned, the constraint is fully assigned
+    if (lra_model.is_defined(cons.vars()[0]) && lra_model.is_defined(cons.vars()[1]))
     {
-        std::swap(cons.vars()[0], cons.vars()[1]);
-        std::swap(cons.coef()[0], cons.coef()[1]);
+        assert(std::all_of(cons.vars().begin(), cons.vars().end(), [&](auto var) {
+            return lra_model.is_defined(var);
+        }));
+        return false;
     }
-    assert(cons.vars()[1] == lra_var_ord);
+
+    // move the assigned variable to the second position
+    auto rep_var_it = ++cons.vars().begin();
+    auto rep_coef_it = ++cons.coef().begin();
+    if (*rep_var_it != lra_var_ord)
+    {
+        std::iter_swap(cons.vars().begin(), rep_var_it);
+        std::iter_swap(cons.coef().begin(), rep_coef_it);
+    }
+    assert(*rep_var_it == lra_var_ord);
 
     // find an unassigned variable to watch
     auto var_it = cons.vars().begin() + 2;
@@ -123,14 +134,14 @@ bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Constr
         assert(coef_it != cons.coef().end());
         if (!lra_model.is_defined(*var_it))
         {
-            std::iter_swap(++cons.vars().begin(), var_it);
-            std::iter_swap(++cons.coef().begin(), coef_it);
-            watched[cons.vars()[1]].push_back(cons);
+            std::iter_swap(rep_var_it, var_it);
+            std::iter_swap(rep_coef_it, coef_it);
+            watched[*rep_var_it].push_back(cons);
             break;
         }
     }
 
-    return cons.vars()[1] != lra_var_ord;
+    return *rep_var_it != lra_var_ord;
 }
 
 std::optional<Clause> Linear_arithmetic::replace_watch(Assigned_stack& assigned, Trail& trail,
