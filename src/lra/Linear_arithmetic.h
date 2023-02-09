@@ -63,7 +63,7 @@ public:
      * @tparam Coef_range range of coefficients (Value_types)
      * @param trail current solver trail
      * @param vars range of LRA variable numbers
-     * @param coef range of coefficints of @p vars
+     * @param coef range of coefficients of @p vars
      * @param pred predicate of the constraint
      * @param rhs constant on the right-hand-side of the constraint
      * @return linear constraint
@@ -98,7 +98,7 @@ public:
         return {bounds[lra_var_ord].lower_bound(models), bounds[lra_var_ord].upper_bound(models)};
     }
 
-    /** Get models relevent to this theory
+    /** Get models relevant to this theory
      *
      * @param trail current solver trail
      * @return models from @p trail relevant to this theory
@@ -136,7 +136,7 @@ private:
      */
     void watch(Constraint_type& cons, Model<Value_type> const& model);
 
-    /** Start watching LRA variables in @p cons assuming the frist two variables in @p cons are
+    /** Start watching LRA variables in @p cons assuming the first two variables in @p cons are
      * unassigned.
      *
      * @param cons new constraint

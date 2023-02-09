@@ -29,7 +29,7 @@ public:
      */
     inline explicit First_unassigned(Variable::Type type) : var_type(type) {}
 
-    /** Find the first unassigned variable of any type.
+    /** Find the first unassigned variable.
      *
      * @param db clause database
      * @param trail current solver trail

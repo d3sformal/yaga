@@ -543,6 +543,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     }
 
     // decide the value
+    assert(bnds.is_allowed(models, value));
     models.owned().set_value(var.ord(), value);
     trail.decide(var);
 }
