@@ -133,6 +133,32 @@ public:
         {
             boolean(name, num_args);
         }
+        else if (name == "=>")
+        {
+            implication();
+        }
+        else
+        {
+            std::cerr << "Unkown function '" << name << "'\n";
+        }
+    }
+
+    // start parsing argument of a function in an asserted expression
+    inline void enter_arg(std::string const& fun_name, int index)
+    {
+        if (fun_name == "=>" && index == 0)
+        {
+            negate = !negate;
+        }
+    }
+
+    // finish parsing argument of a function in an asserted expression
+    inline void exit_arg(std::string const& fun_name, int index)
+    {
+        if (fun_name == "=>" && index == 0)
+        {
+            negate = !negate;
+        }
     }
 
     // get variable object from user-defined variable name
@@ -248,6 +274,26 @@ private:
         }
         val.constant = -val.constant;
         push(val);
+    }
+
+    // encode an implication `body => head`
+    inline void implication()
+    {
+        auto head = pop_lit();
+        auto body = pop_lit();
+        auto new_var = new_bool_var();
+        Literal new_lit{new_var.ord()};
+
+        if (negate)
+        {
+            encode_and(body, head, new_lit);
+        }
+        else
+        {
+            encode_or(body, head, new_lit);
+        }
+
+        push(new_lit);
     }
 
     // encode an arithmetic operation +, -, *, /
@@ -480,7 +526,9 @@ public:
                     {
                         break;
                     }
+                    listener().enter_arg(id, num_args);
                     parse_term(in);
+                    listener().exit_arg(id, num_args);
                     ++num_args;
                 }
                 listener().exit_fun(id, num_args);
