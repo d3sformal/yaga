@@ -48,14 +48,20 @@ public:
     {
         // normalize the input and add it to the constraints list
         auto mult = find_norm_constant(var_range, coef_range);
+        bool is_negation = false;
         Constraint_type cons;
         if (mult) // constraint with variables
         {
             auto [lit, range] = add(mult.value(), var_range, coef_range);
             cons = constraints.emplace_back(lit, range, norm_pred(mult.value(), pred), mult.value() * rhs, this);
+            is_negation = pred != Order_predicate::eq && mult.value() < Value_type{0};
         }
         else // constraint without variables
         {
+            // normalize to `0 == 0`
+            is_negation = !pred(Value_type{0}, rhs);
+            rhs = Value_type{0}; 
+            pred = Order_predicate::eq;
             Literal lit{static_cast<int>(constraints.size())};
             cons = constraints.emplace_back(lit, std::pair{0, 0}, pred, rhs, this);
             mult = Value_type{1};
@@ -71,11 +77,7 @@ public:
         }
 
         // negate literal if `*it` represents negation of the input constraint
-        auto lit = it->lit();
-        if (pred != Order_predicate::eq && mult.value() < Value_type{0})
-        {
-            lit = lit.negate();
-        }
+        auto lit = is_negation ? it->lit().negate() : it->lit();
 
         return {lit, it->pos(), it->pred(), it->rhs(), this};
     }

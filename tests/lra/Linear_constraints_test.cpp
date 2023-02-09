@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark_all.hpp>
 
+#include <array>
 #include <random>
 
 #include "test.h"
@@ -252,6 +253,37 @@ TEST_CASE("Evaluate negation of a linear constraint", "[linear_constraints]")
     REQUIRE(perun::eval(model, cons) == false);
     model.set_value(y.ord(), 1);
     REQUIRE(perun::eval(model, cons) == true);
+}
+
+TEST_CASE("Encode true constraint and false constraint uniformly", "[linear_constraints]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    using Value_type = Fraction<int>;
+
+    Linear_constraints<Value_type> repo;
+    auto make = factory(repo);
+    auto [x, y] = real_vars<2>();
+
+    auto true_cons1 = make(x + 1 == x + 1);
+    auto true_cons2 = make(x <= x);
+    auto true_cons3 = make(x >= x);
+    auto true_cons4 = make(x + y - x - y == 0);
+
+    auto false_cons1 = make(x < x);
+    auto false_cons2 = make(x > x);
+    auto false_cons3 = make(x + y - x - y == 1);
+    auto false_cons4 = make(x + 3 == 1 + x + 3);
+
+    REQUIRE(true_cons1.lit() == true_cons2.lit());
+    REQUIRE(true_cons2.lit() == true_cons3.lit());
+    REQUIRE(true_cons3.lit() == true_cons4.lit());
+
+    REQUIRE(true_cons4.lit() == false_cons1.lit().negate());
+    REQUIRE(false_cons1.lit() == false_cons2.lit());
+    REQUIRE(false_cons2.lit() == false_cons3.lit());
+    REQUIRE(false_cons3.lit() == false_cons4.lit());
 }
 
 template<int num_vars, int min_var_per_const, int max_var_per_const, int num_const>
