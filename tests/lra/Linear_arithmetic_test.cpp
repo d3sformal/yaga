@@ -602,6 +602,30 @@ TEST_CASE("Backtrack-decide a constraint", "[linear_arithmetic]")
     REQUIRE(!lra.propagate(db, trail));
 }
 
+TEST_CASE("Propagate derived bound constraint semantically only if it is not on the trail", "[linear_arithmetic]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Value_type>(Variable::rational).num_vars());
+    auto models = lra.relevant_models(trail);
+    auto linear = factory(lra, trail);
+    auto [x, y] = real_vars<2>();
+
+    propagate(trail, linear(y == 0).negate());
+    propagate(trail, linear(x == 0));
+    propagate(trail, linear(y == 2));
+    propagate(trail, linear(x - y == 0));
+    auto conflict = lra.propagate(db, trail);
+    REQUIRE(conflict);
+    REQUIRE(conflict.value() == clause(-linear(x - y == 0), -linear(x == 0), linear(y == 0)));
+}
+
 TEST_CASE("Decide variable", "[linear_arithmetic]")
 {
     using namespace perun;

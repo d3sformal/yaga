@@ -71,6 +71,8 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 
 void Linear_arithmetic::watch(Constraint_type& cons)
 {
+    assert(!cons.empty());
+
     watched[cons.vars()[0]].push_back(cons);
     if (cons.size() > 1)
     {
@@ -381,9 +383,13 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
 
     // propagate the new constraint semantically
     assert(!cons.vars().empty());
-    propagate(trail, models, cons);
-    conflict.push_back(cons.lit());
+    if (!models.boolean().is_defined(cons.lit().var().ord()))
+    {
+        propagate(trail, models, cons);
+    }
 
+    conflict.push_back(cons.lit());
+    assert(eval(models.boolean(), cons.lit()) == eval(models.owned(), cons));
     return conflict;
 }
 
