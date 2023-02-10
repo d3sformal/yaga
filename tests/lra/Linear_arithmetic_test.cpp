@@ -613,7 +613,6 @@ TEST_CASE("Propagate derived bound constraint semantically only if it is not on 
     trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Value_type>(Variable::rational).num_vars());
-    auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
@@ -624,6 +623,47 @@ TEST_CASE("Propagate derived bound constraint semantically only if it is not on 
     auto conflict = lra.propagate(db, trail);
     REQUIRE(conflict);
     REQUIRE(conflict.value() == clause(-linear(x - y == 0), -linear(x == 0), linear(y == 0)));
+}
+
+TEST_CASE("Propagate derived inequality constraint semantically only if it is not an the trail", "[linear_arithmetic]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Value_type>(Variable::rational).num_vars());
+    auto linear = factory(lra, trail);
+    auto [x, y] = real_vars<2>();
+
+    SECTION("in upper bound")
+    {
+        propagate(trail, linear(1 < y).negate());
+        propagate(trail, linear(y == 1));
+        propagate(trail, linear(x <= y));
+        propagate(trail, linear(1 <= x));
+        propagate(trail, linear(x != 1));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(1 <= x), -linear(x <= y), -linear(x != 1), linear(1 < y)));
+    }
+
+    SECTION("in lower bound")
+    {
+        propagate(trail, linear(y < 1).negate());
+        propagate(trail, linear(y == 1));
+        propagate(trail, linear(x <= 1));
+        propagate(trail, linear(y <= x));
+        propagate(trail, linear(x != 1));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(y <= x), -linear(x <= 1), -linear(x != 1), linear(y < 1)));
+    }
 }
 
 TEST_CASE("Decide variable", "[linear_arithmetic]")

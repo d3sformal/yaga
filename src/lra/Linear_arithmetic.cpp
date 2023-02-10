@@ -387,6 +387,8 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
     {
         propagate(trail, models, cons);
     }
+    assert(eval(models.owned(), cons) == false);
+    assert(eval(models.boolean(), cons.lit()) == false);
 
     conflict.push_back(cons.lit());
     assert(eval(models.boolean(), cons.lit()) == eval(models.owned(), cons));
@@ -422,7 +424,12 @@ std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
         auto cons = eliminate(trail, lb.reason(), inequality.value().reason());
         if (!cons.empty())
         {
-            propagate(trail, models, cons);
+            if (!models.boolean().is_defined(cons.lit().var().ord()))
+            {
+                propagate(trail, models, cons);
+            }
+            assert(eval(models.owned(), cons) == false);
+            assert(eval(models.boolean(), cons.lit()) == false);
             conflict.push_back(cons.lit());
         }
     }
@@ -434,7 +441,12 @@ std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
         auto cons = eliminate(trail, inequality.value().reason(), ub.reason());
         if (!cons.empty())
         {
-            propagate(trail, models, cons);
+            if (!models.boolean().is_defined(cons.lit().var().ord()))
+            {
+                propagate(trail, models, cons);
+            }
+            assert(eval(models.owned(), cons) == false);
+            assert(eval(models.boolean(), cons.lit()) == false);
             conflict.push_back(cons.lit());
         }
     }
