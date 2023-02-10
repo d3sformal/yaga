@@ -214,7 +214,7 @@ TEST_CASE("Constraints with different predicate are different", "[linear_constra
     REQUIRE(cons1.lit().var() != cons3.lit().var());
 }
 
-TEST_CASE("Constraints with different nubmer of variables are different", "[linear_constraints]")
+TEST_CASE("Constraints with different number of variables are different", "[linear_constraints]")
 {
     using namespace perun;
     using namespace perun::test;

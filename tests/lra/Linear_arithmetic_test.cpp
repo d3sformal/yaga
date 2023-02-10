@@ -292,7 +292,7 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithme
     REQUIRE(perun::eval(models.owned(), linear(x + y + z <= 0)) == false);
 }
 
-TEST_CASE("Compute bounds corretly after backtracking", "[linear_arithmetic]")
+TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -664,6 +664,38 @@ TEST_CASE("Propagate derived inequality constraint semantically only if it is no
         REQUIRE(conflict);
         REQUIRE(conflict.value() == clause(-linear(y <= x), -linear(x <= 1), -linear(x != 1), linear(y < 1)));
     }
+}
+
+TEST_CASE("The first two unassigned variables in a derived constraint have the highest decision level", "[linear_arithmetic]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Database db;
+    Trail trail;
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
+    Linear_arithmetic lra;
+    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Value_type>(Variable::rational).num_vars());
+    auto linear = factory(lra, trail);
+    auto [x, y, z] = real_vars<3>();
+
+    propagate(trail, linear(y == 1));
+    REQUIRE(!lra.propagate(db, trail));
+
+    // decide, bound conflict
+    decide(trail, linear(y < x));
+    propagate(trail, linear(x < z));
+    propagate(trail, linear(z == 1));
+
+    auto conflict = lra.propagate(db, trail);
+    REQUIRE(conflict);
+    REQUIRE(conflict.value() == clause(-linear(y < x), -linear(x < z), linear(y < z)));
+
+    // backtrack, decide
+    trail.backtrack(0);
+    decide(trail, linear(y >= z));
+    REQUIRE(!lra.propagate(db, trail));
 }
 
 TEST_CASE("Decide variable", "[linear_arithmetic]")

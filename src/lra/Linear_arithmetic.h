@@ -208,6 +208,14 @@ private:
     std::optional<Clause> unit(Assigned_stack& assigned, Trail& trail, Models_type& models,
                                Constraint_type& cons);
 
+    /** Group elements in @p polynomial by variable and sum up coefficients in each group.
+     * 
+     * This method also drops variables whose coefficient becomes 0.
+     * 
+     * @param polynomial polynomial to normalize
+     */
+    void group_by_variable(std::vector<std::pair<int, Value_type>>& polynomial);
+
     /** Combine @p first and @p second using Fourier-Motzkin elimination of the first unassigned
      * variable in @p first and @p second
      *
