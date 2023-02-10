@@ -94,6 +94,11 @@ public:
     {
         // variable which defines the expression has to be true
         auto lit = pop_lit();
+        if (lit == true_lit)
+        {
+            return;
+        }
+        assert(lit != true_lit.negate());
         db->assert_clause(Clause{lit});
     }
 
@@ -135,11 +140,11 @@ public:
         }
         else if (name == "=>")
         {
-            implication();
+            boolean("or", /*num_args=*/2);
         }
         else
         {
-            std::cerr << "Unkown function '" << name << "'\n";
+            assert(false && "unkown function");
         }
     }
 
@@ -183,24 +188,40 @@ private:
     Linear_arithmetic* lra;
     Database* db;
     Trail* trail;
+    // placeholder for a literal which represents a constant TRUE
+    inline static Literal true_lit{std::numeric_limits<int>::max() - 1};
 
     // encode a boolean function (and/or)
     inline void boolean(std::string const& name, int num_args)
     {
+        bool is_or = (name == "or" && !negate) || (name == "and" && negate);
+
         for (; num_args > 1; --num_args)
         {
             auto rhs = pop_lit();
             auto lhs = pop_lit();
 
-            if (lhs == rhs)
+            if (is_or && (lhs == true_lit || rhs == true_lit))
+            {
+                push(true_lit);
+            }
+            else if (!is_or && (lhs == true_lit.negate() || rhs == true_lit.negate()))
+            {
+                push(true_lit.negate());
+            }
+            else if (lhs == rhs || rhs.var() == true_lit.var())
             {
                 push(lhs);
             }
-            else
+            else if (lhs.var() == true_lit.var())
+            {
+                push(rhs);
+            }
+            else // lhs, rhs are not constants
             {
                 push(Literal{new_bool_var().ord()});
 
-                if ((name == "or" && !negate) || (name == "and" && negate))
+                if (is_or)
                 {
                     encode_or(lhs, rhs, lits.back());
                 }
@@ -231,6 +252,23 @@ private:
         auto rhs = pop_poly();
         auto lhs = pop_poly();
         auto norm_poly = lhs - rhs;
+
+        if (norm_poly.vars.empty())
+        {
+            Literal lit;
+            if ((name == "<" && norm_poly.constant < 0) || (name == "<=" && norm_poly.constant <= 0) || 
+                (name == "=" && norm_poly.constant == 0) || (name == ">" && norm_poly.constant > 0) ||
+                (name == ">=" && norm_poly.constant >= 0))
+            {
+                lit = true_lit.negate();
+            }
+            else
+            {
+                lit = true_lit;
+            }
+            push(negate ? lit.negate() : lit);
+            return;
+        }
 
         Linear_constraint<Fraction<int>> cons;
         if (name == "<")
@@ -274,26 +312,6 @@ private:
         }
         val.constant = -val.constant;
         push(val);
-    }
-
-    // encode an implication `body => head`
-    inline void implication()
-    {
-        auto head = pop_lit();
-        auto body = pop_lit();
-        auto new_var = new_bool_var();
-        Literal new_lit{new_var.ord()};
-
-        if (negate)
-        {
-            encode_and(body, head, new_lit);
-        }
-        else
-        {
-            encode_or(body, head, new_lit);
-        }
-
-        push(new_lit);
     }
 
     // encode an arithmetic operation +, -, *, /
