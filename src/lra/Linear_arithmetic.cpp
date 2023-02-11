@@ -42,31 +42,14 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
         }
         else if (var.type() == Variable::rational)
         {
-            assigned.emplace_back(var, std::optional<Value_type>{});
+            if (auto conflict = replace_watch(assigned, trail, models, var.ord()))
+            {
+                return conflict;
+            }
         }
     }
 
-    std::optional<Clause> conflict;
-    while (!assigned.empty() && !conflict)
-    {
-        auto [var, val] = assigned.back();
-        assigned.pop_back();
-        if (val)
-        {
-            if (!models.owned().is_defined(var.ord()))
-            {
-                models.owned().set_value(var.ord(), val.value());
-                trail.propagate(var, nullptr, trail.decision_level());
-            }
-            else
-            {
-                assert(models.owned().value(var.ord()) == val.value());
-            }
-        }
-        assert(var.type() == Variable::rational);
-        conflict = replace_watch(assigned, trail, models, var.ord());
-    }
-    return conflict;
+    return {}; // no conflict
 }
 
 void Linear_arithmetic::watch(Constraint_type& cons)
@@ -287,11 +270,40 @@ std::optional<Clause> Linear_arithmetic::unit(Assigned_stack& assigned, Trail& t
         return conflict;
     }
 
-    if (auto value = check_equality(models, bounds[cons.vars().front()]))
-    {
-        assigned.emplace_back(Variable{cons.vars().front(), Variable::rational}, value);
-    }
     return {};
+}
+
+void Linear_arithmetic::group_by_variable(std::vector<std::pair<int, Value_type>>& poly)
+{
+    // sort by variable
+    std::sort(poly.begin(), poly.end(), [&](auto lhs, auto rhs) {
+        return lhs.first < rhs.first;
+    });
+
+    // combine coefficients if they belong to the same variable
+    auto out_it = poly.begin();
+    for (auto [var, coef] : poly | std::views::drop(1))
+    {
+        if (out_it->first != var)
+        {
+            if (out_it->second != 0) // drop variables with 0 coefficient
+            {
+                ++out_it;
+            }
+            out_it->first = var;
+            out_it->second = coef;
+        }
+        else
+        {
+            out_it->second += coef;
+        }
+    }
+
+    if (!poly.empty() && out_it->second != 0) // drop variables with 0 coefficient
+    {
+        ++out_it;
+    }
+    poly.erase(out_it, poly.end());
 }
 
 Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
@@ -320,39 +332,32 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
     auto first_mult = first.coef().front() < Value_type{0} ? Value_type{1} : Value_type{-1};
     auto second_mult = -first_mult * first.coef().front() / second.coef().front();
 
-    // compute `poly(first) * first_mult + poly(second) * second_mult`
+    // multiply polynomials of both constraints by the respective constants
     auto rhs = first.rhs() * first_mult + second.rhs() * second_mult;
-    std::unordered_map<int, Value_type> prod;
+    std::vector<std::pair<int, Value_type>> product;
     for (auto [cons_ptr, mult] : {std::pair{&first, first_mult}, std::pair{&second, second_mult}})
     {
         auto var_it = ++cons_ptr->vars().begin(); // skip the unassigned variable
         auto coef_it = ++cons_ptr->coef().begin();
         for (; var_it != cons_ptr->vars().end(); ++var_it, ++coef_it)
         {
-            auto [it, _] = prod.insert({*var_it, Value_type{0}});
-            it->second += *coef_it * mult;
+            product.emplace_back(*var_it, *coef_it * mult);
         }
     }
+    group_by_variable(product);
 
-    // remove variables with 0 coefficient
-    for (auto it = prod.begin(); it != prod.end();)
-    {
-        if (it->second == Value_type{0})
-        {
-            it = prod.erase(it);
-        }
-        else 
-        {
-            ++it;
-        }
-    }
-
-    if (prod.empty())
+    if (product.empty())
     {
         return {};
     }
 
-    return constraint(trail, std::views::keys(prod), std::views::values(prod), pred, rhs);
+    // sort the polynomial by decision level
+    std::sort(product.begin(), product.end(), [&](auto lhs, auto rhs) {
+        Variable lhs_var{lhs.first, Variable::rational};
+        Variable rhs_var{rhs.first, Variable::rational};
+        return trail.decision_level(lhs_var).value() > trail.decision_level(rhs_var).value();
+    });
+    return constraint(trail, std::views::keys(product), std::views::values(product), pred, rhs);
 }
 
 std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Models_type& models,

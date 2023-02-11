@@ -25,6 +25,15 @@ auto decide(Trail& trail, Literal lit)
     trail.decide(lit.var());
 }
 
+// decide that a real variable var is equal to a value val
+auto decide(Trail& trail, Variable var, Fraction<int> value)
+{
+    auto& model = trail.model<Fraction<int>>(Variable::rational);
+    assert(!model.is_defined(var.ord()));
+    model.set_value(var.ord(), value);
+    trail.decide(var);
+}
+
 template <typename Value> auto decide(Trail& trail, Linear_constraint<Value> const& cons)
 {
     return decide(trail, cons.lit());
@@ -79,75 +88,6 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
     REQUIRE(ub.value() == 10);
 }
 
-TEST_CASE("Detect implied equality", "[linear_arithmetic]")
-{
-    using namespace perun;
-    using namespace perun::test;
-
-    Database db;
-    Trail trail;
-    trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
-    auto models = lra.relevant_models(trail);
-    auto linear = factory(lra, trail);
-    auto [x, y, z] = real_vars<3>();
-
-    // prepare test constraints on the trail
-    propagate(trail, linear(x <= 4));
-    propagate(trail, linear(x >= 4));
-    propagate(trail, linear(y == 8));
-    propagate(trail, linear(z != 16));
-
-    REQUIRE(!models.owned().is_defined(x.ord()));
-    REQUIRE(!models.owned().is_defined(y.ord()));
-    REQUIRE(!models.owned().is_defined(z.ord()));
-
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(!conflict);
-
-    REQUIRE(models.owned().is_defined(x.ord()));
-    REQUIRE(models.owned().value(x.ord()) == 4);
-    REQUIRE(trail.decision_level(x) == 0);
-
-    REQUIRE(models.owned().is_defined(y.ord()));
-    REQUIRE(models.owned().value(y.ord()) == 8);
-    REQUIRE(trail.decision_level(y) == 0);
-
-    REQUIRE(!models.owned().is_defined(z.ord()));
-    REQUIRE(!trail.decision_level(z));
-}
-
-TEST_CASE("Recursively propagate unit constraints", "[linear_arithmetic]")
-{
-    using namespace perun;
-    using namespace perun::test;
-
-    Database db;
-    Trail trail;
-    trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
-    auto models = lra.relevant_models(trail);
-    auto linear = factory(lra, trail);
-    auto [x, y, z] = real_vars<3>();
-
-    propagate(trail, linear(x + y + z <= 4));
-    propagate(trail, linear(x + y <= 8));
-    propagate(trail, linear(x <= 16));
-    propagate(trail, linear(y == 0));
-    propagate(trail, linear(z == 0));
-
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(!conflict);
-
-    auto [lb, ub] = lra.find_bounds(models, x.ord());
-    REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
-    REQUIRE(ub.value() == 4);
-}
-
 TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_arithmetic]")
 {
     using namespace perun;
@@ -176,7 +116,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
     }
 
     // make x + y <= 8 unit
-    decide(trail, linear(y == 0));
+    decide(trail, y, 0);
     {
         auto conflict = lra.propagate(db, trail);
         REQUIRE(!conflict);
@@ -187,7 +127,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
     }
 
     // make x + y + z <= 4 unit
-    decide(trail, linear(z == 0));
+    decide(trail, z, 0);
     {
         auto conflict = lra.propagate(db, trail);
         REQUIRE(!conflict);
@@ -213,51 +153,24 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
+    decide(trail, y, 0);
     propagate(trail, linear(x + y + z <= 4));
     propagate(trail, linear(x + y <= 8));
     propagate(trail, linear(x <= 16));
-    propagate(trail, linear(y == 0));
     propagate(trail, linear(z == 0));
 
     REQUIRE(!lra.propagate(db, trail));
     REQUIRE(!lra.propagate(db, trail));
     REQUIRE(!lra.propagate(db, trail));
 
-    REQUIRE(trail.assigned(trail.decision_level()).size() == 7);
+    REQUIRE(trail.assigned(trail.decision_level()).size() == 5);
     REQUIRE(!trail.decision_level(x));
-    REQUIRE(trail.decision_level(y) == 0);
-    REQUIRE(trail.decision_level(z) == 0);
+    REQUIRE(trail.decision_level(y) == 1);
+    REQUIRE(!trail.decision_level(z));
 
     auto [lb, ub] = lra.find_bounds(models, x.ord());
     REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
-    REQUIRE(ub.value() == 4);
-}
-
-TEST_CASE("Only propagate equality once if there are multiple sources", "[linear_arithmetic]")
-{
-    using namespace perun;
-    using namespace perun::test;
-
-    Database db;
-    Trail trail;
-    trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
-    auto linear = factory(lra, trail);
-    auto [x, y, z] = real_vars<3>();
-
-    propagate(trail, linear(x + y == 4));
-    propagate(trail, linear(x + z == 5));
-    propagate(trail, linear(y == 0));
-    propagate(trail, linear(z == 1));
-
-    REQUIRE(!lra.propagate(db, trail));
-
-    REQUIRE(trail.assigned(trail.decision_level()).size() == 7);
-    REQUIRE(trail.decision_level(x) == 0);
-    REQUIRE(trail.decision_level(y) == 0);
-    REQUIRE(trail.decision_level(z) == 0);
+    REQUIRE(ub.value() == 8);
 }
 
 TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")
@@ -277,17 +190,20 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithme
 
     // add a constraint that is not on the trail
     linear(x + y + z <= 0);
-    propagate(trail, linear(x == 1));
-    propagate(trail, linear(y == 0));
-    propagate(trail, linear(z == 0));
+
+    decide(trail, x, 1);
+    REQUIRE(!lra.propagate(db, trail));
+    decide(trail, y, 0);
+    REQUIRE(!lra.propagate(db, trail));
 
     REQUIRE(!perun::eval(models.boolean(), linear(x + y + z <= 0).lit()));
     REQUIRE(!perun::eval(models.owned(), linear(x + y + z <= 0)));
     REQUIRE(!trail.decision_level(linear(x + y + z <= 0).lit().var()));
 
+    decide(trail, z, 0);
     REQUIRE(!lra.propagate(db, trail));
 
-    REQUIRE(trail.decision_level(linear(x + y + z <= 0).lit().var()) == 0);
+    REQUIRE(trail.decision_level(linear(x + y + z <= 0).lit().var()) == 3);
     REQUIRE(perun::eval(models.boolean(), linear(x + y + z <= 0).lit()) == false);
     REQUIRE(perun::eval(models.owned(), linear(x + y + z <= 0)) == false);
 }
@@ -342,12 +258,14 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
-    SECTION("with strict lower bound")
+    SECTION("with a strict lower bound")
     {
+        decide(trail, y, 0);
+        REQUIRE(!lra.propagate(db, trail));
+
+        decide(trail, z, 0);
         propagate(trail, linear(x <= y));
         propagate(trail, linear(z < x));
-        propagate(trail, linear(y == 0));
-        propagate(trail, linear(z == 0));
 
         auto conflict = lra.propagate(db, trail);
         REQUIRE(conflict);
@@ -358,10 +276,12 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
 
     SECTION("with strict upper bound")
     {
+        decide(trail, y, 0);
+        REQUIRE(!lra.propagate(db, trail));
+
+        decide(trail, z, 0);
         propagate(trail, linear(x < y));
         propagate(trail, linear(z <= x));
-        propagate(trail, linear(y == 0));
-        propagate(trail, linear(z == 0));
 
         auto conflict = lra.propagate(db, trail);
         REQUIRE(conflict);
@@ -372,10 +292,12 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
 
     SECTION("with both bounds strict")
     {
+        decide(trail, y, 0);
+        REQUIRE(!lra.propagate(db, trail));
+
+        decide(trail, z, 0);
         propagate(trail, linear(x < y));
         propagate(trail, linear(z < x));
-        propagate(trail, linear(y == 0));
-        propagate(trail, linear(z == 0));
 
         auto conflict = lra.propagate(db, trail);
         REQUIRE(conflict);
@@ -386,10 +308,12 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
 
     SECTION("with non-strict bounds")
     {
+        decide(trail, y, -1);
+        REQUIRE(!lra.propagate(db, trail));
+
+        decide(trail, z, 1);
         propagate(trail, linear(x <= y));
         propagate(trail, linear(z <= x));
-        propagate(trail, linear(y == -1));
-        propagate(trail, linear(z == 1));
 
         auto conflict = lra.propagate(db, trail);
         REQUIRE(conflict);
@@ -411,9 +335,9 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
 
     SECTION("with two equalities")
     {
+        decide(trail, x, 0);
         propagate(trail, linear(x + y == 2));
         propagate(trail, linear(2 * x + 4 * y == 4));
-        propagate(trail, linear(x == 0));
 
         auto conflict = lra.propagate(db, trail);
         REQUIRE(conflict);
@@ -439,7 +363,7 @@ TEST_CASE("Detect trivial bound conflict with several variables", "[linear_arith
 
     decide(trail, linear(x - y > 1));
     decide(trail, linear(x - y < 1));
-    decide(trail, linear(x == 0));
+    decide(trail, x, 0);
     auto conflict = lra.propagate(db, trail);
     REQUIRE(conflict);
     REQUIRE(conflict.value() == clause(-linear(x - y < 1), -linear(x - y > 1)));
@@ -462,7 +386,7 @@ TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_
     decide(trail, linear(x - y >= 1));
     decide(trail, linear(x - y <= 1));
     decide(trail, linear(x - y != 1));
-    decide(trail, linear(x == 0));
+    decide(trail, x, 0);
     auto conflict = lra.propagate(db, trail);
     REQUIRE(conflict);
     REQUIRE(conflict.value() == clause(-linear(x - y <= 1), -linear(x - y >= 1), linear(x - y == 1)));
@@ -484,7 +408,7 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
-    propagate(trail, linear(y == 0));
+    decide(trail, y, 0);
     propagate(trail, linear(x > 0));
     propagate(trail, linear(x + y < 0));
 
@@ -493,7 +417,7 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
     REQUIRE(conflict.value() == clause(-linear(x > 0), -linear(x + y < 0), linear(y < 0)));
     REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
     REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
-    REQUIRE(linear(y < 0).lit().var().ord() == 4);
+    REQUIRE(linear(y < 0).lit().var().ord() == 3);
 }
 
 TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
@@ -513,11 +437,13 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
 
     SECTION("with non-trivial derivations")
     {
+        decide(trail, y, 0);
+        REQUIRE(!lra.propagate(db, trail));
+
+        decide(trail, z, 0);
         propagate(trail, linear(y <= x));
         propagate(trail, linear(x <= z));
         propagate(trail, linear(x != 0));
-        propagate(trail, linear(y == 0));
-        propagate(trail, linear(z == 0));
 
         auto conflict = lra.propagate(db, trail);
         REQUIRE(conflict);
@@ -543,10 +469,10 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
 
     SECTION("with trivial derivation from upper bound")
     {
+        decide(trail, y, 0);
         propagate(trail, linear(x <= 4));
         propagate(trail, linear(x + y >= 4));
         propagate(trail, linear(x != 4));
-        propagate(trail, linear(y == 0));
 
         auto conflict = lra.propagate(db, trail);
         REQUIRE(conflict);
@@ -557,10 +483,10 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
 
     SECTION("with trivial derivation from lower bound")
     {
+        decide(trail, y, 0);
         propagate(trail, linear(x + y <= 4));
         propagate(trail, linear(x >= 4));
         propagate(trail, linear(x != 4));
-        propagate(trail, linear(y == 0));
 
         auto conflict = lra.propagate(db, trail);
         REQUIRE(conflict);
@@ -616,9 +542,9 @@ TEST_CASE("Propagate derived bound constraint semantically only if it is not on 
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
+    decide(trail, y, 2);
     propagate(trail, linear(y == 0).negate());
     propagate(trail, linear(x == 0));
-    propagate(trail, linear(y == 2));
     propagate(trail, linear(x - y == 0));
     auto conflict = lra.propagate(db, trail);
     REQUIRE(conflict);
@@ -641,8 +567,9 @@ TEST_CASE("Propagate derived inequality constraint semantically only if it is no
 
     SECTION("in upper bound")
     {
-        propagate(trail, linear(1 < y).negate());
+        decide(trail, y, 1);
         propagate(trail, linear(y == 1));
+        propagate(trail, linear(1 < y).negate());
         propagate(trail, linear(x <= y));
         propagate(trail, linear(1 <= x));
         propagate(trail, linear(x != 1));
@@ -654,6 +581,7 @@ TEST_CASE("Propagate derived inequality constraint semantically only if it is no
 
     SECTION("in lower bound")
     {
+        decide(trail, y, 1);
         propagate(trail, linear(y < 1).negate());
         propagate(trail, linear(y == 1));
         propagate(trail, linear(x <= 1));
@@ -680,20 +608,19 @@ TEST_CASE("The first two unassigned variables in a derived constraint have the h
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
-    propagate(trail, linear(y == 1));
+    decide(trail, y, 1);
     REQUIRE(!lra.propagate(db, trail));
 
-    // decide, bound conflict
-    decide(trail, linear(y < x));
+    decide(trail, z, 1);
+    propagate(trail, linear(y < x));
     propagate(trail, linear(x < z));
-    propagate(trail, linear(z == 1));
 
     auto conflict = lra.propagate(db, trail);
     REQUIRE(conflict);
     REQUIRE(conflict.value() == clause(-linear(y < x), -linear(x < z), linear(y < z)));
 
     // backtrack, decide
-    trail.backtrack(0);
+    trail.backtrack(1);
     decide(trail, linear(y >= z));
     REQUIRE(!lra.propagate(db, trail));
 }

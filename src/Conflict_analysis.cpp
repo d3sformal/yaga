@@ -48,7 +48,7 @@ std::pair<Clause, int> Conflict_analysis::finish(Trail const& trail) const
     }
 
     // move literals with the highest decision level to the front
-    // this ormalizes conflict analysis output regardless of hash set implementation
+    // this normalizes conflict analysis output regardless of hash set implementation
     std::sort(clause.begin(), clause.end(), [&](auto&& lhs, auto&& rhs) {
         auto lhs_level = trail.decision_level(lhs.var()).value_or(-1);
         auto rhs_level = trail.decision_level(rhs.var()).value_or(-1);
