@@ -119,6 +119,11 @@ Solver::Result Solver::check()
         auto conflict = propagate();
         if (conflict)
         {
+            if (trail().decision_level() == 0)
+            {
+                return Result::unsat;
+            }
+
             auto [learned, level] = analyze_conflict(std::move(conflict.value()));
             if (learned.empty())
             {
