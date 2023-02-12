@@ -300,6 +300,11 @@ inline std::ostream& operator<<(std::ostream& out, Linear_constraint<Value> cons
         delim = " + ";
     }
 
+    if (cons.empty())
+    {
+        out << "0";
+    }
+
     if (!cons.lit().is_negation())
     {
         switch (cons.pred())
