@@ -62,6 +62,17 @@ public:
     // parse a variable identifier
     inline void identifier(std::string const& id)
     {
+        if (id == "true")
+        {
+            push(true_lit);
+            return;
+        }
+        else if (id == "false")
+        {
+            push(true_lit.negate());
+            return;
+        }
+
         auto var_it = vars.find(id);
         if (var_it == vars.end())
         {
@@ -99,7 +110,7 @@ public:
             return;
         }
         assert(lit != true_lit.negate());
-        db->assert_clause(Clause{lit});
+        assert_clause(Clause{lit});
     }
 
     // start parsing a function in SMTLIB assert
@@ -132,7 +143,15 @@ public:
         }
         else if (name == "<" || name == "<=" || name == "=" || name == ">" || name == ">=")
         {
-            order_pred(name);
+            if (last_type == Variable::boolean)
+            {
+                assert(name == "=");
+                bool_equality();
+            }
+            else
+            {
+                order_pred(name);
+            }
         }
         else if (name == "and" || name == "or")
         {
@@ -174,6 +193,8 @@ public:
         return it->second;
     }
 
+    inline Literal true_constant() const { return true_lit; }
+
 private:
     // stack with literals
     std::vector<Literal> lits;
@@ -191,73 +212,127 @@ private:
     // placeholder for a literal which represents a constant TRUE
     inline static Literal true_lit{std::numeric_limits<int>::max() - 1};
 
+    // check whether `lit` represents a boolean constant (TRUE or FALSE)
+    inline bool is_constant(Literal lit) const { return lit.var() == true_lit.var(); }
+
     // encode a boolean function (and/or)
     inline void boolean(std::string const& name, int num_args)
     {
         bool is_or = (name == "or" && !negate) || (name == "and" && negate);
 
-        for (; num_args > 1; --num_args)
+        std::vector<Literal> args;
+        std::optional<Literal> value;
+        for (int i = 0; i < num_args; ++i)
         {
-            auto rhs = pop_lit();
-            auto lhs = pop_lit();
+            auto arg = pop_lit();
+            auto it = std::find(args.begin(), args.end(), arg);
 
-            if (is_or && (lhs == true_lit || rhs == true_lit))
+            if (!is_constant(arg) && it == args.end())
             {
-                push(true_lit);
+                args.push_back(arg);
             }
-            else if (!is_or && (lhs == true_lit.negate() || rhs == true_lit.negate()))
+            else if (arg == true_lit && is_or)
             {
-                push(true_lit.negate());
+                value = true_lit;
             }
-            else if (lhs == rhs || rhs.var() == true_lit.var())
+            else if (arg == true_lit.negate() && !is_or)
             {
-                push(lhs);
+                value = true_lit.negate();
             }
-            else if (lhs.var() == true_lit.var())
-            {
-                push(rhs);
-            }
-            else // lhs, rhs are not constants
-            {
-                push(Literal{new_bool_var().ord()});
+        }
 
-                if (is_or)
+        if (value) // constant
+        {
+            push(value.value());
+        }
+        else
+        {
+            auto new_var = new_bool_var();
+            Literal new_lit{new_var.ord()};
+            push(new_lit);
+
+            auto it = std::find_if(args.begin(), args.end(), [&](auto lit) {
+                return is_constant(lit);
+            });
+            assert(it == args.end());
+
+            if (is_or)
+            {
+                Clause res{new_lit.negate()};
+                res.insert(res.end(), args.rbegin(), args.rend());
+                assert_clause(std::move(res));
+            }
+            else // and 
+            {
+                for (auto arg : args | std::views::reverse)
                 {
-                    encode_or(lhs, rhs, lits.back());
-                }
-                else 
-                {
-                    encode_and(lhs, rhs, lits.back());
+                    assert_clause(Clause{new_lit.negate(), arg});
                 }
             }
+        }
+    }
+
+    // encode = if both arguments are boolean functions
+    inline void bool_equality()
+    {
+        auto rhs = pop_lit();
+        auto lhs = pop_lit();
+        if (is_constant(lhs))
+        {
+            std::swap(lhs, rhs);
+        }
+
+        if (rhs == true_lit)
+        {
+            push(lhs);
+        }
+        else if (rhs == true_lit.negate())
+        {
+            push(lhs.negate());
+        }
+        else if (!negate)
+        {
+            assert(!is_constant(lhs));
+            assert(!is_constant(rhs));
+            Literal new_lit{new_bool_var().ord()};
+            assert_clause(Clause{new_lit.negate(), lhs.negate(), rhs});
+            assert_clause(Clause{new_lit.negate(), lhs, rhs.negate()});
+            push(new_lit);
+        }
+        else // negate
+        {
+            assert(!is_constant(lhs));
+            assert(!is_constant(rhs));
+            Literal new_lit{new_bool_var().ord()};
+            assert_clause(Clause{new_lit.negate(), lhs.negate(), rhs.negate()});
+            assert_clause(Clause{new_lit.negate(), lhs, rhs});
+            push(new_lit);
         }
     }
 
     // encode order predicate <, <=, >, >= or equality =
     inline void order_pred(std::string const& name)
     {
-        if (last_type == Variable::boolean)
-        {
-            assert(name == "=");
-            auto rhs = pop_lit();
-            auto lhs = pop_lit();
-            Literal new_lit{new_bool_var().ord()};
-
-            db->assert_clause(new_lit.negate(), lhs.negate(), rhs);
-            db->assert_clause(new_lit.negate(), lhs, rhs.negate());
-            push(new_lit);
-            return;
-        }
-
+        assert(last_type == Variable::rational);
         auto rhs = pop_poly();
         auto lhs = pop_poly();
         auto norm_poly = lhs - rhs;
 
-        if (norm_poly.vars.empty())
+        bool is_empty = true;
+        for (auto coef : norm_poly.coef)
+        {
+            if (coef != 0)
+            {
+                is_empty = false;
+                break;
+            }
+        }
+
+        if (is_empty)
         {
             Literal lit;
             if ((name == "<" && norm_poly.constant < 0) || (name == "<=" && norm_poly.constant <= 0) || 
-                (name == "=" && norm_poly.constant == 0) || (name == ">" && norm_poly.constant > 0) ||
+                (name == "=" && norm_poly.constant != 0) || (name == ">" && norm_poly.constant > 0) ||
                 (name == ">=" && norm_poly.constant >= 0))
             {
                 lit = true_lit.negate();
@@ -356,19 +431,29 @@ private:
     // encode if-then-else (one boolean function on the stack and two polynomials)
     inline void ite()
     {
-        auto new_var = new_real_var();
         auto if_false = pop_poly();
         auto if_true = pop_poly();
 
-        push(perun::test::poly(new_var));
-        auto true_poly = poly.back() - if_true;
-        auto false_poly = poly.back() - if_false;
-        auto true_res = lra->constraint(*trail, true_poly.vars, true_poly.coef, Order_predicate::eq, -true_poly.constant);
-        auto false_res = lra->constraint(*trail, false_poly.vars, false_poly.coef, Order_predicate::eq, -false_poly.constant);
-
         auto cond_lit = pop_lit();
-        db->assert_clause(Clause{cond_lit.negate(), true_res.lit()});
-        db->assert_clause(Clause{cond_lit, false_res.lit()});
+        if (cond_lit == true_lit)
+        {
+            push(if_true);
+        }
+        else if (cond_lit == true_lit.negate())
+        {
+            push(if_false);
+        }
+        else // !is_constant(cond_lit)
+        {
+            push(perun::test::poly(new_real_var()));
+            auto true_poly = poly.back() - if_true;
+            auto false_poly = poly.back() - if_false;
+            auto true_res = lra->constraint(*trail, true_poly.vars, true_poly.coef, Order_predicate::eq, -true_poly.constant);
+            auto false_res = lra->constraint(*trail, false_poly.vars, false_poly.coef, Order_predicate::eq, -false_poly.constant);
+
+            assert_clause(Clause{cond_lit.negate(), true_res.lit()});
+            assert_clause(Clause{cond_lit, false_res.lit()});
+        }
     }
 
     inline Literal pop_lit()
@@ -399,17 +484,6 @@ private:
         poly.push_back(value);
     }
 
-    inline void encode_and(Literal a, Literal b, Literal new_lit)
-    {
-        db->assert_clause(Clause{new_lit.negate(), a});
-        db->assert_clause(Clause{new_lit.negate(), b});
-    }
-
-    inline void encode_or(Literal a, Literal b, Literal new_lit)
-    {
-        db->assert_clause(Clause{new_lit.negate(), a, b});
-    }
-
     inline Variable new_bool_var()
     {
         auto num_bool = static_cast<int>(trail->model<bool>(Variable::boolean).num_vars());
@@ -425,6 +499,15 @@ private:
         trail->resize(Variable::rational, num_real + 1);
         lra->on_variable_resize(Variable::rational, num_real + 1);
         return Variable{num_real, Variable::rational};
+    }
+
+    inline void assert_clause(Clause const& clause)
+    {
+        auto it = std::find_if(clause.begin(), clause.end(), [&](auto lit) {
+            return is_constant(lit);
+        });
+        assert(it == clause.end());
+        db->assert_clause(clause);
     }
 };
 
