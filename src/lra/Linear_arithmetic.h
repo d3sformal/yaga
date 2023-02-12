@@ -86,16 +86,14 @@ public:
         return cons;
     }
 
-    /** Get current implied upper and lower bound
+    /** Get current implied bounds for @p lra_var_ord
      *
-     * @param models partial assignment of variables
      * @param lra_var_ord ordinal number of a real variable
-     * @return lower and upper bound for @p lra_var_ord
+     * @return implied bounds for @p lra_var_ord
      */
-    inline std::pair<Implied_value<Value_type>, Implied_value<Value_type>>
-    find_bounds(Models_type const& models, int lra_var_ord)
+    inline Bounds_type& find_bounds(int lra_var_ord)
     {
-        return {bounds[lra_var_ord].lower_bound(models), bounds[lra_var_ord].upper_bound(models)};
+        return bounds[lra_var_ord];
     }
 
     /** Get models relevant to this theory

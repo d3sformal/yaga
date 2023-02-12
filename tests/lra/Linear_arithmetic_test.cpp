@@ -83,9 +83,9 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
     auto conflict = lra.propagate(db, trail);
     REQUIRE(!conflict);
 
-    auto [lb, ub] = lra.find_bounds(models, x.ord());
-    REQUIRE(lb.value() == 0);
-    REQUIRE(ub.value() == 10);
+    auto& bounds_x = lra.find_bounds(x.ord());
+    REQUIRE(bounds_x.lower_bound(models).value() == 0);
+    REQUIRE(bounds_x.upper_bound(models).value() == 10);
 }
 
 TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_arithmetic]")
@@ -110,9 +110,9 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
         auto conflict = lra.propagate(db, trail);
         REQUIRE(!conflict);
 
-        auto [lb, ub] = lra.find_bounds(models, x.ord());
-        REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
-        REQUIRE(ub.value() == 16);
+        auto bounds_x = lra.find_bounds(x.ord());
+        REQUIRE(bounds_x.lower_bound(models).value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
+        REQUIRE(bounds_x.upper_bound(models).value() == 16);
     }
 
     // make x + y <= 8 unit
@@ -121,9 +121,9 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
         auto conflict = lra.propagate(db, trail);
         REQUIRE(!conflict);
 
-        auto [lb, ub] = lra.find_bounds(models, x.ord());
-        REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
-        REQUIRE(ub.value() == 8);
+        auto bounds_x = lra.find_bounds(x.ord());
+        REQUIRE(bounds_x.lower_bound(models).value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
+        REQUIRE(bounds_x.upper_bound(models).value() == 8);
     }
 
     // make x + y + z <= 4 unit
@@ -132,9 +132,9 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
         auto conflict = lra.propagate(db, trail);
         REQUIRE(!conflict);
 
-        auto [lb, ub] = lra.find_bounds(models, x.ord());
-        REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
-        REQUIRE(ub.value() == 4);
+        auto& bounds_x = lra.find_bounds(x.ord());
+        REQUIRE(bounds_x.lower_bound(models).value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
+        REQUIRE(bounds_x.upper_bound(models).value() == 4);
     }
 }
 
@@ -168,9 +168,9 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     REQUIRE(trail.decision_level(y) == 1);
     REQUIRE(!trail.decision_level(z));
 
-    auto [lb, ub] = lra.find_bounds(models, x.ord());
-    REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
-    REQUIRE(ub.value() == 8);
+    auto& bounds_x = lra.find_bounds(x.ord());
+    REQUIRE(bounds_x.lower_bound(models).value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
+    REQUIRE(bounds_x.upper_bound(models).value() == 8);
 }
 
 TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")
@@ -230,17 +230,16 @@ TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
     decide(trail, linear(x <= 4));
     REQUIRE(!lra.propagate(db, trail));
 
-    auto [lb, ub] = lra.find_bounds(models, x.ord());
-    REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
-    REQUIRE(ub.value() == 4);
+    auto& bounds_x = lra.find_bounds(x.ord());
+    REQUIRE(bounds_x.lower_bound(models).value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
+    REQUIRE(bounds_x.upper_bound(models).value() == 4);
 
     trail.backtrack(1);
     decide(trail, linear(x <= 12));
     REQUIRE(!lra.propagate(db, trail));
 
-    std::tie(lb, ub) = lra.find_bounds(models, x.ord());
-    REQUIRE(lb.value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
-    REQUIRE(ub.value() == 12);
+    REQUIRE(bounds_x.lower_bound(models).value() == std::numeric_limits<Linear_arithmetic::Value_type>::lowest());
+    REQUIRE(bounds_x.upper_bound(models).value() == 12);
 }
 
 TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
