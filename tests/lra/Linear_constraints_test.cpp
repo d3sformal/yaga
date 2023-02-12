@@ -176,7 +176,8 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
         REQUIRE(cons.vars().empty());
         REQUIRE(cons.coef().empty());
         REQUIRE(cons.rhs() == 0);
-        REQUIRE(cons.pred() == Order_predicate::lt);
+        REQUIRE(cons.pred() == Order_predicate::eq);
+        REQUIRE(cons.lit().is_negation());
         REQUIRE(cons.empty());
     }
 }
