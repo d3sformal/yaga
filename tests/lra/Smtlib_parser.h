@@ -251,10 +251,9 @@ private:
             Literal new_lit{new_var.ord()};
             push(new_lit);
 
-            auto it = std::find_if(args.begin(), args.end(), [&](auto lit) {
+            assert(std::find_if(args.begin(), args.end(), [&](auto lit) {
                 return is_constant(lit);
-            });
-            assert(it == args.end());
+            }) == args.end());
 
             if (is_or)
             {
@@ -503,10 +502,9 @@ private:
 
     inline void assert_clause(Clause const& clause)
     {
-        auto it = std::find_if(clause.begin(), clause.end(), [&](auto lit) {
+        assert(std::find_if(clause.begin(), clause.end(), [&](auto lit) {
             return is_constant(lit);
-        });
-        assert(it == clause.end());
+        }) == clause.end());
         db->assert_clause(clause);
     }
 };
