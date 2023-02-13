@@ -107,6 +107,16 @@ public:
                 &trail.model<Value_type>(Variable::rational)};
     }
 
+    /** Get constraint which implements @p bool_var_ord
+     * 
+     * @param bool_var_ord ordinal number of a boolean variable
+     * @return constraint which implements the boolean variable @p bool_var_ord
+     */
+    inline Constraint_type constraint(int bool_var_ord) 
+    {
+        return constraints[bool_var_ord];
+    }
+
 private:
     // repository of managed linear constraints
     Constraint_repository constraints;
