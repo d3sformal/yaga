@@ -182,13 +182,21 @@ public:
      *
      * @return range of variables of this constraint
      */
-    inline auto vars() const { return constraints->vars(*this); }
+    inline auto vars() const 
+    {
+        using Range = decltype(constraints->vars(*this));
+        return empty() ? Range{} : constraints->vars(*this); 
+    }
 
     /** Get range of coefficients of this constraint
      *
      * @return range of coefficients of this constraint
      */
-    inline auto coef() const { return constraints->coef(*this); }
+    inline auto coef() const 
+    {
+        using Range = decltype(constraints->coef(*this));
+        return empty() ? Range{} : constraints->coef(*this); 
+    }
 
     /** Create a linear constraint that represents a negation of this constraint
      *

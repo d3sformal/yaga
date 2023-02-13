@@ -1,5 +1,5 @@
-#ifndef PREUN_LINEAR_CONSTRAINTS_H
-#define PREUN_LINEAR_CONSTRAINTS_H
+#ifndef PERUN_LINEAR_CONSTRAINTS_H
+#define PERUN_LINEAR_CONSTRAINTS_H
 
 #include <algorithm>
 #include <cassert>
@@ -304,4 +304,4 @@ private:
 
 } // namespace perun
 
-#endif // PREUN_LINEAR_CONSTRAINTS_H
+#endif // PERUN_LINEAR_CONSTRAINTS_H
