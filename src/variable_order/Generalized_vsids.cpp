@@ -53,6 +53,21 @@ void Generalized_vsids::on_conflict_resolved(Database&, Trail&, Clause const& ot
 
 std::optional<Variable> Generalized_vsids::pick(Database&, Trail& trail)
 {
+    // decide variables with implied value first (i.e., variable `x` s.t. `L <= x <= U` and `L = U`)
+    auto models = lra->relevant_models(trail);
+    for (int var_ord = 0; var_ord < static_cast<int>(models.owned().num_vars()); ++var_ord)
+    {
+        if (!models.owned().is_defined(var_ord))
+        {
+            auto& bounds = lra->find_bounds(var_ord);
+            if (bounds.lower_bound(models).value() == bounds.upper_bound(models).value())
+            {
+                return Variable{var_ord, Variable::rational};
+            }
+        }
+    }
+
+    // find variable with the best VSIDS score
     std::optional<Variable> best_var;
     float best_score = -1.f;
 
