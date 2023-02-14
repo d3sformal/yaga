@@ -88,9 +88,11 @@ void Linear_arithmetic::watch(Constraint_type& cons, Model<Value_type> const& mo
     watch(cons);
 }
 
-bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Constraint_type& cons,
+bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Watched_constraint& watch,
                                       int lra_var_ord)
 {
+    auto& cons = watch.constraint;
+
     if (cons.size() <= 1)
     {
         assert(cons.vars().front() == lra_var_ord);
@@ -116,18 +118,33 @@ bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Constr
     assert(*rep_var_it == lra_var_ord);
 
     // find an unassigned variable to watch
-    auto var_it = cons.vars().begin() + 2;
-    auto coef_it = cons.coef().begin() + 2;
-    for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
+    if (cons.size() > 2)
     {
-        assert(coef_it != cons.coef().end());
-        if (!lra_model.is_defined(*var_it))
+        assert(2 <= watch.index && watch.index < cons.size());
+        auto var_it = cons.vars().begin() + watch.index;
+        auto coef_it = cons.coef().begin() + watch.index;
+        auto const end_var_it = var_it;
+        do
         {
-            std::iter_swap(rep_var_it, var_it);
-            std::iter_swap(rep_coef_it, coef_it);
-            watched[*rep_var_it].push_back(cons);
-            break;
-        }
+            assert(coef_it != cons.coef().end());
+            if (!lra_model.is_defined(*var_it))
+            {
+                std::iter_swap(rep_var_it, var_it);
+                std::iter_swap(rep_coef_it, coef_it);
+                watched[*rep_var_it].push_back(watch);
+                break;
+            }
+
+            // move to the next variable
+            ++watch.index;
+            ++coef_it;
+            if (++var_it == cons.vars().end())
+            {
+                var_it = cons.vars().begin() + 2; // skip the watched variables
+                coef_it = cons.coef().begin() + 2;
+                watch.index = 2;
+            }
+        } while (var_it != end_var_it);
     }
 
     return *rep_var_it != lra_var_ord;
@@ -141,9 +158,10 @@ std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models_type
     auto& watchlist = watched[lra_var_ord];
     for (std::size_t i = 0; i < watchlist.size();)
     {
-        auto& cons = watchlist[i];
+        auto& watch = watchlist[i];
+        auto& cons = watch.constraint;
 
-        if (replace_watch(models.owned(), cons, lra_var_ord))
+        if (replace_watch(models.owned(), watch, lra_var_ord))
         {
             // remove the watch
             std::swap(watchlist[i], watchlist.back());

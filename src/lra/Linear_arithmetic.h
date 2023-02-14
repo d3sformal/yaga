@@ -120,10 +120,22 @@ public:
     inline Constraint_type constraint(int bool_var_ord) { return constraints[bool_var_ord]; }
 
 private:
+    struct Watched_constraint {
+        // watched constraint
+        Constraint_type constraint;
+        // index of the next variable to check in `constraint`
+        int index;
+
+        inline Watched_constraint(Constraint_type cons)
+            : constraint(cons), index(std::min<int>(2, cons.size() - 1))
+        {
+        }
+    };
+
     // repository of managed linear constraints
     Constraint_repository constraints;
     // map real variable -> list of constraints in which it is watched
-    std::vector<std::vector<Constraint_type>> watched;
+    std::vector<std::vector<Watched_constraint>> watched;
     // map real variable -> set of allowed values
     std::vector<Bounds<Value_type>> bounds;
     // cached assignment of LRA variables
@@ -152,14 +164,14 @@ private:
      */
     void watch(Constraint_type& cons);
 
-    /** Try to replace @p lra_var_ord in watched variables of @p cons
+    /** Try to replace @p lra_var_ord in watched variables of @p watch
      *
      * @param model partial assignment of LRA variables
-     * @param cons linear constraint to update
-     * @param lra_var_ord ordinal number of a watched variable in @p cons to replace
+     * @param watch watched linear constraint to update
+     * @param lra_var_ord ordinal number of a watched variable in @p watch to replace
      * @return true iff @p lra_var_ord has been replaced
      */
-    bool replace_watch(Model<Value_type> const& model, Constraint_type& cons, int lra_var_ord);
+    bool replace_watch(Model<Value_type> const& model, Watched_constraint& watch, int lra_var_ord);
 
     /** Stop watching @p lra_var_ord in all constraints.
      *
