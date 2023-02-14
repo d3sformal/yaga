@@ -127,9 +127,9 @@ public:
      *
      * @return new fraction which represents inverse of this fraction
      */
-    inline Fraction<T> inv() const 
-    { 
-        return {(std::signbit(num) ? T{-1} : T{1}) * denom, std::abs(num), Normalized_tag{}}; 
+    inline Fraction<T> inv() const
+    {
+        return {(std::signbit(num) ? T{-1} : T{1}) * denom, std::abs(num), Normalized_tag{}};
     }
 
 private:
@@ -382,7 +382,10 @@ inline bool operator!=(Fraction<L> lhs, R rhs)
  */
 template <typename L, typename R>
     requires std::is_integral_v<L> && std::is_integral_v<R>
-inline bool operator<=(L lhs, Fraction<R> rhs) { return rhs >= lhs; }
+inline bool operator<=(L lhs, Fraction<R> rhs)
+{
+    return rhs >= lhs;
+}
 
 /** Check whether @p lhs < @p rhs
  *
@@ -394,7 +397,10 @@ inline bool operator<=(L lhs, Fraction<R> rhs) { return rhs >= lhs; }
  */
 template <typename L, typename R>
     requires std::is_integral_v<L> && std::is_integral_v<R>
-inline bool operator<(L lhs, Fraction<R> rhs) { return rhs > lhs; }
+inline bool operator<(L lhs, Fraction<R> rhs)
+{
+    return rhs > lhs;
+}
 
 /** Check whether @p lhs >= @p rhs
  *
@@ -406,7 +412,10 @@ inline bool operator<(L lhs, Fraction<R> rhs) { return rhs > lhs; }
  */
 template <typename L, typename R>
     requires std::is_integral_v<L> && std::is_integral_v<R>
-inline bool operator>=(L lhs, Fraction<R> rhs) { return rhs <= lhs; }
+inline bool operator>=(L lhs, Fraction<R> rhs)
+{
+    return rhs <= lhs;
+}
 
 /** Check whether @p lhs > @p rhs
  *
@@ -418,7 +427,10 @@ inline bool operator>=(L lhs, Fraction<R> rhs) { return rhs <= lhs; }
  */
 template <typename L, typename R>
     requires std::is_integral_v<L> && std::is_integral_v<R>
-inline bool operator>(L lhs, Fraction<R> rhs) { return rhs < lhs; }
+inline bool operator>(L lhs, Fraction<R> rhs)
+{
+    return rhs < lhs;
+}
 
 /** Create a negation of a fraction
  *
@@ -688,8 +700,8 @@ template <typename T>
 struct hash<perun::Fraction<T>> {
     inline std::size_t operator()(perun::Fraction<T> frac) const
     {
-        return std::hash<std::uint64_t>{}((static_cast<std::uint64_t>(frac.numerator()) << 32) | 
-                                           static_cast<std::uint64_t>(frac.denominator()));
+        return std::hash<std::uint64_t>{}((static_cast<std::uint64_t>(frac.numerator()) << 32) |
+                                          static_cast<std::uint64_t>(frac.denominator()));
     }
 };
 

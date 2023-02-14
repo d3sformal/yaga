@@ -90,7 +90,7 @@ private:
 };
 
 /** Print order predicate to @p out
- * 
+ *
  * @param out output stream
  * @param pred predicate to print
  * @return @p out
@@ -99,15 +99,15 @@ inline std::ostream& operator<<(std::ostream& out, Order_predicate pred)
 {
     switch (pred)
     {
-        case Order_predicate::eq:
-            out << "=";
-            break;
-        case Order_predicate::leq:
-            out << "<=";
-            break;
-        case Order_predicate::lt:
-            out << "<";
-            break;
+    case Order_predicate::eq:
+        out << "=";
+        break;
+    case Order_predicate::leq:
+        out << "<=";
+        break;
+    case Order_predicate::lt:
+        out << "<";
+        break;
     }
     return out;
 }
@@ -182,20 +182,20 @@ public:
      *
      * @return range of variables of this constraint
      */
-    inline auto vars() const 
+    inline auto vars() const
     {
         using Range = decltype(constraints->vars(*this));
-        return empty() ? Range{} : constraints->vars(*this); 
+        return empty() ? Range{} : constraints->vars(*this);
     }
 
     /** Get range of coefficients of this constraint
      *
      * @return range of coefficients of this constraint
      */
-    inline auto coef() const 
+    inline auto coef() const
     {
         using Range = decltype(constraints->coef(*this));
-        return empty() ? Range{} : constraints->coef(*this); 
+        return empty() ? Range{} : constraints->coef(*this);
     }
 
     /** Create a linear constraint that represents a negation of this constraint
@@ -407,15 +407,16 @@ public:
     }
 
     /** Check whether @p lhs == @p rhs without allocating extra memory.
-     * 
-     * Since we have to search variables in an unsorted array, the worst case complexity of this 
+     *
+     * Since we have to search variables in an unsorted array, the worst case complexity of this
      * solution is `O(n^2)` where `n` is the length of @p lhs and @p rhs
-     * 
+     *
      * @param lhs first constraint
      * @param rhs second constraint
      * @return true iff @p lhs == @p rhs
      */
-    bool brute_force_equal(Linear_constraint<Value> const& lhs, Linear_constraint<Value> const& rhs) const
+    bool brute_force_equal(Linear_constraint<Value> const& lhs,
+                           Linear_constraint<Value> const& rhs) const
     {
         auto lhs_var_it = lhs.vars().begin();
         auto lhs_coef_it = lhs.coef().begin();
@@ -441,7 +442,7 @@ public:
     }
 
     /** Check whether @p lhs == @p rhs using auxiliary memory to sort one constraint.
-     * 
+     *
      * @param lhs first constraint
      * @param rhs second constraint
      * @return true iff @p lhs == @p rhs
@@ -461,7 +462,8 @@ public:
         auto rhs_coef_it = rhs.coef().begin();
         for (; rhs_var_it != rhs.vars().end(); ++rhs_var_it, ++rhs_coef_it)
         {
-            auto it = std::lower_bound(values.begin(), values.end(), std::pair{*rhs_var_it, *rhs_coef_it});
+            auto it = std::lower_bound(values.begin(), values.end(),
+                                       std::pair{*rhs_var_it, *rhs_coef_it});
             if (it == values.end() || it->first != *rhs_var_it || it->second != *rhs_coef_it)
             {
                 return false;

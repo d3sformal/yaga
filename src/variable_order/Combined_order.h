@@ -20,13 +20,13 @@ public:
     virtual ~Combined_order() = default;
 
     /** Create and add a new variable order heuristic to this object.
-     * 
+     *
      * @tparam T type of a variable order heuristic
      * @tparam Args types of arguments passed to a constructor of T
      * @param args arguments passed to a constructor of T
      * @return reference to the new heuristic in this object.
      */
-    template<class T, typename... Args>
+    template <class T, typename... Args>
         requires std::is_base_of_v<Variable_order, T>
     inline T& add(Args&&... args)
     {
@@ -68,7 +68,7 @@ public:
      * @param trail current solver trail
      * @param learned reference to the newly learned clause in @p db
      */
-    void on_learned_clause(Database& db, Trail& trail, Clause const& learned) 
+    void on_learned_clause(Database& db, Trail& trail, Clause const& learned)
     {
         for (auto& heuristic : heuristics)
         {
@@ -104,11 +104,11 @@ public:
     }
 
     /** Pick an unassigned variable using heuristics added by `add()`
-     * 
-     * If no heuristic picks a variable, return none. Heuristics are used in order of their 
+     *
+     * If no heuristic picks a variable, return none. Heuristics are used in order of their
      * addition.
-     * 
-     * @param db clause database 
+     *
+     * @param db clause database
      * @param trail current solver trail
      * @return unassigned variable return by a heuristic or none if all heuristics return none.
      */
@@ -129,6 +129,6 @@ private:
     std::deque<std::unique_ptr<Variable_order>> heuristics;
 };
 
-}
+} // namespace perun
 
 #endif // PERUN_COMBINED_ORDER_H

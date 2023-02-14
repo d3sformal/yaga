@@ -2,6 +2,7 @@
 #define PERUN_GENERALIZED_VSIDS_H
 
 #include <array>
+#include <queue>
 #include <vector>
 
 #include "Linear_arithmetic.h"
@@ -9,11 +10,11 @@
 
 namespace perun {
 
-/** This class computes scores similar to VSIDS from SAT solvers (`Evsids`). When a score of 
+/** This class computes scores similar to VSIDS from SAT solvers (`Evsids`). When a score of
  * a boolean function is bumped, all variables which implement the function are also bumped.
- * 
- * Limitation: at the moment, only boolean variables and rational variables managed by 
- * the LRA plugin are supported. 
+ *
+ * Limitation: at the moment, only boolean variables and rational variables managed by
+ * the LRA plugin are supported.
  */
 class Generalized_vsids final : public Variable_order {
 public:
@@ -22,14 +23,14 @@ public:
     inline Generalized_vsids(Linear_arithmetic& lra) : lra(&lra) {}
 
     /** Allocate memory for variable VSIDS scores
-     * 
+     *
      * @param type type of a variable
      * @param num_vars new number of variables of type @p type
      */
     void on_variable_resize(Variable::Type type, int num_vars) override;
 
     /** Reset VSIDS of all variables to 0 and bump all asserted/learned variables.
-     * 
+     *
      * @param db clause database
      * @param trail current solver trail
      */
@@ -53,7 +54,7 @@ public:
     void on_conflict_resolved(Database& db, Trail& trail, Clause const& other) override;
 
     /** Pick a variable with the best VSIDS score.
-     * 
+     *
      * @param db clause database
      * @param trail current solver trail
      * @return unassigned variable with the best VSIDS score or none, if all variables are assigned
@@ -110,6 +111,6 @@ private:
     }
 };
 
-}
+} // namespace perun
 
 #endif // PERUN_GENERALIZED_VSIDS_H

@@ -11,7 +11,6 @@ void Generalized_vsids::on_variable_resize(Variable::Type type, int num_vars)
     vsids[type].resize(num_vars, 0.0f);
 }
 
-
 void Generalized_vsids::on_init(Database& db, Trail&)
 {
     for (auto& scores : vsids)
@@ -87,4 +86,4 @@ std::optional<Variable> Generalized_vsids::pick(Database&, Trail& trail)
     return best_var;
 }
 
-}
+} // namespace perun

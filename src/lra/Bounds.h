@@ -106,7 +106,7 @@ public:
         }
 
         return var_it != var_end && (!models.owned().is_defined(*var_it) ||
-               models.owned().timestamp(*var_it) != timestamp);
+                                     models.owned().timestamp(*var_it) != timestamp);
     }
 
 private:
@@ -246,7 +246,7 @@ public:
         return lb.value() < value || (lb.value() == value && !lb.reason().is_strict());
     }
 
-    /** Check whether @p value satisfies currently implied uppper bound
+    /** Check whether @p value satisfies currently implied upper bound
      *
      * @param models partial assignment of variables
      * @param value checked value

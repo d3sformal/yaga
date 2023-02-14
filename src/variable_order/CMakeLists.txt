@@ -4,5 +4,4 @@ target_sources(perun PRIVATE
     Evsids.cpp
     First_unassigned.cpp
     Generalized_vsids.cpp
-    Smallest_range_first.cpp
 )

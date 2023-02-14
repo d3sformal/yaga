@@ -24,7 +24,7 @@ public:
     inline First_unassigned() {}
 
     /** Create a first unassigned variable order for variables of specified type only.
-     * 
+     *
      * @param type type of variables considered by this class
      */
     inline explicit First_unassigned(Variable::Type type) : var_type(type) {}

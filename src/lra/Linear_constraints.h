@@ -33,9 +33,9 @@ public:
      *
      * The constraint is normalized. It might be negated (check if `lit().is_negation()` is true).
      *
-     * If the returned constraint is unique, its boolean variable will be set to the next ordinal 
+     * If the returned constraint is unique, its boolean variable will be set to the next ordinal
      * number of boolean variables.
-     * 
+     *
      * @param var_range ordinal numbers of variables in the constraint
      * @param coef_range coefficients of variables in the constraint
      * @param pred predicate of the constraint
@@ -53,14 +53,15 @@ public:
         if (mult) // constraint with variables
         {
             auto [lit, range] = add(mult.value(), var_range, coef_range);
-            cons = constraints.emplace_back(lit, range, norm_pred(mult.value(), pred), mult.value() * rhs, this);
+            cons = constraints.emplace_back(lit, range, norm_pred(mult.value(), pred),
+                                            mult.value() * rhs, this);
             is_negation = pred != Order_predicate::eq && mult.value() < Value_type{0};
         }
         else // constraint without variables
         {
             // normalize to `0 == 0`
             is_negation = !pred(Value_type{0}, rhs);
-            rhs = Value_type{0}; 
+            rhs = Value_type{0};
             pred = Order_predicate::eq;
             Literal lit{static_cast<int>(constraints.size())};
             cons = constraints.emplace_back(lit, std::pair{0, 0}, pred, rhs, this);
@@ -83,13 +84,10 @@ public:
     }
 
     /** Allocate memory for @p num_bool_vars boolean variables
-     * 
+     *
      * @param num_bool_vars new number of boolean variables
      */
-    void resize(int num_bool_vars)
-    {
-        constraints.resize(num_bool_vars);
-    }
+    void resize(int num_bool_vars) { constraints.resize(num_bool_vars); }
 
     /** Find boolean constraint which implements @p bool_var_ord
      *
@@ -220,7 +218,8 @@ private:
 
     // find a constant by which the constraint will be multiplied in order to normalize coefficients
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline std::optional<Value_type> find_norm_constant(Var_range&& var_range, Coef_range&& coef_range) const
+    inline std::optional<Value_type> find_norm_constant(Var_range&& var_range,
+                                                        Coef_range&& coef_range) const
     {
         int min_var = std::numeric_limits<int>::max();
         Value_type min_coef{0};
