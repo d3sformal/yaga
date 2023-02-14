@@ -20,7 +20,6 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
     auto models = relevant_models(trail);
 
     // detect new unit constraints on the trail
-    Assigned_stack assigned;
     for (auto [var, _] : trail.assigned(trail.decision_level()))
     {
         if (var.type() == Variable::boolean && !constraints[var.ord()].empty())
@@ -34,7 +33,7 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 
             if (is_unit(models.owned(), cons))
             {
-                if (auto conflict = unit(assigned, trail, models, cons))
+                if (auto conflict = unit(trail, models, cons))
                 {
                     return conflict;
                 }
@@ -42,7 +41,7 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
         }
         else if (var.type() == Variable::rational)
         {
-            if (auto conflict = replace_watch(assigned, trail, models, var.ord()))
+            if (auto conflict = replace_watch(trail, models, var.ord()))
             {
                 return conflict;
             }
@@ -129,8 +128,8 @@ bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Constr
     return *rep_var_it != lra_var_ord;
 }
 
-std::optional<Clause> Linear_arithmetic::replace_watch(Assigned_stack& assigned, Trail& trail,
-                                                       Models_type& models, int lra_var_ord)
+std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models_type& models, 
+                                                       int lra_var_ord)
 {
     assert(models.owned().is_defined(lra_var_ord));
 
@@ -153,7 +152,7 @@ std::optional<Clause> Linear_arithmetic::replace_watch(Assigned_stack& assigned,
                 {
                     assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
                 }
-                else if (auto conflict = unit(assigned, trail, models, cons))
+                else if (auto conflict = unit(trail, models, cons))
                 {
                     return conflict;
                 }
@@ -261,8 +260,7 @@ Linear_arithmetic::check_equality(Models_type const& models, Bounds_type& bounds
     return {};
 }
 
-std::optional<Clause> Linear_arithmetic::unit(Assigned_stack& assigned, Trail& trail,
-                                              Models_type& models, Constraint_type& cons)
+std::optional<Clause> Linear_arithmetic::unit(Trail& trail, Models_type& models, Constraint_type& cons)
 {
     update_bounds(models, cons);
     if (auto conflict = check_bounds(trail, models, bounds[cons.vars().front()]))

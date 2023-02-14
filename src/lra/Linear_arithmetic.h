@@ -125,9 +125,6 @@ private:
     // map real variable -> set of allowed values
     std::vector<Bounds<Value_type>> bounds;
 
-    // stack with assigned variables and a value to propagate
-    using Assigned_stack = std::vector<std::pair<Variable, std::optional<Value_type>>>;
-
     /** Convert @p value to integer
      *
      * @param value value to convert
@@ -165,16 +162,13 @@ private:
      * It detects unit constraints/fully assigned constraints and acts appropriately:
      * -# Unit constraints: the implied bound is propagated to `bounds`.
      * -# Fully-assigned constraints: the corresponding literal is propagated to the @p trail
-     * -# Unit constraint of the type `x == c`: `x` is added to the @p assigned stack
      *
-     * @param assigned stack with assigned variables (add only)
      * @param trail current solver trail
      * @param models partial assignment of variables
      * @param lra_var_ord newly assigned LRA variable
      * @return conflict clause if a conflict is detected. None, otherwise.
      */
-    std::optional<Clause> replace_watch(Assigned_stack& assigned, Trail& trail, Models_type& models,
-                                        int lra_var_ord);
+    std::optional<Clause> replace_watch(Trail& trail, Models_type& models, int lra_var_ord);
 
     /** Update bounds using unit constraint @p cons
      *
@@ -200,21 +194,16 @@ private:
      */
     std::optional<Value_type> check_equality(Models_type const& models, Bounds_type& bounds);
 
-    /** Report a new unit constraint @p cons and check for conflicts/implied values.
+    /** Report a new unit constraint @p cons and check for conflicts.
      * 
-     * -# If the unassigned variable in @p cons cannot be assigned any value, this method returns a 
+     * If the unassigned variable in @p cons cannot be assigned any value, this method returns a 
      * conflict clause. 
-     * -# If constraints for the unassigned variable in @p cons imply an equality, the implied 
-     * value is added to the @p assigned stack.
      *
-     * @param assigned stack with assigned variables (add only if bounds for the unassigned variable
-     * imply an equality)
      * @param trail current solver trail
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    std::optional<Clause> unit(Assigned_stack& assigned, Trail& trail, Models_type& models,
-                               Constraint_type& cons);
+    std::optional<Clause> unit(Trail& trail, Models_type& models, Constraint_type& cons);
 
     /** Group elements in @p polynomial by variable and sum up coefficients in each group.
      * 
