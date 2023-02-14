@@ -8,11 +8,17 @@ void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
     {
         bounds.resize(num_vars);
         watched.resize(num_vars);
+        cached_values.resize(num_vars);
     }
     else if (type == Variable::boolean)
     {
         constraints.resize(num_vars);
     }
+}
+
+void Linear_arithmetic::on_learned_clause(Database&, Trail& trail, Clause const&)
+{
+    cached_values = relevant_models(trail).owned();
 }
 
 std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
@@ -94,9 +100,8 @@ bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Constr
     // if both watched variables are assigned, the constraint is fully assigned
     if (lra_model.is_defined(cons.vars()[0]) && lra_model.is_defined(cons.vars()[1]))
     {
-        assert(std::all_of(cons.vars().begin(), cons.vars().end(), [&](auto var) {
-            return lra_model.is_defined(var);
-        }));
+        assert(std::all_of(cons.vars().begin(), cons.vars().end(),
+                           [&](auto var) { return lra_model.is_defined(var); }));
         return false;
     }
 
@@ -128,7 +133,7 @@ bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Constr
     return *rep_var_it != lra_var_ord;
 }
 
-std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models_type& models, 
+std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models_type& models,
                                                        int lra_var_ord)
 {
     assert(models.owned().is_defined(lra_var_ord));
@@ -260,7 +265,8 @@ Linear_arithmetic::check_equality(Models_type const& models, Bounds_type& bounds
     return {};
 }
 
-std::optional<Clause> Linear_arithmetic::unit(Trail& trail, Models_type& models, Constraint_type& cons)
+std::optional<Clause> Linear_arithmetic::unit(Trail& trail, Models_type& models,
+                                              Constraint_type& cons)
 {
     update_bounds(models, cons);
     if (auto conflict = check_bounds(trail, models, bounds[cons.vars().front()]))
@@ -274,9 +280,7 @@ std::optional<Clause> Linear_arithmetic::unit(Trail& trail, Models_type& models,
 void Linear_arithmetic::group_by_variable(std::vector<std::pair<int, Value_type>>& poly)
 {
     // sort by variable
-    std::sort(poly.begin(), poly.end(), [&](auto lhs, auto rhs) {
-        return lhs.first < rhs.first;
-    });
+    std::sort(poly.begin(), poly.end(), [&](auto lhs, auto rhs) { return lhs.first < rhs.first; });
 
     // combine coefficients if they belong to the same variable
     auto out_it = poly.begin();
@@ -398,9 +402,8 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
     return conflict;
 }
 
-std::optional<Clause> Linear_arithmetic::check_inequality_conflict(Trail& trail,
-                                                                   Models_type& models,
-                                                                   Bounds_type& bounds)
+std::optional<Clause>
+Linear_arithmetic::check_inequality_conflict(Trail& trail, Models_type& models, Bounds_type& bounds)
 {
     // check if `L <= x && x <= U` and `L = U` where `x` is the unassigned variable
     auto lb = bounds.lower_bound(models);
@@ -523,7 +526,8 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
         return val >= 0 ? val : -val;
     };
 
-    Value_type value{0};
+    Value_type value =
+        cached_values.is_defined(var.ord()) ? cached_values.value(var.ord()) : Value_type{0};
     if (!bnds.is_allowed(models, value))
     {
         // find an allowed value

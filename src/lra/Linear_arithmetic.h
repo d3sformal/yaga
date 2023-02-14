@@ -40,6 +40,14 @@ public:
      */
     void on_variable_resize(Variable::Type type, int num_vars) override;
 
+    /** Cache current values of LRA variables on conflict
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     * @param learned newly learned clause
+     */
+    void on_learned_clause(Database& db, Trail& trail, Clause const& learned) override;
+
     /** Add all semantic propagations to the @p trail
      *
      * @param db clause database
@@ -91,10 +99,7 @@ public:
      * @param lra_var_ord ordinal number of a real variable
      * @return implied bounds for @p lra_var_ord
      */
-    inline Bounds_type& find_bounds(int lra_var_ord)
-    {
-        return bounds[lra_var_ord];
-    }
+    inline Bounds_type& find_bounds(int lra_var_ord) { return bounds[lra_var_ord]; }
 
     /** Get models relevant to this theory
      *
@@ -108,14 +113,11 @@ public:
     }
 
     /** Get constraint which implements @p bool_var_ord
-     * 
+     *
      * @param bool_var_ord ordinal number of a boolean variable
      * @return constraint which implements the boolean variable @p bool_var_ord
      */
-    inline Constraint_type constraint(int bool_var_ord) 
-    {
-        return constraints[bool_var_ord];
-    }
+    inline Constraint_type constraint(int bool_var_ord) { return constraints[bool_var_ord]; }
 
 private:
     // repository of managed linear constraints
@@ -124,6 +126,8 @@ private:
     std::vector<std::vector<Constraint_type>> watched;
     // map real variable -> set of allowed values
     std::vector<Bounds<Value_type>> bounds;
+    // cached assignment of LRA variables
+    Model<Value_type> cached_values;
 
     /** Convert @p value to integer
      *
@@ -195,9 +199,9 @@ private:
     std::optional<Value_type> check_equality(Models_type const& models, Bounds_type& bounds);
 
     /** Report a new unit constraint @p cons and check for conflicts.
-     * 
-     * If the unassigned variable in @p cons cannot be assigned any value, this method returns a 
-     * conflict clause. 
+     *
+     * If the unassigned variable in @p cons cannot be assigned any value, this method returns a
+     * conflict clause.
      *
      * @param trail current solver trail
      * @param models partial assignment of variables
@@ -206,9 +210,9 @@ private:
     std::optional<Clause> unit(Trail& trail, Models_type& models, Constraint_type& cons);
 
     /** Group elements in @p polynomial by variable and sum up coefficients in each group.
-     * 
+     *
      * This method also drops variables whose coefficient becomes 0.
-     * 
+     *
      * @param polynomial polynomial to normalize
      */
     void group_by_variable(std::vector<std::pair<int, Value_type>>& polynomial);
@@ -280,7 +284,7 @@ private:
     bool implies_upper_bound(Constraint_type const& cons) const;
 
     /** Propagate a fully assigned constraint @p cons to @p trail
-     * 
+     *
      * Precondition: @p cons (its boolean variable) is not on the trail
      *
      * @param trail current solver trail
