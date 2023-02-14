@@ -36,6 +36,73 @@ public:
         return *actual_ptr;
     }
 
+    /** Call the event on all managed heuristics
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     */
+    void on_init(Database& db, Trail& trail) override
+    {
+        for (auto& heuristic : heuristics)
+        {
+            heuristic->on_init(db, trail);
+        }
+    }
+
+    /** Call the event on all managed heuristics
+     *
+     * @param type type of variables
+     * @param num_vars new number of variables
+     */
+    void on_variable_resize(Variable::Type type, int num_vars) override
+    {
+        for (auto& heuristic : heuristics)
+        {
+            heuristic->on_variable_resize(type, num_vars);
+        }
+    }
+
+    /** Call the event on all managed heuristics
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     * @param learned reference to the newly learned clause in @p db
+     */
+    void on_learned_clause(Database& db, Trail& trail, Clause const& learned) 
+    {
+        for (auto& heuristic : heuristics)
+        {
+            heuristic->on_learned_clause(db, trail, learned);
+        }
+    }
+
+    /** Call the event on all managed heuristics
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     * @param other_clause clause that is resolved with current conflict clause
+     */
+    void on_conflict_resolved(Database& db, Trail& trail, Clause const& other) override
+    {
+        for (auto& heuristic : heuristics)
+        {
+            heuristic->on_learned_clause(db, trail, other);
+        }
+    }
+
+    /** Call the event on all managed heuristics
+     *
+     * @param db clause database
+     * @param trail current solver trail after restart
+     */
+    void on_restart(Database& db, Trail& trail) override
+    {
+        for (auto& heuristic : heuristics)
+        {
+            heuristic->on_restart(db, trail);
+        }
+    }
+
     /** Pick an unassigned variable using heuristics added by `add()`
      * 
      * If no heuristic picks a variable, return none. Heuristics are used in order of their 
