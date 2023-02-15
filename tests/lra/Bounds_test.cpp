@@ -27,6 +27,15 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
     auto make = factory(constraints);
     auto [x, y, z, w, a] = real_vars<5>();
 
+    SECTION("Check allowed values with an empty bounds object")
+    {
+        REQUIRE(bounds.is_allowed(models, 0));
+        REQUIRE(bounds.is_allowed(models, 1));
+        REQUIRE(bounds.is_allowed(models, -1));
+        REQUIRE(bounds.is_allowed(models, std::numeric_limits<int>::max()));
+        REQUIRE(bounds.is_allowed(models, std::numeric_limits<int>::lowest()));
+    }
+
     SECTION("Push new upper bounds to a stack")
     {
         std::array trail{
@@ -40,28 +49,27 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
             models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
         }
 
-        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<Value_type>::max());
-        REQUIRE(bounds.upper_bound(models).reason().empty());
+        REQUIRE(!bounds.upper_bound(models));
 
         models.owned().set_value(y.ord(), 0);
         bounds.add_upper_bound(models, implied(models, trail[0]));
-        REQUIRE(bounds.upper_bound(models).value() == 7);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[0].lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 7);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == trail[0].lit());
 
         models.owned().set_value(z.ord(), 0);
         bounds.add_upper_bound(models, implied(models, trail[1]));
-        REQUIRE(bounds.upper_bound(models).value() == 7);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[0].lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 7);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == trail[0].lit());
 
         models.owned().set_value(w.ord(), 0);
         bounds.add_upper_bound(models, implied(models, trail[2]));
-        REQUIRE(bounds.upper_bound(models).value() == 6);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[2].lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 6);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == trail[2].lit());
 
         models.owned().set_value(a.ord(), 0);
         bounds.add_upper_bound(models, implied(models, trail[3]));
-        REQUIRE(bounds.upper_bound(models).value() == 6);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[3].lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 6);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == trail[3].lit());
     }
 
     SECTION("Push new lower bounds to a stack")
@@ -77,28 +85,27 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
             models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
         }
 
-        REQUIRE(bounds.lower_bound(models).value() == std::numeric_limits<Value_type>::lowest());
-        REQUIRE(bounds.lower_bound(models).reason().empty());
+        REQUIRE(!bounds.lower_bound(models));
 
         models.owned().set_value(y.ord(), 0);
         bounds.add_lower_bound(models, implied(models, trail[0]));
-        REQUIRE(bounds.lower_bound(models).value() == -7);
-        REQUIRE(bounds.lower_bound(models).reason().lit() == trail[0].lit());
+        REQUIRE(bounds.lower_bound(models).value().value() == -7);
+        REQUIRE(bounds.lower_bound(models).value().reason().lit() == trail[0].lit());
 
         models.owned().set_value(z.ord(), 0);
         bounds.add_lower_bound(models, implied(models, trail[1]));
-        REQUIRE(bounds.lower_bound(models).value() == -7);
-        REQUIRE(bounds.lower_bound(models).reason().lit() == trail[0].lit());
+        REQUIRE(bounds.lower_bound(models).value().value() == -7);
+        REQUIRE(bounds.lower_bound(models).value().reason().lit() == trail[0].lit());
 
         models.owned().set_value(w.ord(), 0);
         bounds.add_lower_bound(models, implied(models, trail[2]));
-        REQUIRE(bounds.lower_bound(models).value() == -6);
-        REQUIRE(bounds.lower_bound(models).reason().lit() == trail[2].lit());
+        REQUIRE(bounds.lower_bound(models).value().value() == -6);
+        REQUIRE(bounds.lower_bound(models).value().reason().lit() == trail[2].lit());
 
         models.owned().set_value(a.ord(), 0);
         bounds.add_lower_bound(models, implied(models, trail[3]));
-        REQUIRE(bounds.lower_bound(models).value() == -6);
-        REQUIRE(bounds.lower_bound(models).reason().lit() == trail[3].lit());
+        REQUIRE(bounds.lower_bound(models).value().value() == -6);
+        REQUIRE(bounds.lower_bound(models).value().reason().lit() == trail[3].lit());
     }
 
     SECTION("Get upper bounds after backtracking an assignment of LRA variables")
@@ -125,21 +132,20 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
         models.owned().set_value(w.ord(), 0);
         bounds.add_upper_bound(models, implied(models, trail[2]));
 
-        REQUIRE(bounds.upper_bound(models).value() == 5);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[2].lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 5);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == trail[2].lit());
 
         // backtrack to y = 0
         models.owned().clear(w.ord());
         models.owned().clear(z.ord());
 
-        REQUIRE(bounds.upper_bound(models).value() == 10);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[0].lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 10);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == trail[0].lit());
 
         // backtrack before y = 0
         models.owned().clear(y.ord());
 
-        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<Value_type>::max());
-        REQUIRE(bounds.upper_bound(models).reason().empty());
+        REQUIRE(!bounds.upper_bound(models));
     }
 
     SECTION("Get upper bound after changing value of an LRA variable")
@@ -150,14 +156,14 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
         models.owned().set_value(y.ord(), 0);
         bounds.add_upper_bound(models, implied(models, cons));
 
-        REQUIRE(bounds.upper_bound(models).value() == 8);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == cons.lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 8);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == cons.lit());
 
         models.owned().set_value(y.ord(), -2);
         bounds.add_upper_bound(models, implied(models, cons));
 
-        REQUIRE(bounds.upper_bound(models).value() == 10);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == cons.lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 10);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == cons.lit());
     }
 
     SECTION("Get upper bounds after backtracking boolean variables")
@@ -173,14 +179,14 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
             bounds.add_upper_bound(models, implied(models, cons));
         }
 
-        REQUIRE(bounds.upper_bound(models).value() == 5);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[2].lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 5);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == trail[2].lit());
 
         models.boolean().clear(trail[2].lit().var().ord());
         models.boolean().clear(trail[1].lit().var().ord());
         
-        REQUIRE(bounds.upper_bound(models).value() == 10);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == trail[0].lit());
+        REQUIRE(bounds.upper_bound(models).value().value() == 10);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == trail[0].lit());
     }
 
     SECTION("Get bounds after backtracking negation of the bound")
@@ -190,18 +196,16 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
         models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
 
         bounds.add_upper_bound(models, implied(models, cons));
-        REQUIRE(bounds.upper_bound(models).value() == 0);
-        REQUIRE(bounds.upper_bound(models).reason().lit() == cons.lit());
-        REQUIRE(bounds.lower_bound(models).value() == std::numeric_limits<Value_type>::lowest());
-        REQUIRE(bounds.lower_bound(models).reason().empty());
+        REQUIRE(bounds.upper_bound(models).value().value() == 0);
+        REQUIRE(bounds.upper_bound(models).value().reason().lit() == cons.lit());
+        REQUIRE(!bounds.lower_bound(models));
 
         models.boolean().set_value(not_cons.lit().var().ord(), !not_cons.lit().is_negation());
         bounds.add_lower_bound(models, implied(models, not_cons));
 
-        REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<Value_type>::max());
-        REQUIRE(bounds.upper_bound(models).reason().empty());
-        REQUIRE(bounds.lower_bound(models).value() == 0);
-        REQUIRE(bounds.lower_bound(models).reason().lit() == not_cons.lit());
+        REQUIRE(!bounds.upper_bound(models));
+        REQUIRE(bounds.lower_bound(models).value().value() == 0);
+        REQUIRE(bounds.lower_bound(models).value().reason().lit() == not_cons.lit());
     }
 
     SECTION("Exclude values")
@@ -297,15 +301,15 @@ TEST_CASE("Any watched variable can be the unassigned variable in reason()", "[b
     models.owned().set_value(y.ord(), 0);
     bounds.add_upper_bound(models, implied(models, cons));
 
-    REQUIRE(bounds.upper_bound(models).value() == 8);
+    REQUIRE(bounds.upper_bound(models).value().value() == 8);
 
     std::iter_swap(cons.vars().begin(), cons.vars().begin() + 1);
     std::iter_swap(cons.coef().begin(), cons.coef().begin() + 1);
 
-    REQUIRE(bounds.upper_bound(models).value() == 8);
+    REQUIRE(bounds.upper_bound(models).value().value() == 8);
 
     models.owned().clear(y.ord());
     models.owned().set_value(x.ord(), 0);
 
-    REQUIRE(bounds.upper_bound(models).value() == std::numeric_limits<Value_type>::max());
+    REQUIRE(!bounds.upper_bound(models));
 }

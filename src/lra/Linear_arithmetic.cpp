@@ -271,18 +271,6 @@ std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, Models_type&
     return {}; // no conflict
 }
 
-std::optional<Linear_arithmetic::Value_type>
-Linear_arithmetic::check_equality(Models_type const& models, Bounds_type& bounds)
-{
-    auto lb = bounds.lower_bound(models);
-    auto ub = bounds.upper_bound(models);
-    if (lb.value() == ub.value() && !lb.reason().is_strict() && !ub.reason().is_strict())
-    {
-        return lb.value();
-    }
-    return {};
-}
-
 std::optional<Clause> Linear_arithmetic::unit(Trail& trail, Models_type& models,
                                               Constraint_type& cons)
 {
@@ -383,8 +371,15 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
 std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Models_type& models,
                                                               Bounds_type& bounds)
 {
-    auto lb = bounds.lower_bound(models);
-    auto ub = bounds.upper_bound(models);
+    auto lower_bound = bounds.lower_bound(models);
+    auto upper_bound = bounds.upper_bound(models);
+    if (!lower_bound || !upper_bound)
+    {
+        return {}; // no conflict
+    }
+
+    auto lb = lower_bound.value(); // L
+    auto ub = upper_bound.value(); // U
     auto is_either_strict = lb.reason().is_strict() || ub.reason().is_strict();
     if (lb.value() < ub.value() || (lb.value() == ub.value() && !is_either_strict))
     {
@@ -393,7 +388,7 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
 
     Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate()};
 
-    // if `lb and ub` imply `false`
+    // if `L and U` imply `false`
     if (lb.reason().size() == 1 && ub.reason().size() == 1)
     {
         return conflict;
@@ -423,9 +418,16 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
 std::optional<Clause>
 Linear_arithmetic::check_inequality_conflict(Trail& trail, Models_type& models, Bounds_type& bounds)
 {
+    auto lower_bound = bounds.lower_bound(models);
+    auto upper_bound = bounds.upper_bound(models);
+    if (!lower_bound || !upper_bound)
+    {
+        return {}; // no conflict
+    }
+
     // check if `L <= x && x <= U` and `L = U` where `x` is the unassigned variable
-    auto lb = bounds.lower_bound(models);
-    auto ub = bounds.upper_bound(models);
+    auto lb = lower_bound.value(); // L
+    auto ub = upper_bound.value(); // U
     if (lb.value() != ub.value() || lb.reason().is_strict() || ub.reason().is_strict())
     {
         return {};
@@ -513,17 +515,64 @@ void Linear_arithmetic::add_variable(Trail& trail, Models_type const& models, Va
     }
 }
 
-int Linear_arithmetic::convert(Value_type value) const
+std::optional<Linear_arithmetic::Value_type> Linear_arithmetic::find_integer(Models_type const& models, Bounds_type& bounds)
 {
-    if (value > std::numeric_limits<int>::max())
+    auto abs = [](int val) -> int {
+        if (val == std::numeric_limits<int>::min())
+        {
+            return std::numeric_limits<int>::max();
+        }
+        return val >= 0 ? val : -val;
+    };
+
+    Value_type lb{std::numeric_limits<int>::lowest()};
+    Value_type ub{std::numeric_limits<int>::max()};
+    if (auto lower_bound = bounds.lower_bound(models))
     {
-        return std::numeric_limits<int>::max();
+        lb = lower_bound.value().value();
     }
-    else if (value < std::numeric_limits<int>::min())
+
+    if (auto upper_bound = bounds.upper_bound(models))
     {
-        return std::numeric_limits<int>::min();
+        ub = upper_bound.value().value();
     }
-    return static_cast<int>(value);
+
+    int abs_min_value = 0;
+    int abs_bound = 0;
+    if (lb <= Value_type{0} && ub >= Value_type{0})
+    {
+        abs_bound = std::max<int>(abs(static_cast<int>(lb)), static_cast<int>(ub));
+    }
+    else if (lb > Value_type{0})
+    {
+        abs_min_value = static_cast<int>(lb);
+        abs_bound = static_cast<int>(ub);
+    }
+    else // lb <= ub < 0
+    {
+        abs_bound = abs(static_cast<int>(lb));
+        abs_min_value = abs(static_cast<int>(ub));
+    }
+    assert(abs_bound >= 0);
+    assert(abs_min_value >= 0);
+
+    Value_type value{0};
+    for (int int_value = abs_min_value; int_value <= abs_bound; ++int_value)
+    {
+        value = static_cast<Value_type>(int_value);
+        if (lb <= value && value <= ub && bounds.is_allowed(models, value))
+        {
+            break;
+        }
+
+        value = static_cast<Value_type>(-int_value);
+        if (lb <= value && value <= ub && bounds.is_allowed(models, value))
+        {
+            break;
+        }
+    }
+
+    return bounds.is_allowed(models, value) ? value : std::optional<Value_type>{};
 }
 
 void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
@@ -536,62 +585,26 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     auto models = relevant_models(trail);
     auto& bnds = bounds[var.ord()];
 
-    auto abs = [](int val) -> int {
-        if (val == std::numeric_limits<int>::min())
-        {
-            return std::numeric_limits<int>::max();
-        }
-        return val >= 0 ? val : -val;
-    };
-
     Value_type value =
         cached_values.is_defined(var.ord()) ? cached_values.value(var.ord()) : Value_type{0};
     if (!bnds.is_allowed(models, value))
     {
-        // find an allowed value
-        auto left = bnds.lower_bound(models).value();
-        auto right = bnds.upper_bound(models).value();
-
-        // try integer values first
-        int abs_min_value = 0;
-        int abs_bound = 0;
-        if (left <= Value_type{0} && right >= Value_type{0})
+        if (auto int_value = find_integer(models, bnds))
         {
-            abs_bound = std::max<int>(abs(convert(left)), convert(right));
+            value = int_value.value();
         }
-        else if (left > Value_type{0})
+        else // there is no suitable integer value
         {
-            abs_min_value = convert(left);
-            abs_bound = convert(right);
-        }
-        else // left <= right < 0
-        {
-            abs_bound = abs(convert(left));
-            abs_min_value = abs(convert(right));
-        }
+            assert(bnds.lower_bound(models).has_value());
+            assert(bnds.upper_bound(models).has_value());
 
-        for (int int_value = abs_min_value; int_value <= abs_bound; ++int_value)
-        {
-            value = static_cast<Value_type>(int_value);
-            if (left <= value && value <= right && bnds.is_allowed(models, value))
-            {
-                break;
-            }
+            auto lb = bnds.lower_bound(models).value().value();
+            auto ub = bnds.upper_bound(models).value().value();
 
-            value = static_cast<Value_type>(-int_value);
-            if (left <= value && value <= right && bnds.is_allowed(models, value))
-            {
-                break;
-            }
-        }
-
-        // if there is no suitable integer value
-        if (!bnds.is_allowed(models, value))
-        {
-            value = right;
+            value = ub;
             while (!bnds.is_allowed(models, value))
             {
-                value = left / Value_type{2} + value / Value_type{2};
+                value = lb / Value_type{2} + value / Value_type{2};
             }
         }
     }

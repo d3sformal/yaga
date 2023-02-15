@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <limits>
+#include <optional>
 #include <type_traits>
 #include <vector>
 
@@ -60,8 +61,6 @@ template <typename Value> class Implied_value {
 public:
     using Constraint_type = Linear_constraint<Value>;
     using Models_type = Theory_models<Value>;
-
-    inline Implied_value(Value val) : val(val), timestamp(-1) {}
 
     inline Implied_value(Value val, Constraint_type cons, Models_type const& models)
         : val(val), cons(cons),
@@ -123,8 +122,6 @@ private:
  * Obsolete bounds are removed lazily when a bound is requested.
  *
  * @tparam Value_type value type of the bounds
- *
- * TODO: requirements for Value_type?
  */
 template <typename Value_type> class Bounds {
 public:
@@ -137,13 +134,13 @@ public:
      * @param models partial assignment of variables
      * @return tightest upper bound or maximal value if there is no implied upper bound
      */
-    inline Implied_value_type upper_bound(Models_type const& models)
+    inline std::optional<Implied_value_type> upper_bound(Models_type const& models)
     {
         remove_obsolete(ub, models);
 
         if (ub.empty()) // no bound
         {
-            return {std::numeric_limits<Value_type>::max()};
+            return {};
         }
         else // there is at least one implied upper bound
         {
@@ -156,13 +153,13 @@ public:
      * @param models partial assignment of variables
      * @return tightest lower bound or minimal value if there is no implied lower bound
      */
-    inline Implied_value_type lower_bound(Models_type const& models)
+    inline std::optional<Implied_value_type> lower_bound(Models_type const& models)
     {
         remove_obsolete(lb, models);
 
         if (lb.empty()) // no bound
         {
-            return {std::numeric_limits<Value_type>::lowest()};
+            return {};
         }
         else // there is at least one implied lower bound
         {
@@ -211,8 +208,8 @@ public:
     inline void add_upper_bound(Models_type const& models, Implied_value_type bound)
     {
         auto current_bound = upper_bound(models);
-        if (current_bound.value() > bound.value() ||
-            (current_bound.value() == bound.value() && bound.reason().is_strict()))
+        if (!current_bound || current_bound.value().value() > bound.value() ||
+            (current_bound.value().value() == bound.value() && bound.reason().is_strict()))
         {
             ub.push_back(bound);
         }
@@ -226,8 +223,8 @@ public:
     inline void add_lower_bound(Models_type const& models, Implied_value_type bound)
     {
         auto current_bound = lower_bound(models);
-        if (current_bound.value() < bound.value() ||
-            (current_bound.value() == bound.value() && bound.reason().is_strict()))
+        if (!current_bound || current_bound.value().value() < bound.value() ||
+            (current_bound.value().value() == bound.value() && bound.reason().is_strict()))
         {
             lb.push_back(bound);
         }
@@ -242,8 +239,12 @@ public:
      */
     inline bool check_lower_bound(Models_type const& models, Value_type value)
     {
-        auto lb = lower_bound(models);
-        return lb.value() < value || (lb.value() == value && !lb.reason().is_strict());
+        if (auto lb = lower_bound(models))
+        {
+            auto bound = lb.value();
+            return bound.value() < value || (bound.value() == value && !bound.reason().is_strict());
+        }
+        return true;
     }
 
     /** Check whether @p value satisfies currently implied upper bound
@@ -255,8 +256,12 @@ public:
      */
     inline bool check_upper_bound(Models_type const& models, Value_type value)
     {
-        auto ub = upper_bound(models);
-        return value < ub.value() || (ub.value() == value && !ub.reason().is_strict());
+        if (auto ub = upper_bound(models))
+        {
+            auto bound = ub.value();
+            return value < bound.value() || (bound.value() == value && !bound.reason().is_strict());
+        }
+        return true;
     }
 
     /** Check whether @p value is between currently implied lower and upper bound and there is no

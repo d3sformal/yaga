@@ -141,15 +141,6 @@ private:
     // cached assignment of LRA variables
     Model<Value_type> cached_values;
 
-    /** Convert @p value to integer
-     *
-     * @param value value to convert
-     * @return integer part of @p value
-     * @return integer value closest to @p value if @p value does not have a representation as an
-     * int
-     */
-    int convert(Value_type value) const;
-
     /** Start watching LRA variables in @p cons
      *
      * @param cons new constraint
@@ -201,14 +192,6 @@ private:
      * @return conflict clause if @p bounds is empty. None, otherwise.
      */
     std::optional<Clause> check_bounds(Trail& trail, Models_type& models, Bounds_type& bounds);
-
-    /** Check if @p bounds implies an equality (i.e., `L <= x <= U`  and `L = U`)
-     *
-     * @param models partial assignment of variables
-     * @param bounds bounds object to check
-     * @return implied constant if @p bounds implies that `x == constant`. None, otherwise.
-     */
-    std::optional<Value_type> check_equality(Models_type const& models, Bounds_type& bounds);
 
     /** Report a new unit constraint @p cons and check for conflicts.
      *
@@ -320,6 +303,14 @@ private:
      * @param var variable to add if it is not already in @p trail
      */
     void add_variable(Trail& trail, Models_type const& models, Variable var);
+
+    /** Try to find an integer value allowed by @p bounds
+     * 
+     * @param models partial assignment of variables in trail
+     * @param bounds implied bounds of a variable
+     * @return integer value allowed by @p bounds or none if there is no such value
+     */
+    std::optional<Value_type> find_integer(Models_type const& models, Bounds_type& bounds);
 
     inline bool is_unit(Model<Value_type> const& model, Constraint_type const& cons) const
     {
