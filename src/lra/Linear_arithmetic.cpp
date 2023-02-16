@@ -238,7 +238,7 @@ bool Linear_arithmetic::implies_lower_bound(Constraint_type const& cons) const
 {
     if (cons.pred() == Order_predicate::eq)
     {
-        return false;
+        return true;
     }
 
     return (cons.coef().front() > 0 && cons.lit().is_negation()) ||
@@ -249,7 +249,7 @@ bool Linear_arithmetic::implies_upper_bound(Constraint_type const& cons) const
 {
     if (cons.pred() == Order_predicate::eq)
     {
-        return false;
+        return true;
     }
 
     return (cons.coef().front() < 0 && cons.lit().is_negation()) ||
