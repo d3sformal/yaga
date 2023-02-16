@@ -132,6 +132,18 @@ private:
         }
     };
 
+    struct Linear_polynomial {
+        // pair of variable and coefficient
+        std::vector<std::pair<int, Value_type>> variables;
+        // constant term
+        Value_type constant;
+
+        inline auto begin() { return variables.begin(); }
+        inline auto end() { return variables.end(); }
+        inline auto size() const { return variables.size(); }
+        inline bool empty() const { return variables.empty(); }
+    };
+
     // repository of managed linear constraints
     Constraint_repository constraints;
     // map real variable -> list of constraints in which it is watched
@@ -210,7 +222,24 @@ private:
      *
      * @param polynomial polynomial to normalize
      */
-    void group_by_variable(std::vector<std::pair<int, Value_type>>& polynomial);
+    void normalize(Linear_polynomial& polynomial);
+
+    /** Get linear polynomial from @p cons
+     * 
+     * @param cons linear constraint
+     * @return linear polynomial of @p cons
+     */
+    Linear_polynomial polynomial(Constraint_type const& cons);
+
+    /** Eliminate the first variable in @p polynomial and @p cons using the Fourier-Motzkin 
+     * elimination. 
+     * 
+     * @param polynomial the first polynomial used in the FM rule (the result will be 
+     * stored in this struct)
+     * @param cons the second polynomial used in the FM rule
+     * @return polynomial derived using Fourier-Motzkin elimination of the first variable in @p polynomial
+     */
+    Linear_polynomial fm(Linear_polynomial&& polynomial, Constraint_type const& cons);
 
     /** Combine @p first and @p second using Fourier-Motzkin elimination of the first unassigned
      * variable in @p first and @p second
