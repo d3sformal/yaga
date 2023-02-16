@@ -99,7 +99,15 @@ public:
         // find the assigned watched variable
         auto [var_it, var_end] = cons.vars();
         assert(var_it != var_end);
-        if (!models.owned().is_defined(*var_it))
+        assert(!models.owned().is_defined(*var_it) || std::all_of(cons.vars().begin(), cons.vars().end(), [&](auto var_ord) {
+            return models.owned().is_defined(var_ord);
+        }));
+
+        if (models.owned().is_defined(*var_it))
+        {
+            return false;
+        }
+        else // the first variable is unassigned
         {
             ++var_it;
         }
