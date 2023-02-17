@@ -189,7 +189,6 @@ public:
         {
             return value;
         }
-        assert(!model.is_defined(*var_it));
 
         ++var_it;
         ++coef_it;

@@ -118,7 +118,6 @@ public:
      * @return constraint which implements the boolean variable @p bool_var_ord
      */
     inline Constraint_type constraint(int bool_var_ord) { return constraints[bool_var_ord]; }
-
 private:
     struct Watched_constraint {
         // watched constraint
@@ -140,9 +139,28 @@ private:
 
         inline auto begin() { return variables.begin(); }
         inline auto end() { return variables.end(); }
+        inline auto begin() const { return variables.begin(); }
+        inline auto end() const { return variables.end(); }
         inline auto size() const { return variables.size(); }
         inline bool empty() const { return variables.empty(); }
     };
+
+    inline friend std::ostream& operator<<(std::ostream& out, Linear_polynomial const& poly)
+    {
+        char const* sep = "";
+        for (auto [var_ord, coef] : poly)
+        {
+            out << sep;
+            if (coef != 1)
+            {
+                out << coef << " * ";
+            }
+            out << Variable{var_ord, Variable::rational};
+            sep = " + ";
+        }
+        out << sep << poly.constant;
+        return out;
+    }
 
     // repository of managed linear constraints
     Constraint_repository constraints;
@@ -229,7 +247,7 @@ private:
      * @param cons linear constraint
      * @return linear polynomial of @p cons
      */
-    Linear_polynomial polynomial(Constraint_type const& cons);
+    Linear_polynomial polynomial(Constraint_type const& cons, Value_type mult);
 
     /** Eliminate the first variable in @p polynomial and @p cons using the Fourier-Motzkin 
      * elimination. 
@@ -244,8 +262,9 @@ private:
     /** Combine @p first and @p second using Fourier-Motzkin elimination of the first unassigned
      * variable in @p first and @p second
      *
-     * Precondition: the first variable in both @p first and @p second is the only unassigned
-     * variable in both constraints.
+     * Preconditions: 
+     * -# the first variable in both @p first and @p second is the only unassigned variable in both
+     * constraints.
      *
      * @param trail current solver trail
      * @param first first constraint
@@ -254,6 +273,16 @@ private:
      */
     Constraint_type eliminate(Trail& trail, Constraint_type const& first,
                               Constraint_type const& second);
+
+    /** Try to find a constraint that is in a bound conflict with @p cons If such a constraint is
+     * found, this method uses the Fourier-Motzkin elimination to derive a new constraint.
+     * 
+     * @param trail current solver trail
+     * @param cons derivation in bound conflict that is false in @p trail 
+     * @return derived conflict constraint and a reason constraint or two empty constraints if 
+     * there is no further bound conflict involving @p cons
+     */
+    std::pair<Constraint_type, Constraint_type> minimize(Trail& trail, Constraint_type const& cons);
 
     /** Check if there is a bound conflict (i.e., `L <= x && x <= U` and `U < L` or similar
      * conflicts with strict bounds)
@@ -298,6 +327,16 @@ private:
      * @return true iff @p cons implies a lower bound
      */
     bool implies_lower_bound(Constraint_type const& cons) const;
+
+    /** Check whether a constraint with @p pred and @p coef of some variable implies a lower bound 
+     * for that variable.
+     * 
+     * @param pred predicate of the constraint
+     * @param coef coefficient of a variable in the constraint
+     * @return true iff constraint with @p pred and @p coef of a variable implies a lower bound 
+     * for that variable
+     */
+    bool implies_lower_bound(Order_predicate pred, Value_type coef) const;
 
     /** Check whether the unit constraint @p cons implies an upper bound for the only unassigned
      * variable (e.g., `x < 0`, or `x <= 0`)
