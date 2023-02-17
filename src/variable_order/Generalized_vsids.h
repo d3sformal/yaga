@@ -2,8 +2,10 @@
 #define PERUN_GENERALIZED_VSIDS_H
 
 #include <array>
+#include <optional>
 #include <queue>
 #include <vector>
+#include <map>
 
 #include "Linear_arithmetic.h"
 #include "Variable_order.h"
