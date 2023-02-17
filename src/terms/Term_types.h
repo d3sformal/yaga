@@ -7,6 +7,14 @@ namespace perun::terms {
 using term_t = int32_t;
 using type_t = int32_t;
 
+namespace types {
+// Predefined types
+
+static constexpr type_t null_type = -1;
+static constexpr type_t bool_type = 0;
+static constexpr type_t real_type = 1;
+}
+
 enum class Kind {
     /*
      * Special marks
