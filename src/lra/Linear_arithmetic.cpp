@@ -412,6 +412,56 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
     return result;
 }
 
+Linear_arithmetic::Value_type Linear_arithmetic::implied_value(Models_type const& models, Linear_polynomial const& poly) const
+{
+    assert(!poly.empty());
+
+    auto var_coef = poly.begin()->second;
+    auto bound = -poly.constant;
+    for (auto [ord, coef] : poly | std::views::drop(1))
+    {
+        assert(models.owned().is_defined(ord));
+        bound -= coef * models.owned().value(ord);
+    }
+    return bound / var_coef;
+}
+
+std::optional<Linear_arithmetic::Constraint_type> 
+Linear_arithmetic::find_bound_conflict(Models_type const& models, Linear_polynomial const& poly, Order_predicate pred)
+{
+    // compute bound implied by `poly` for the first variable
+    auto bound = implied_value(models, poly);
+    auto [var_ord, var_coef] = *poly.begin();
+
+    if (var_coef < 0 || pred == Order_predicate::eq) // `bound` is a lower bound
+    {
+        if (auto upper_bound = bounds[var_ord].upper_bound(models))
+        {
+            auto ub = upper_bound.value();
+            auto is_strict = ub.reason().is_strict() || pred == Order_predicate::lt;
+            if (ub.value() < bound || (ub.value() == bound && is_strict))
+            {
+                return ub.reason();
+            }
+        }
+    }
+
+    if (var_coef > 0 || pred == Order_predicate::eq) // `bound` is an upper bound
+    {
+        if (auto lower_bound = bounds[var_ord].lower_bound(models))
+        {
+            auto lb = lower_bound.value();
+            auto is_strict = lb.reason().is_strict() || pred == Order_predicate::lt;
+            if (lb.value() > bound || (lb.value() == bound && is_strict))
+            {
+                return lb.reason();
+            }
+        }
+    }
+
+    return {};
+}
+
 Clause Linear_arithmetic::resolve_bound_conflict(Trail& trail, Constraint_type const& cons)
 {
     Clause conflict{cons.lit().negate()};
@@ -464,53 +514,15 @@ Clause Linear_arithmetic::resolve_bound_conflict(Trail& trail, Constraint_type c
             }
         }
         std::iter_swap(top_it, poly.begin());
-        auto [var_ord, var_coef] = *poly.begin();
 
-        // compute bound implied by `poly` for the first variable
-        auto bound = -poly.constant;
-        for (auto [ord, coef] : poly | std::views::drop(1))
+        // eliminate the first variable if it is in a bound conflict
+        if (auto reason = find_bound_conflict(models, poly, pred))
         {
-            assert(models.owned().is_defined(ord));
-            bound -= coef * models.owned().value(ord);
+            poly = fm(std::move(poly), reason.value());
+            pred = combine_pred(pred, reason.value());
+            conflict.push_back(reason.value().lit().negate());
         }
-        bound /= var_coef;
-
-        // `bound` is a lower bound
-        bool is_resolved = false;
-        if (var_coef < 0 || pred == Order_predicate::eq) 
-        {
-            if (auto upper_bound = bounds[var_ord].upper_bound(models))
-            {
-                auto ub = upper_bound.value();
-                auto is_strict = ub.reason().is_strict() || pred == Order_predicate::lt;
-                if (ub.value() < bound || (ub.value() == bound && is_strict))
-                {
-                    poly = fm(std::move(poly), ub.reason());
-                    pred = combine_pred(pred, ub.reason());
-                    is_resolved = true;
-                    conflict.push_back(ub.reason().lit().negate());
-                }
-            }
-        }
-
-        // `bound` is an upper bound
-        if (!is_resolved && (var_coef > 0 || pred == Order_predicate::eq)) 
-        {
-            if (auto lower_bound = bounds[var_ord].lower_bound(models))
-            {
-                auto lb = lower_bound.value();
-                auto is_strict = lb.reason().is_strict() || pred == Order_predicate::lt;
-                if (lb.value() > bound || (lb.value() == bound && is_strict))
-                {
-                    poly = fm(std::move(poly), lb.reason());
-                    pred = combine_pred(pred, lb.reason());
-                    is_resolved = true;
-                    conflict.push_back(lb.reason().lit().negate());
-                }
-            }
-        }
-
-        if (!is_resolved)
+        else
         {
             break;
         }

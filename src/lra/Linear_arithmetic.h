@@ -280,6 +280,24 @@ private:
     Constraint_type eliminate(Trail& trail, Constraint_type const& first,
                               Constraint_type const& second);
 
+    /** Compute value implied for the first variable in @p poly (assuming @p poly is a linear 
+     * polynomial of a linear constraint)
+     * 
+     * @param models partial assignment of variables
+     * @param poly polynomial to evaluate
+     * @return value on the right-hand-side of a constraint 
+     */
+    Value_type implied_value(Models_type const& models, Linear_polynomial const& poly) const;
+
+    /** Find a constraint which is in a bound conflict with @p poly 
+     * 
+     * @param models partial assignment of variables
+     * @param poly linear polynomial
+     * @param pred predicate which defines a linear constraint with @p poly
+     * @return linear constraint in a bound conflict with @p poly or none if there is none
+     */
+    std::optional<Constraint_type> find_bound_conflict(Models_type const& models, Linear_polynomial const& poly, Order_predicate pred);
+
     /** Create a bound conflict clause
      * 
      * @param trail current solver trail
