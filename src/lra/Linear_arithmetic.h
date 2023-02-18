@@ -332,16 +332,6 @@ private:
      */
     bool implies_lower_bound(Constraint_type const& cons) const;
 
-    /** Check whether a constraint with @p pred and @p coef of some variable implies a lower bound 
-     * for that variable.
-     * 
-     * @param pred predicate of the constraint
-     * @param coef coefficient of a variable in the constraint
-     * @return true iff constraint with @p pred and @p coef of a variable implies a lower bound 
-     * for that variable
-     */
-    bool implies_lower_bound(Order_predicate pred, Value_type coef) const;
-
     /** Check whether the unit constraint @p cons implies an upper bound for the only unassigned
      * variable (e.g., `x < 0`, or `x <= 0`)
      *

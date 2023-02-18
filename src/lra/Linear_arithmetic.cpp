@@ -256,11 +256,6 @@ bool Linear_arithmetic::implies_upper_bound(Constraint_type const& cons) const
            (cons.coef().front() > 0 && !cons.lit().is_negation());
 }
 
-bool Linear_arithmetic::implies_lower_bound(Order_predicate pred, Value_type coef) const
-{
-    return pred != Order_predicate::eq && coef < Value_type{0};
-}
-
 std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, Models_type& models,
                                                       Bounds_type& bounds)
 {
