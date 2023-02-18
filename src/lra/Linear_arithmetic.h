@@ -145,6 +145,12 @@ private:
         inline bool empty() const { return variables.empty(); }
     };
 
+    /** Print linear polynomial to an output stream
+     * 
+     * @param out output stream
+     * @param poly linear polynomial to print
+     * @return @p out
+     */
     inline friend std::ostream& operator<<(std::ostream& out, Linear_polynomial const& poly)
     {
         char const* sep = "";
@@ -245,15 +251,15 @@ private:
     /** Get linear polynomial from @p cons
      * 
      * @param cons linear constraint
-     * @return linear polynomial of @p cons
+     * @param mult constant by which we multiply linear polynomial of @p cons
+     * @return linear polynomial of @p cons multiplied by @p mult
      */
     Linear_polynomial polynomial(Constraint_type const& cons, Value_type mult);
 
-    /** Eliminate the first variable in @p polynomial and @p cons using the Fourier-Motzkin 
+    /** Eliminate the first variable in @p polynomial and @p cons using Fourier-Motzkin 
      * elimination. 
      * 
-     * @param polynomial the first polynomial used in the FM rule (the result will be 
-     * stored in this struct)
+     * @param polynomial the first polynomial used in the FM rule
      * @param cons the second polynomial used in the FM rule
      * @return polynomial derived using Fourier-Motzkin elimination of the first variable in @p polynomial
      */
@@ -274,15 +280,13 @@ private:
     Constraint_type eliminate(Trail& trail, Constraint_type const& first,
                               Constraint_type const& second);
 
-    /** Try to find a constraint that is in a bound conflict with @p cons If such a constraint is
-     * found, this method uses the Fourier-Motzkin elimination to derive a new constraint.
+    /** Create a bound conflict clause
      * 
      * @param trail current solver trail
-     * @param cons derivation in bound conflict that is false in @p trail 
-     * @return derived conflict constraint and a reason constraint or two empty constraints if 
-     * there is no further bound conflict involving @p cons
+     * @param cons linear constraint whose first variable is in a bound conflict
+     * @return bound conflict clause
      */
-    std::pair<Constraint_type, Constraint_type> minimize(Trail& trail, Constraint_type const& cons);
+    Clause resolve_bound_conflict(Trail& trail, Constraint_type const& cons);
 
     /** Check if there is a bound conflict (i.e., `L <= x && x <= U` and `U < L` or similar
      * conflicts with strict bounds)

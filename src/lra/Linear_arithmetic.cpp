@@ -417,46 +417,138 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
     return result;
 }
 
-std::pair<Linear_arithmetic::Constraint_type, Linear_arithmetic::Constraint_type>
-Linear_arithmetic::minimize(Trail& trail, Constraint_type const& cons)
+Clause Linear_arithmetic::resolve_bound_conflict(Trail& trail, Constraint_type const& cons)
 {
-    if (cons.empty())
-    {
-        return {};
-    }
+    Clause conflict{cons.lit().negate()};
 
     auto models = relevant_models(trail);
-    auto bound = cons.implied_value(models.owned()) / cons.coef().front();
-
-    if (implies_lower_bound(cons))
+    auto poly = polynomial(cons, cons.coef().front() > 0 ? -1 : 1);
+    auto pred = cons.pred();
+    if (cons.lit().is_negation())
     {
-        if (auto upper_bound = bounds[cons.vars().front()].upper_bound(models))
+        if (pred == Order_predicate::leq)
         {
-            auto ub = upper_bound.value();
-            auto is_strict = cons.is_strict() || ub.reason().is_strict();
-            if (ub.value() < bound || (ub.value() == bound && is_strict))
-            {
-                auto res = eliminate(trail, cons, ub.reason());
-                return {res, ub.reason()};
-            }
+            pred = Order_predicate::lt;
         }
-    }
-    else // cons implies an upper bound
-    {
-        assert(implies_upper_bound(cons));
-        if (auto lower_bound = bounds[cons.vars().front()].lower_bound(models))
+        else if (pred == Order_predicate::lt)
         {
-            auto lb = lower_bound.value();
-            auto is_strict = cons.is_strict() || lb.reason().is_strict();
-            if (lb.value() > bound || (lb.value() == bound && is_strict))
-            {
-                auto res = eliminate(trail, lb.reason(), cons);
-                return {res, lb.reason()};
-            }
+            pred = Order_predicate::leq;
         }
     }
 
-    return {};
+    // combine current predicate `pred` with a predicate of other constraint
+    auto combine_pred = [](Order_predicate pred, Constraint_type const& other) {
+        if (pred == Order_predicate::eq && other.pred() == Order_predicate::eq)
+        {
+            return Order_predicate::eq;
+        }
+        else if (pred != Order_predicate::lt && !other.is_strict())
+        {
+            return Order_predicate::leq;
+        }
+        else
+        {
+            return Order_predicate::lt;
+        }
+    };
+
+    while (!poly.empty())
+    {
+        // Move the top level variable to the front.
+        // In the first iteration, the first variable will be unassigned. In subsequent iterations,
+        // all variables will be assigned.
+        int top_level = trail.decision_level(Variable{poly.begin()->first, Variable::rational}).value_or(trail.decision_level());
+        auto top_it = poly.begin();
+        for (auto it = ++poly.begin(); it != poly.end(); ++it)
+        {
+            Variable new_var{it->first, Variable::rational};
+            if (trail.decision_level(new_var).value() > top_level)
+            {
+                top_level = trail.decision_level(new_var).value();
+                top_it = it;
+            }
+        }
+        std::iter_swap(top_it, poly.begin());
+        auto [var_ord, var_coef] = *poly.begin();
+
+        // compute bound implied by `poly` for the first variable
+        auto bound = -poly.constant;
+        for (auto [ord, coef] : poly | std::views::drop(1))
+        {
+            assert(models.owned().is_defined(ord));
+            bound -= coef * models.owned().value(ord);
+        }
+        bound /= var_coef;
+
+        // `bound` is a lower bound
+        bool is_resolved = false;
+        if (var_coef < 0 || pred == Order_predicate::eq) 
+        {
+            if (auto upper_bound = bounds[var_ord].upper_bound(models))
+            {
+                auto ub = upper_bound.value();
+                auto is_strict = ub.reason().is_strict() || pred == Order_predicate::lt;
+                if (ub.value() < bound || (ub.value() == bound && is_strict))
+                {
+                    poly = fm(std::move(poly), ub.reason());
+                    pred = combine_pred(pred, ub.reason());
+                    is_resolved = true;
+                    conflict.push_back(ub.reason().lit().negate());
+                }
+            }
+        }
+
+        // `bound` is an upper bound
+        if (!is_resolved && (var_coef > 0 || pred == Order_predicate::eq)) 
+        {
+            if (auto lower_bound = bounds[var_ord].lower_bound(models))
+            {
+                auto lb = lower_bound.value();
+                auto is_strict = lb.reason().is_strict() || pred == Order_predicate::lt;
+                if (lb.value() > bound || (lb.value() == bound && is_strict))
+                {
+                    poly = fm(std::move(poly), lb.reason());
+                    pred = combine_pred(pred, lb.reason());
+                    is_resolved = true;
+                    conflict.push_back(lb.reason().lit().negate());
+                }
+            }
+        }
+
+        if (!is_resolved)
+        {
+            break;
+        }
+    }
+    assert(conflict.size() >= 2);
+    assert(eval(models.boolean(), conflict) == false);
+
+    if (poly.empty())
+    {
+        return conflict;
+    }
+
+    // sort the polynomial by decision level
+    std::sort(poly.begin(), poly.end(), [&](auto lhs, auto rhs) {
+        Variable lhs_var{lhs.first, Variable::rational};
+        Variable rhs_var{rhs.first, Variable::rational};
+        return trail.decision_level(lhs_var).value() > trail.decision_level(rhs_var).value();
+    });
+
+    // create a linear constraint from `poly` and `pred` (head of the implication)
+    auto head = constraint(trail, std::views::keys(poly), std::views::values(poly), pred, -poly.constant);
+    assert(!head.empty());
+    if (!models.boolean().is_defined(head.lit().var().ord()))
+    {
+        propagate(trail, models, head);
+    }
+    assert(eval(models.boolean(), head.lit()) == false);
+    assert(eval(models.owned(), head) == false);
+
+    // add the constraint as head of the implication
+    conflict.push_back(head.lit());
+    assert(eval(models.boolean(), conflict) == false);
+    return conflict;
 }
 
 std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Models_type& models,
@@ -477,41 +569,7 @@ std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Mode
         return {}; // no conflict
     }
 
-    Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate()};
-
-    // if `L and U` imply `false`
-    if (lb.reason().size() == 1 && ub.reason().size() == 1)
-    {
-        return conflict;
-    }
-
-    auto cons = eliminate(trail, lb.reason(), ub.reason());
-    while (!cons.empty())
-    {
-        assert(eval(models.owned(), cons) == false);
-        assert(eval(models.boolean(), cons.lit()) == false);
-
-        auto [result, reason] = minimize(trail, cons);
-        if (result.empty())
-        {
-            break;
-        }
-        else
-        {
-            conflict.emplace_back(reason.lit().negate());
-            cons = result;
-        }
-    }
-
-    if (cons.empty())
-    {
-        return conflict;
-    }
-
-    conflict.push_back(cons.lit());
-
-    assert(eval(models.boolean(), conflict) == false);
-    return conflict;
+    return resolve_bound_conflict(trail, lb.reason());
 }
 
 std::optional<Clause>
