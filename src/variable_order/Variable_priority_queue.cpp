@@ -46,7 +46,6 @@ void Variable_priority_queue::update(Variable var, float score)
     }
 
     assert(it != pq.end());
-    assert(it->second <= score);
     auto old_score = it->second;
     it->second = score;
 
