@@ -40,6 +40,14 @@ void Theory_combination::on_init(Database& db, Trail& trail)
     }
 }
 
+void Theory_combination::on_before_backtrack(Database& db, Trail& trail, int level)
+{
+    for (auto& theory : theories)
+    {
+        theory->on_before_backtrack(db, trail, level);
+    }
+}
+
 void Theory_combination::on_variable_resize(Variable::Type type, int num_vars)
 {
     if (num_vars >= static_cast<int>(current_num_vars.size()))

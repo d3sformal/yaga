@@ -25,6 +25,14 @@ public:
      */
     virtual void on_variable_resize(Variable::Type, int) {}
 
+    /** Called when the solver is about to backtrack to @p decision_level
+     * 
+     * @param db clause database
+     * @param trail current solver trail before backtracking
+     * @param decision_level decision level to backtrack to
+     */
+    virtual void on_before_backtrack(Database&, Trail&, int) {}
+
     /** Called when a new clause is learned and added to @p db
      *
      * @param db clause database

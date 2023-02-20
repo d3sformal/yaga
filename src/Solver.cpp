@@ -36,6 +36,11 @@ std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
 
 void Solver::backtrack_with(Clause&& clause, int level)
 {
+    for (auto listener : listeners())
+    {
+        listener->on_before_backtrack(db(), trail(), level);
+    }
+
     // add the clause to database
     auto& learned = db().learn_clause(std::move(clause));
 
@@ -101,6 +106,11 @@ void Solver::init()
 
 void Solver::restart()
 {
+    for (auto listener : listeners())
+    {
+        listener->on_before_backtrack(db(), trail(), /*decision_level=*/0);
+    }
+
     ++total_restarts;
     trail().clear();
 

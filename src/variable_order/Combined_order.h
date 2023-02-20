@@ -63,12 +63,26 @@ public:
     }
 
     /** Call the event on all managed heuristics
+     * 
+     * @param db clause database
+     * @param trail current solver trail before backtracking
+     * @param level decision level to backtrack to
+     */
+    void on_before_backtrack(Database& db, Trail& trail, int level) override
+    {
+        for (auto& heuristic : heuristics)
+        {
+            heuristic->on_before_backtrack(db, trail, level);
+        }
+    }
+
+    /** Call the event on all managed heuristics
      *
      * @param db clause database
      * @param trail current solver trail
      * @param learned reference to the newly learned clause in @p db
      */
-    void on_learned_clause(Database& db, Trail& trail, Clause const& learned)
+    void on_learned_clause(Database& db, Trail& trail, Clause const& learned) override
     {
         for (auto& heuristic : heuristics)
         {
