@@ -63,7 +63,7 @@ public:
     }
 
     /** Call the event on all managed heuristics
-     * 
+     *
      * @param db clause database
      * @param trail current solver trail before backtracking
      * @param level decision level to backtrack to

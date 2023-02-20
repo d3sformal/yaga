@@ -2,13 +2,14 @@
 #define PERUN_GENERALIZED_VSIDS_H
 
 #include <array>
+#include <map>
 #include <optional>
 #include <queue>
 #include <vector>
-#include <map>
 
 #include "Linear_arithmetic.h"
 #include "Variable_order.h"
+#include "Variable_priority_queue.h"
 
 namespace perun {
 
@@ -38,6 +39,14 @@ public:
      */
     void on_init(Database& db, Trail& trail) override;
 
+    /** Add all unassigned variables back to an internal priority queue
+     *
+     * @param db clause database
+     * @param trail solver trail before backtracking
+     * @param level new decision level to backtrack to
+     */
+    void on_before_backtrack(Database& db, Trail& trail, int level) override;
+
     /** Bump variables in @p learned and decay VSIDS scores.
      *
      * @param db clause database
@@ -64,8 +73,11 @@ public:
     std::optional<Variable> pick(Database& db, Trail& trail) override;
 
 private:
-    // map variable type -> VSIDS scores
+    // map variable type -> variable ordinal -> VSIDS score
     std::vector<std::vector<float>> vsids;
+    // priority queue of variables sorted by VSIDS score
+    Variable_priority_queue variables;
+
     // score grow factor (inverse decay factor)
     float grow = 1.05f;
     // current amount by which a variable VSIDS is increased in `bump()`
@@ -87,6 +99,8 @@ private:
             }
         }
         inc /= score_threshold;
+
+        variables.rescale(score_threshold);
     }
 
     // decay all VSIDS scores (by increasing the amount by which VSIDS scores are increased)
@@ -109,6 +123,10 @@ private:
         if (vsids[var.type()][var.ord()] >= score_threshold)
         {
             rescale();
+        }
+        else
+        {
+            variables.update(var, vsids[var.type()][var.ord()]);
         }
     }
 };
