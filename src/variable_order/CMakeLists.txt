@@ -4,4 +4,5 @@ target_sources(perun PRIVATE
     Evsids.cpp
     First_unassigned.cpp
     Generalized_vsids.cpp
+    Variable_priority_queue.cpp
 )
