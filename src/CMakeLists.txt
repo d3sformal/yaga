@@ -4,6 +4,7 @@ add_subdirectory(bool)
 add_subdirectory(lra)
 add_subdirectory(variable_order)
 add_subdirectory(terms)
+add_subdirectory(parser)
 
 target_sources(perun PRIVATE
     Conflict_analysis.cpp

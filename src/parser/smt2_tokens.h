@@ -1,0 +1,55 @@
+#ifndef PERUN_SMT2_TOKENS_H
+#define PERUN_SMT2_TOKENS_H
+
+namespace perun::parser {
+
+enum class Token : int
+{
+    EOF_TOK = 0,
+    ASSERT_TOK,
+    AS_TOK,
+    ATTRIBUTE_TOK,
+    BINARY_LITERAL,
+    CHECK_SAT_TOK,
+    DECIMAL_LITERAL,
+    DECLARE_CONST_TOK,
+    DECLARE_FUN_TOK,
+    DECLARE_SORT_TOK,
+    DECLARE_VAR_TOK,
+    DEFINE_CONST_TOK,
+    DEFINE_FUN_TOK,
+    DEFINE_SORT_TOK,
+    ECHO_TOK,
+    EXIT_TOK,
+    GET_ASSERTIONS_TOK,
+    GET_ASSIGNMENT_TOK,
+    GET_INFO_TOK,
+    GET_MODEL_TOK,
+    GET_OPTION_TOK,
+    GET_UNSAT_CORE_TOK,
+    GET_VALUE_TOK,
+    HEX_LITERAL,
+    INDEX_TOK,
+    INTEGER_LITERAL,
+    KEYWORD,
+    LET_TOK,
+    LPAREN_TOK,
+    MATCH_TOK,
+    NUMERAL,
+    PAR_TOK,
+    POP_TOK,
+    PUSH_TOK,
+    QUOTED_SYMBOL,
+    RESET_TOK,
+    RPAREN_TOK,
+    SET_INFO_TOK,
+    SET_LOGIC_TOK,
+    SET_OPTION_TOK,
+    STRING_LITERAL,
+    SYMBOL,
+    NONE
+};
+
+} // namespace perun::parser
+
+#endif // PERUN_SMT2_TOKENS_H
