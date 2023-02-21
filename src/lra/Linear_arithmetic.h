@@ -240,6 +240,22 @@ private:
      */
     std::optional<Clause> unit(Trail& trail, Models_type& models, Constraint_type& cons);
 
+    /** Check if @p cons is implied by @p trail (i.e., we know @p cons is true in @p trail but it
+     * has not been propagated to @p trail yet)
+     *
+     * Preconditions:
+     * -# @p cons is unit
+     * -# the boolean variable of @p cons is not on the @p trail
+     *
+     * @param trail current solver trail
+     * @param models partial assignment of variables from @p trail
+     * @param cons unit constraint which is not on @p trail (i.e., its boolean variable is not on
+     * the trail)
+     * @return decision level at which @p cons is implied or none if @p cons is not implied by @p
+     * trail
+     */
+    std::optional<int> implied(Trail& trail, Models_type const& models, Constraint_type cons);
+
     /** Group elements in @p polynomial by variable and sum up coefficients in each group.
      *
      * This method also drops variables whose coefficient becomes 0.

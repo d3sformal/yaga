@@ -193,6 +193,68 @@ std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models_type
     return {}; // no conflict
 }
 
+std::optional<int> Linear_arithmetic::implied(Trail& trail, Models_type const& models,
+                                              Constraint_type cons)
+{
+    if (cons.pred() == Order_predicate::eq)
+    {
+        return {};
+    }
+
+    assert(!cons.empty());
+    assert(!models.boolean().is_defined(cons.lit().var().ord()));
+    assert(!models.owned().is_defined(cons.vars().front()));
+    assert(cons.coef().front() != 0);
+
+    if (implies_lower_bound(cons))
+    {
+        if (auto lower_bound = bounds[cons.vars().front()].lower_bound(models))
+        {
+            auto lb = lower_bound.value();
+            auto implied_lb = cons.implied_value(models.owned()) / cons.coef().front();
+            if (implied_lb < lb.value()) // `cons` implies a worse lower bound
+            {
+                auto level = trail.decision_level(lb.reason().lit().var());
+                assert(level.has_value());
+                for (auto var : cons.vars() | std::views::drop(1))
+                {
+                    level = std::max<int>(
+                        level.value(),
+                        trail.decision_level(Variable{var, Variable::rational}).value());
+                }
+                return level;
+            }
+        }
+    }
+    else // implies_upper_bound(cons)
+    {
+        assert(implies_upper_bound(cons));
+        assert(!cons.empty());
+        assert(!models.boolean().is_defined(cons.lit().var().ord()));
+        assert(!models.owned().is_defined(cons.vars().front()));
+        assert(cons.coef().front() != 0);
+
+        if (auto upper_bound = bounds[cons.vars().front()].upper_bound(models))
+        {
+            auto ub = upper_bound.value();
+            auto implied_ub = cons.implied_value(models.owned()) / cons.coef().front();
+            if (implied_ub > ub.value()) // `cons` implies a worse upper bound
+            {
+                auto level = trail.decision_level(ub.reason().lit().var());
+                assert(level.has_value());
+                for (auto var : cons.vars() | std::views::drop(1))
+                {
+                    level = std::max<int>(
+                        level.value(),
+                        trail.decision_level(Variable{var, Variable::rational}).value());
+                }
+                return level;
+            }
+        }
+    }
+    return {}; // none, `cons` is not implied by current trail
+}
+
 void Linear_arithmetic::update_bounds(Models_type const& models, Constraint_type& cons)
 {
     assert(!cons.empty());
