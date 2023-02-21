@@ -25,19 +25,28 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 {
     auto models = relevant_models(trail);
 
-    // detect new unit constraints on the trail
+    // find relevant variables which have been assigned at current decision level
+    std::vector<Variable> variables;
     for (auto [var, _] : trail.assigned(trail.decision_level()))
     {
-        if (var.type() == Variable::boolean && !constraints[var.ord()].empty())
+        if (var.type() == Variable::rational ||
+            (var.type() == Variable::boolean && !constraints[var.ord()].empty()))
+        {
+            variables.push_back(var);
+        }
+    }
+
+    for (auto var : variables)
+    {
+        if (var.type() == Variable::boolean)
         {
             auto cons = constraints[var.ord()];
+            assert(!cons.empty());
             if (models.owned().is_defined(cons.vars().front()))
             {
                 assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
-                continue; // skip fully assigned constraints
             }
-
-            if (is_unit(models.owned(), cons))
+            else if (is_unit(models.owned(), cons))
             {
                 if (auto conflict = unit(trail, models, cons))
                 {
@@ -52,8 +61,11 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
                 return conflict;
             }
         }
+        else
+        {
+            assert(false);
+        }
     }
-
     return {}; // no conflict
 }
 
@@ -341,7 +353,6 @@ std::optional<Clause> Linear_arithmetic::unit(Trail& trail, Models_type& models,
     {
         return conflict;
     }
-
     return {};
 }
 
@@ -376,7 +387,8 @@ void Linear_arithmetic::normalize(Linear_polynomial& poly)
     poly.variables.erase(out_it, poly.end());
 }
 
-Linear_arithmetic::Linear_polynomial Linear_arithmetic::polynomial(Constraint_type const& cons, Value_type mult)
+Linear_arithmetic::Linear_polynomial Linear_arithmetic::polynomial(Constraint_type const& cons,
+                                                                   Value_type mult)
 {
     Linear_polynomial poly;
     auto var_it = cons.vars().begin();
@@ -389,7 +401,8 @@ Linear_arithmetic::Linear_polynomial Linear_arithmetic::polynomial(Constraint_ty
     return poly;
 }
 
-Linear_arithmetic::Linear_polynomial Linear_arithmetic::fm(Linear_polynomial&& poly, Constraint_type const& cons)
+Linear_arithmetic::Linear_polynomial Linear_arithmetic::fm(Linear_polynomial&& poly,
+                                                           Constraint_type const& cons)
 {
     assert(!poly.empty());
     assert(!cons.empty());
@@ -418,9 +431,8 @@ Linear_arithmetic::Linear_polynomial Linear_arithmetic::fm(Linear_polynomial&& p
     poly.constant = poly.constant - cons.rhs() * mult;
     normalize(poly);
 
-    assert(std::find_if(poly.begin(), poly.end(), [&](auto var) { 
-        return var.first == *cons_var_it; 
-    }) == poly.end());
+    assert(std::find_if(poly.begin(), poly.end(),
+                        [&](auto var) { return var.first == *cons_var_it; }) == poly.end());
     return poly;
 }
 
@@ -459,9 +471,10 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
         Variable rhs_var{rhs.first, Variable::rational};
         return trail.decision_level(lhs_var).value() > trail.decision_level(rhs_var).value();
     });
-    
+
     // create a new constraint
-    auto result = constraint(trail, std::views::keys(poly), std::views::values(poly), pred, -poly.constant);
+    auto result =
+        constraint(trail, std::views::keys(poly), std::views::values(poly), pred, -poly.constant);
     assert(!result.vars().empty());
 
     // propagate the new constraint semantically
@@ -474,7 +487,8 @@ Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
     return result;
 }
 
-Linear_arithmetic::Value_type Linear_arithmetic::implied_value(Models_type const& models, Linear_polynomial const& poly) const
+Linear_arithmetic::Value_type Linear_arithmetic::implied_value(Models_type const& models,
+                                                               Linear_polynomial const& poly) const
 {
     assert(!poly.empty());
 
@@ -488,8 +502,9 @@ Linear_arithmetic::Value_type Linear_arithmetic::implied_value(Models_type const
     return bound / var_coef;
 }
 
-std::optional<Linear_arithmetic::Constraint_type> 
-Linear_arithmetic::find_bound_conflict(Models_type const& models, Linear_polynomial const& poly, Order_predicate pred)
+std::optional<Linear_arithmetic::Constraint_type>
+Linear_arithmetic::find_bound_conflict(Models_type const& models, Linear_polynomial const& poly,
+                                       Order_predicate pred)
 {
     // compute bound implied by `poly` for the first variable
     auto bound = implied_value(models, poly);
@@ -564,7 +579,8 @@ Clause Linear_arithmetic::resolve_bound_conflict(Trail& trail, Constraint_type c
         // Move the top level variable to the front.
         // In the first iteration, the first variable will be unassigned. In subsequent iterations,
         // all variables will be assigned.
-        int top_level = trail.decision_level(Variable{poly.begin()->first, Variable::rational}).value_or(trail.decision_level());
+        int top_level = trail.decision_level(Variable{poly.begin()->first, Variable::rational})
+                            .value_or(trail.decision_level());
         auto top_it = poly.begin();
         for (auto it = ++poly.begin(); it != poly.end(); ++it)
         {
@@ -605,7 +621,8 @@ Clause Linear_arithmetic::resolve_bound_conflict(Trail& trail, Constraint_type c
     });
 
     // create a linear constraint from `poly` and `pred` (head of the implication)
-    auto head = constraint(trail, std::views::keys(poly), std::views::values(poly), pred, -poly.constant);
+    auto head =
+        constraint(trail, std::views::keys(poly), std::views::values(poly), pred, -poly.constant);
     assert(!head.empty());
     if (!models.boolean().is_defined(head.lit().var().ord()))
     {
@@ -733,7 +750,8 @@ void Linear_arithmetic::add_variable(Trail& trail, Models_type const& models, Va
     }
 }
 
-std::optional<Linear_arithmetic::Value_type> Linear_arithmetic::find_integer(Models_type const& models, Bounds_type& bounds)
+std::optional<Linear_arithmetic::Value_type>
+Linear_arithmetic::find_integer(Models_type const& models, Bounds_type& bounds)
 {
     auto abs = [](int val) -> int {
         if (val == std::numeric_limits<int>::min())

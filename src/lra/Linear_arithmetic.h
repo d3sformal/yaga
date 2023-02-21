@@ -118,6 +118,7 @@ public:
      * @return constraint which implements the boolean variable @p bool_var_ord
      */
     inline Constraint_type constraint(int bool_var_ord) { return constraints[bool_var_ord]; }
+
 private:
     struct Watched_constraint {
         // watched constraint
@@ -132,7 +133,7 @@ private:
     };
 
     struct Linear_polynomial {
-        // pair of variable and coefficient
+        // pairs of variable and coefficient
         std::vector<std::pair<int, Value_type>> variables;
         // constant term
         Value_type constant;
@@ -146,7 +147,7 @@ private:
     };
 
     /** Print linear polynomial to an output stream
-     * 
+     *
      * @param out output stream
      * @param poly linear polynomial to print
      * @return @p out
@@ -265,26 +266,27 @@ private:
     void normalize(Linear_polynomial& polynomial);
 
     /** Get linear polynomial from @p cons
-     * 
+     *
      * @param cons linear constraint
      * @param mult constant by which we multiply linear polynomial of @p cons
      * @return linear polynomial of @p cons multiplied by @p mult
      */
     Linear_polynomial polynomial(Constraint_type const& cons, Value_type mult);
 
-    /** Eliminate the first variable in @p polynomial and @p cons using Fourier-Motzkin 
-     * elimination. 
-     * 
+    /** Eliminate the first variable in @p polynomial and @p cons using Fourier-Motzkin
+     * elimination.
+     *
      * @param polynomial the first polynomial used in the FM rule
      * @param cons the second polynomial used in the FM rule
-     * @return polynomial derived using Fourier-Motzkin elimination of the first variable in @p polynomial
+     * @return polynomial derived using Fourier-Motzkin elimination of the first variable in @p
+     * polynomial
      */
     Linear_polynomial fm(Linear_polynomial&& polynomial, Constraint_type const& cons);
 
     /** Combine @p first and @p second using Fourier-Motzkin elimination of the first unassigned
      * variable in @p first and @p second
      *
-     * Preconditions: 
+     * Preconditions:
      * -# the first variable in both @p first and @p second is the only unassigned variable in both
      * constraints.
      *
@@ -296,26 +298,28 @@ private:
     Constraint_type eliminate(Trail& trail, Constraint_type const& first,
                               Constraint_type const& second);
 
-    /** Compute value implied for the first variable in @p poly (assuming @p poly is a linear 
+    /** Compute value implied for the first variable in @p poly (assuming @p poly is a linear
      * polynomial of a linear constraint)
-     * 
+     *
      * @param models partial assignment of variables
      * @param poly polynomial to evaluate
-     * @return value on the right-hand-side of a constraint 
+     * @return value on the right-hand-side of a constraint
      */
     Value_type implied_value(Models_type const& models, Linear_polynomial const& poly) const;
 
-    /** Find a constraint which is in a bound conflict with @p poly 
-     * 
+    /** Find a constraint which is in a bound conflict with @p poly
+     *
      * @param models partial assignment of variables
      * @param poly linear polynomial
      * @param pred predicate which defines a linear constraint with @p poly
      * @return linear constraint in a bound conflict with @p poly or none if there is none
      */
-    std::optional<Constraint_type> find_bound_conflict(Models_type const& models, Linear_polynomial const& poly, Order_predicate pred);
+    std::optional<Constraint_type> find_bound_conflict(Models_type const& models,
+                                                       Linear_polynomial const& poly,
+                                                       Order_predicate pred);
 
     /** Create a bound conflict clause
-     * 
+     *
      * @param trail current solver trail
      * @param cons linear constraint whose first variable is in a bound conflict
      * @return bound conflict clause
@@ -401,7 +405,7 @@ private:
     void add_variable(Trail& trail, Models_type const& models, Variable var);
 
     /** Try to find an integer value allowed by @p bounds
-     * 
+     *
      * @param models partial assignment of variables in trail
      * @param bounds implied bounds of a variable
      * @return integer value allowed by @p bounds or none if there is no such value
