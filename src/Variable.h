@@ -41,6 +41,20 @@ private:
     Type var_type;
 };
 
+struct Variable_hash {
+    /** Compute hash of @p var
+     * 
+     * @param var 
+     * @return hash of @p var
+     */
+    inline std::size_t operator()(Variable var) const
+    {
+        auto var_ord = static_cast<std::int64_t>(var.ord());
+        auto type = static_cast<std::int64_t>(var.type());
+        return std::hash<std::int64_t>{}((type << 32) | var_ord);
+    }
+};
+
 inline std::ostream& operator<<(std::ostream& out, Variable var)
 {
     if (var.type() == Variable::boolean)
