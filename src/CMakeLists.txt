@@ -8,5 +8,6 @@ target_sources(perun PRIVATE
     Conflict_analysis.cpp
     Solver.cpp
     Subsumption.cpp
+    Theory.cpp
     Theory_combination.cpp
 )

@@ -74,7 +74,7 @@ std::optional<Clause> Bool_theory::initialize(Database& db, Trail& trail)
     }
 
     // propagate assigned variables
-    for (auto [var, reason] : trail.assigned(trail.decision_level()))
+    for (auto [var, reason] : assigned(trail))
     {
         if (var.type() == Variable::boolean)
         {

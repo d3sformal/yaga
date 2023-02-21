@@ -27,7 +27,7 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 
     // find relevant variables which have been assigned at current decision level
     std::vector<Variable> variables;
-    for (auto [var, _] : trail.assigned(trail.decision_level()))
+    for (auto [var, _] : assigned(trail))
     {
         if (var.type() == Variable::rational ||
             (var.type() == Variable::boolean && !constraints[var.ord()].empty()))
