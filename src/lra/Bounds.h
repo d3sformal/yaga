@@ -99,9 +99,9 @@ public:
         // find the assigned watched variable
         auto [var_it, var_end] = cons.vars();
         assert(var_it != var_end);
-        assert(!models.owned().is_defined(*var_it) || std::all_of(cons.vars().begin(), cons.vars().end(), [&](auto var_ord) {
-            return models.owned().is_defined(var_ord);
-        }));
+        assert(!models.owned().is_defined(*var_it) ||
+               std::all_of(cons.vars().begin(), cons.vars().end(),
+                           [&](auto var_ord) { return models.owned().is_defined(var_ord); }));
 
         if (models.owned().is_defined(*var_it))
         {
@@ -140,7 +140,7 @@ public:
     /** Get current tightest implied upper bound
      *
      * @param models partial assignment of variables
-     * @return tightest upper bound or maximal value if there is no implied upper bound
+     * @return tightest upper bound or none if there is no implied upper bound
      */
     inline std::optional<Implied_value_type> upper_bound(Models_type const& models)
     {
@@ -159,7 +159,7 @@ public:
     /** Get current tightest implied lower bound
      *
      * @param models partial assignment of variables
-     * @return tightest lower bound or minimal value if there is no implied lower bound
+     * @return tightest lower bound or none if there is no implied lower bound
      */
     inline std::optional<Implied_value_type> lower_bound(Models_type const& models)
     {
@@ -216,8 +216,7 @@ public:
     inline void add_upper_bound(Models_type const& models, Implied_value_type bound)
     {
         auto current_bound = upper_bound(models);
-        if (!current_bound || current_bound.value().value() > bound.value() ||
-            (current_bound.value().value() == bound.value() && bound.reason().is_strict()))
+        if (!current_bound || less(bound, current_bound.value()))
         {
             ub.push_back(bound);
         }
@@ -231,8 +230,7 @@ public:
     inline void add_lower_bound(Models_type const& models, Implied_value_type bound)
     {
         auto current_bound = lower_bound(models);
-        if (!current_bound || current_bound.value().value() < bound.value() ||
-            (current_bound.value().value() == bound.value() && bound.reason().is_strict()))
+        if (!current_bound || greater(bound, current_bound.value()))
         {
             lb.push_back(bound);
         }
@@ -293,6 +291,30 @@ private:
     std::vector<Implied_value_type> lb;
     // list of values it should not be assigned to
     std::vector<Implied_value_type> disallowed;
+
+    /** Check whether @p lhs is strictly less than @p rhs
+     *
+     * @param lhs first value
+     * @param rhs second value
+     * @return true iff @p lhs < @p rhs
+     */
+    inline bool less(Implied_value_type const& lhs, Implied_value_type const& rhs) const
+    {
+        return lhs.value() < rhs.value() || (lhs.value() == rhs.value() &&
+                                             lhs.reason().is_strict() && !rhs.reason().is_strict());
+    }
+
+    /** Check whether @p lhs is strictly greater than @p rhs
+     *
+     * @param lhs first value
+     * @param rhs second value
+     * @return true iff @p lhs > @p rhs
+     */
+    inline bool greater(Implied_value_type const& lhs, Implied_value_type const& rhs) const
+    {
+        return lhs.value() > rhs.value() || (lhs.value() == rhs.value() &&
+                                             lhs.reason().is_strict() && !rhs.reason().is_strict());
+    }
 
     /** Remove obsolete bounds from the top of the @p bounds stack
      *
