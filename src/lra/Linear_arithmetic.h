@@ -245,6 +245,22 @@ private:
      */
     bool implies_upper_bound(Constraint const& cons) const;
 
+    /** Check if @p cons is unit (i.e., exactly one variable is unassigned)
+     * 
+     * @param model partial assignment of variables in trail
+     * @param cons queried linear constraint
+     * @return true iff @p cons is unit constraint
+     */
+    bool is_unit(Model<Rational> const& model, Constraint const& cons) const;
+
+    /** Check if all variables in @p cons are assigned.
+     * 
+     * @param model partial assignment of variables in trail
+     * @param cons queries linear constraint
+     * @return true iff all variables in @p cons are assigned.
+     */
+    bool is_fully_assigned(Model<Rational> const& model, Constraint const& cons) const;
+
     /** Check if @p var is in @p models
      *
      * @param models partial assignment of variables
@@ -268,12 +284,6 @@ private:
      * @return integer value allowed by @p bounds or none if there is no such value
      */
     std::optional<Rational> find_integer(Models const& models, Variable_bounds& bounds);
-
-    inline bool is_unit(Model<Rational> const& model, Constraint const& cons) const
-    {
-        assert(!model.is_defined(cons.vars().front()));
-        return cons.size() == 1 || (cons.size() > 1 && model.is_defined(cons.vars()[1]));
-    }
 };
 
 } // namespace perun

@@ -42,7 +42,8 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
         {
             auto cons = constraints[var.ord()];
             assert(!cons.empty());
-            if (models.owned().is_defined(cons.vars().front()))
+
+            if (is_fully_assigned(models.owned(), cons))
             {
                 assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
             }
@@ -183,7 +184,7 @@ std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models& mod
         {
             if (models.boolean().is_defined(cons.lit().var().ord())) // cons is on the trail
             {
-                if (models.owned().is_defined(cons.vars().front())) // cons is fully assigned
+                if (is_fully_assigned(models.owned(), cons))
                 {
                     assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
                 }
@@ -194,7 +195,7 @@ std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models& mod
             }
             else // cons is *not* on the trail
             {
-                if (models.owned().is_defined(cons.vars().front())) // cons is fully assigned
+                if (is_fully_assigned(models.owned(), cons))
                 {
                     propagate(trail, models, cons);
                 }
@@ -207,8 +208,7 @@ std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models& mod
 
 void Linear_arithmetic::update_bounds(Models const& models, Constraint& cons)
 {
-    assert(!cons.empty());
-    assert(!models.owned().is_defined(cons.vars().front()));
+    assert(is_unit(models.owned(), cons));
     assert(models.boolean().is_defined(cons.lit().var().ord()));
     assert(cons.coef().front() != 0);
 
@@ -266,6 +266,23 @@ bool Linear_arithmetic::implies_upper_bound(Constraint const& cons) const
 
     return (cons.coef().front() < 0 && cons.lit().is_negation()) ||
            (cons.coef().front() > 0 && !cons.lit().is_negation());
+}
+
+bool Linear_arithmetic::is_unit(Model<Rational> const& model, Constraint const& cons) const
+{
+    // Unit constraint will have exactly one watched variable assigned. The first two variables
+    // in each constraint are the watched variables. Moreover, we move the unassigned variable 
+    // to the front in case one of the watched variables is assigned.
+    if (cons.empty() || model.is_defined(cons.vars().front()))
+    {
+        return false; 
+    }
+    return cons.size() == 1 || model.is_defined(cons.vars()[1]);
+}
+
+bool Linear_arithmetic::is_fully_assigned(Model<Rational> const& model, Constraint const& cons) const
+{
+    return cons.empty() || model.is_defined(cons.vars().front());
 }
 
 std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, Variable_bounds& bounds)
