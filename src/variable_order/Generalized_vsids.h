@@ -72,12 +72,24 @@ public:
      */
     std::optional<Variable> pick(Database& db, Trail& trail) override;
 
+    /** Get current VSIDS score of @p var
+     * 
+     * @param var queried variable
+     * @return VSIDS score of @p var
+     */
+    inline float score(Variable var) const 
+    { 
+        if (vsids.size() <= var.type() || vsids[var.type()].size() <= static_cast<std::size_t>(var.ord()))
+        {
+            return 0.f;
+        }
+        return vsids[var.type()][var.ord()]; 
+    }
 private:
     // map variable type -> variable ordinal -> VSIDS score
     std::vector<std::vector<float>> vsids;
     // priority queue of variables sorted by VSIDS score
     Variable_priority_queue variables;
-
     // score grow factor (inverse decay factor)
     float grow = 1.05f;
     // current amount by which a variable VSIDS is increased in `bump()`
@@ -87,6 +99,9 @@ private:
 
     // when a score exceeds this threshold, all scores are rescaled
     inline static float const score_threshold = 1e35f;
+
+    // get VSIDS score of a variable
+    inline float& score(Variable var) { return vsids[var.type()][var.ord()]; }
 
     // divide all scores by `score_threshold`
     inline void rescale()
@@ -99,14 +114,12 @@ private:
             }
         }
         inc /= score_threshold;
-
         variables.rescale(score_threshold);
     }
 
     // decay all VSIDS scores (by increasing the amount by which VSIDS scores are increased)
     inline void decay() { inc *= grow; }
 
-    // bump a boolean variable and all variables that implement it
     inline void bump(int bool_var_ord)
     {
         bump(Variable{bool_var_ord, Variable::boolean});
@@ -119,14 +132,14 @@ private:
     // bump VSIDS score of `var`
     inline void bump(Variable var)
     {
-        vsids[var.type()][var.ord()] += inc;
-        if (vsids[var.type()][var.ord()] >= score_threshold)
+        score(var) += inc;
+        if (score(var) >= score_threshold)
         {
             rescale();
         }
         else
         {
-            variables.update(var, vsids[var.type()][var.ord()]);
+            variables.update(var, score(var));
         }
     }
 };

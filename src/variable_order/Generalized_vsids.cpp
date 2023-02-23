@@ -47,7 +47,7 @@ void Generalized_vsids::on_before_backtrack(Database&, Trail& trail, int level)
         {
             if (!variables.contains(var))
             {
-                variables.push(var, vsids[var.type()][var.ord()]);
+                variables.push(var, score(var));
             }
         }
     }
