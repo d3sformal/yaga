@@ -1,8 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <fstream>
+
 #include "test.h"
 #include "Solver.h"
 #include "Bool_theory.h"
+#include "Combined_order.h"
+#include "Generalized_vsids.h"
 #include "Linear_arithmetic.h"
 #include "Theory_combination.h"
 #include "Restart.h"
@@ -16,7 +20,7 @@ TEST_CASE("Check a satisfiable formula in LRA", "[lra][sat][integration]")
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
+    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -52,7 +56,7 @@ TEST_CASE("Solve system of equations in LRA", "[lra][sat][integration]")
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
+    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -84,7 +88,7 @@ TEST_CASE("Solve system with a mix of equations and inequalities in LRA", "[lra]
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Value_type>(Variable::rational, 3);
+    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -113,7 +117,7 @@ TEST_CASE("Solve system with a mix of equations and inequalities in LRA", "[lra]
     REQUIRE(y_val < 0);
 }
 
-TEST_CASE("Check an unsatisfiable formula in LRA", "[lra][usnat][integration]")
+TEST_CASE("Check an unsatisfiable formula in LRA", "[lra][unsat][integration]")
 {
     using namespace perun;
     using namespace perun::test;
@@ -121,7 +125,7 @@ TEST_CASE("Check an unsatisfiable formula in LRA", "[lra][usnat][integration]")
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
+    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -155,7 +159,7 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Value_type>(Variable::rational, 0);
+    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 0);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -195,7 +199,7 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Value_type>(Variable::rational, 0);
+    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 0);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();

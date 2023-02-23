@@ -12,7 +12,7 @@ TEST_CASE("Pick a variable with empty database", "[generalized_vsids]")
 
     Trail trail;
     auto& bool_model = trail.set_model<bool>(Variable::boolean, 3);
-    auto& real_model = trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
+    auto& real_model = trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
 
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::boolean, bool_model.num_vars());
@@ -56,7 +56,7 @@ TEST_CASE("pick the most used variable at the start", "[generalized_vsids]")
 
     Trail trail;
     auto& bool_model = trail.set_model<bool>(Variable::boolean, 0);
-    auto& real_model = trail.set_model<Linear_arithmetic::Value_type>(Variable::rational, 2);
+    auto& real_model = trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
 
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::boolean, bool_model.num_vars());

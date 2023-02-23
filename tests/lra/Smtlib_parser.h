@@ -131,7 +131,14 @@ public:
         }
         else if (name == "ite")
         {
-            ite();
+            if (last_type == Variable::rational)
+            {
+                ite_real();
+            }
+            else
+            {
+                ite_bool();
+            }
         }
         else if (name == "-" && num_args == 1)
         {
@@ -156,6 +163,12 @@ public:
         else if (name == "and" || name == "or")
         {
             boolean(name, num_args);
+        }
+        else if (name == "xor")
+        {
+            negate = !negate;
+            bool_equality();
+            negate = !negate;
         }
         else if (name == "=>")
         {
@@ -428,7 +441,7 @@ private:
     }
 
     // encode if-then-else (one boolean function on the stack and two polynomials)
-    inline void ite()
+    inline void ite_real()
     {
         auto if_false = pop_poly();
         auto if_true = pop_poly();
@@ -450,9 +463,31 @@ private:
             auto true_res = lra->constraint(*trail, true_poly.vars, true_poly.coef, Order_predicate::eq, -true_poly.constant);
             auto false_res = lra->constraint(*trail, false_poly.vars, false_poly.coef, Order_predicate::eq, -false_poly.constant);
 
-            assert_clause(Clause{cond_lit.negate(), true_res.lit()});
-            assert_clause(Clause{cond_lit, false_res.lit()});
+            if (negate)
+            {
+                assert_clause(Clause{cond_lit, true_res.lit()});
+                assert_clause(Clause{cond_lit.negate(), true_res.lit()});
+            }
+            else
+            {
+                assert_clause(Clause{cond_lit.negate(), true_res.lit()});
+                assert_clause(Clause{cond_lit, false_res.lit()});
+            }
         }
+    }
+
+    inline void ite_bool()
+    {
+        auto if_false = pop_lit();
+        auto if_true = pop_lit();
+        auto cond_lit = pop_lit();
+        auto new_var = new_bool_var();
+        Literal new_lit{new_var.ord()};
+        push(new_lit);
+
+        assert(!negate);
+        assert_clause(Clause{new_lit.negate(), cond_lit.negate(), if_true});
+        assert_clause(Clause{new_lit.negate(), cond_lit, if_false});
     }
 
     inline Literal pop_lit()

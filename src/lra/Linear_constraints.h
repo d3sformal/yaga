@@ -27,7 +27,7 @@ namespace perun {
 template <typename Value> class Linear_constraints {
 public:
     using Value_type = Value;
-    using Constraint_type = Linear_constraint<Value>;
+    using Constraint = Linear_constraint<Value>;
 
     /** Create a new linear constraint.
      *
@@ -43,13 +43,13 @@ public:
      * @return new constraint together with literal that represents that constraint
      */
     template <std::ranges::range Var_range, std::ranges::range Value_range>
-    Constraint_type make(Var_range&& var_range, Value_range&& coef_range, Order_predicate pred,
-                         Value_type rhs)
+    Constraint make(Var_range&& var_range, Value_range&& coef_range, Order_predicate pred,
+                    Value_type rhs)
     {
         // normalize the input and add it to the constraints list
         auto mult = find_norm_constant(var_range, coef_range);
         bool is_negation = false;
-        Constraint_type cons;
+        Constraint cons;
         if (mult) // constraint with variables
         {
             auto [lit, range] = add(mult.value(), var_range, coef_range);
@@ -95,7 +95,7 @@ public:
      * @return constraint which implements @p bool_var_ord or an empty constraint, if there is no
      * linear constraint for @p bool_var_ord
      */
-    Constraint_type operator[](int bool_var_ord) const
+    Constraint operator[](int bool_var_ord) const
     {
         if (bool_var_ord < 0 || bool_var_ord >= static_cast<int>(constraints.size()))
         {
@@ -109,7 +109,7 @@ public:
      * @param cons linear constraint
      * @return range of variables of @p cons
      */
-    inline auto vars(Constraint_type const& cons)
+    inline auto vars(Constraint const& cons)
     {
         return std::ranges::subrange{variables.begin() + cons.pos().first,
                                      variables.begin() + cons.pos().second};
@@ -120,7 +120,7 @@ public:
      * @param cons linear constraint
      * @return range of variables of @p cons
      */
-    inline auto vars(Constraint_type const& cons) const
+    inline auto vars(Constraint const& cons) const
     {
         return std::ranges::subrange{variables.begin() + cons.pos().first,
                                      variables.begin() + cons.pos().second};
@@ -131,7 +131,7 @@ public:
      * @param cons linear constraint
      * @return range of coefficients of @p cons
      */
-    inline auto coef(Constraint_type const& cons)
+    inline auto coef(Constraint const& cons)
     {
         return std::ranges::subrange{coefficients.begin() + cons.pos().first,
                                      coefficients.begin() + cons.pos().second};
@@ -142,7 +142,7 @@ public:
      * @param cons linear constraint
      * @return range of coefficients of @p cons
      */
-    inline auto coef(Constraint_type const& cons) const
+    inline auto coef(Constraint const& cons) const
     {
         return std::ranges::subrange{coefficients.begin() + cons.pos().first,
                                      coefficients.begin() + cons.pos().second};
@@ -156,7 +156,7 @@ public:
      * @param cons linear constraint to evaluate
      * @return true iff @p cons is true in @p model
      */
-    inline bool eval(Model<Value_type> const& model, Constraint_type const& cons) const
+    inline bool eval(Model<Value_type> const& model, Constraint const& cons) const
     {
         auto rhs = cons.rhs();
         auto [var_it, var_end] = vars(cons);
@@ -179,8 +179,7 @@ public:
      * @param cons unit linear constraint with the first variable being the only unassigned variable
      * @return constant on the right-hand-side after evaluating all assigned variables in @p cons
      */
-    inline Value_type implied_value(Model<Value_type> const& model,
-                                    Constraint_type const& cons) const
+    inline Value_type implied_value(Model<Value_type> const& model, Constraint const& cons) const
     {
         auto value = cons.rhs();
         auto [var_it, var_end] = vars(cons);
@@ -204,14 +203,14 @@ public:
 private:
     using Constraint_hash = Linear_constraint_hash<Value_type>;
     using Constraint_equal = Linear_constraint_equal<Value_type>;
-    using Constraint_set = std::unordered_set<Constraint_type, Constraint_hash, Constraint_equal>;
+    using Constraint_set = std::unordered_set<Constraint, Constraint_hash, Constraint_equal>;
 
     // vector of variables of all linear constraints
     std::vector<int> variables;
     // vector of coefficients of all linear constraints
     std::vector<Value_type> coefficients;
     // map boolean variable -> linear constraint
-    std::vector<Constraint_type> constraints;
+    std::vector<Constraint> constraints;
     // set of constraints for deduplication
     Constraint_set cons_set;
 

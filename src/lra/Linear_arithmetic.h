@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Arithmetic_conflict_analysis.h"
 #include "Bounds.h"
 #include "Fraction.h"
 #include "Linear_constraints.h"
@@ -21,15 +22,15 @@ namespace perun {
 class Linear_arithmetic final : public Theory {
 public:
     // types of variable values
-    using Value_type = Fraction<int>;
-    // bound object that keeps bounds of variables
-    using Bounds_type = Bounds<Value_type>;
+    using Rational = Fraction<int>;
+    // bounds object which keeps implied bounds of variables
+    using Variable_bounds = Bounds<Rational>;
     // models relevant to this theory
-    using Models_type = Theory_models<Value_type>;
+    using Models = Theory_models<Rational>;
     // type of linear constraints
-    using Constraint_type = Linear_constraint<Value_type>;
+    using Constraint = Linear_constraint<Rational>;
     // type of the repository that stores linear constraints
-    using Constraint_repository = Linear_constraints<Value_type>;
+    using Constraint_repository = Linear_constraints<Rational>;
 
     virtual ~Linear_arithmetic() = default;
 
@@ -65,6 +66,16 @@ public:
      */
     void decide(Database&, Trail&, Variable) override;
 
+    /** Propagate a fully assigned constraint @p cons to @p trail
+     *
+     * Precondition: @p cons (its boolean variable) is not on the trail
+     *
+     * @param trail current solver trail
+     * @param models partial assignment of variables
+     * @param cons linear constraint to propagate
+     */
+    void propagate(Trail& trail, Models& models, Constraint const& cons);
+
     /** Create a constraint or return an existing object that represents the same constraint.
      *
      * @tparam Var_range range of LRA variable numbers (ints)
@@ -77,8 +88,8 @@ public:
      * @return linear constraint
      */
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline Constraint_type constraint(Trail& trail, Var_range&& vars, Coef_range&& coef,
-                                      Order_predicate pred, Value_type rhs)
+    inline Constraint constraint(Trail& trail, Var_range&& vars, Coef_range&& coef,
+                                 Order_predicate pred, Rational rhs)
     {
         // create the constraint
         auto cons = constraints.make(std::forward<Var_range>(vars), std::forward<Coef_range>(coef),
@@ -99,17 +110,16 @@ public:
      * @param lra_var_ord ordinal number of a real variable
      * @return implied bounds for @p lra_var_ord
      */
-    inline Bounds_type& find_bounds(int lra_var_ord) { return bounds[lra_var_ord]; }
+    inline Variable_bounds& find_bounds(int lra_var_ord) { return bounds[lra_var_ord]; }
 
     /** Get models relevant to this theory
      *
      * @param trail current solver trail
      * @return models from @p trail relevant to this theory
      */
-    inline Models_type relevant_models(Trail& trail) const
+    inline Models relevant_models(Trail& trail) const
     {
-        return {&trail.model<bool>(Variable::boolean),
-                &trail.model<Value_type>(Variable::rational)};
+        return {&trail.model<bool>(Variable::boolean), &trail.model<Rational>(Variable::rational)};
     }
 
     /** Get constraint which implements @p bool_var_ord
@@ -117,80 +127,43 @@ public:
      * @param bool_var_ord ordinal number of a boolean variable
      * @return constraint which implements the boolean variable @p bool_var_ord
      */
-    inline Constraint_type constraint(int bool_var_ord) { return constraints[bool_var_ord]; }
+    inline Constraint constraint(int bool_var_ord) { return constraints[bool_var_ord]; }
 
 private:
     struct Watched_constraint {
         // watched constraint
-        Constraint_type constraint;
+        Constraint constraint;
         // index of the next variable to check in `constraint`
         int index;
 
-        inline Watched_constraint(Constraint_type cons)
+        inline Watched_constraint(Constraint cons)
             : constraint(cons), index(std::min<int>(2, cons.size() - 1))
         {
         }
     };
-
-    struct Linear_polynomial {
-        // pairs of variable and coefficient
-        std::vector<std::pair<int, Value_type>> variables;
-        // constant term
-        Value_type constant;
-
-        inline auto begin() { return variables.begin(); }
-        inline auto end() { return variables.end(); }
-        inline auto begin() const { return variables.begin(); }
-        inline auto end() const { return variables.end(); }
-        inline auto size() const { return variables.size(); }
-        inline bool empty() const { return variables.empty(); }
-    };
-
-    /** Print linear polynomial to an output stream
-     *
-     * @param out output stream
-     * @param poly linear polynomial to print
-     * @return @p out
-     */
-    inline friend std::ostream& operator<<(std::ostream& out, Linear_polynomial const& poly)
-    {
-        char const* sep = "";
-        for (auto [var_ord, coef] : poly)
-        {
-            out << sep;
-            if (coef != 1)
-            {
-                out << coef << " * ";
-            }
-            out << Variable{var_ord, Variable::rational};
-            sep = " + ";
-        }
-        out << sep << poly.constant;
-        return out;
-    }
 
     // repository of managed linear constraints
     Constraint_repository constraints;
     // map real variable -> list of constraints in which it is watched
     std::vector<std::vector<Watched_constraint>> watched;
     // map real variable -> set of allowed values
-    std::vector<Bounds<Value_type>> bounds;
+    std::vector<Bounds<Rational>> bounds;
     // cached assignment of LRA variables
-    Model<Value_type> cached_values;
+    Model<Rational> cached_values;
 
     /** Start watching LRA variables in @p cons
      *
      * @param cons new constraint
      * @param model current partial assignment of LRA variables
      */
-    void watch(Constraint_type& cons, Model<Value_type> const& model);
+    void watch(Constraint& cons, Model<Rational> const& model);
 
     /** Start watching LRA variables in @p cons assuming the first two variables in @p cons are
      * unassigned.
      *
      * @param cons new constraint
      */
-    void watch(Constraint_type& cons);
+    void watch(Constraint& cons);
 
     /** Try to replace @p lra_var_ord in watched variables of @p watch
      *
@@ -199,7 +172,7 @@ private:
      * @param lra_var_ord ordinal number of a watched variable in @p watch to replace
      * @return true iff @p lra_var_ord has been replaced
      */
-    bool replace_watch(Model<Value_type> const& model, Watched_constraint& watch, int lra_var_ord);
+    bool replace_watch(Model<Rational> const& model, Watched_constraint& watch, int lra_var_ord);
 
     /** Stop watching @p lra_var_ord in all constraints.
      *
@@ -212,23 +185,22 @@ private:
      * @param lra_var_ord newly assigned LRA variable
      * @return conflict clause if a conflict is detected. None, otherwise.
      */
-    std::optional<Clause> replace_watch(Trail& trail, Models_type& models, int lra_var_ord);
+    std::optional<Clause> replace_watch(Trail& trail, Models& models, int lra_var_ord);
 
     /** Update bounds using unit constraint @p cons
      *
      * @param models partial assignment of variables
      * @param cons unit constraint
      */
-    void update_bounds(Models_type const& models, Constraint_type& cons);
+    void update_bounds(Models const& models, Constraint& cons);
 
     /** Check if @p bounds is empty (i.e., no value can be assigned to a variable)
      *
      * @param trail current solver trail
-     * @param models partial assignment of variables
      * @param bounds bounds object to check
      * @return conflict clause if @p bounds is empty. None, otherwise.
      */
-    std::optional<Clause> check_bounds(Trail& trail, Models_type& models, Bounds_type& bounds);
+    std::optional<Clause> check_bounds(Trail& trail, Variable_bounds& bounds);
 
     /** Report a new unit constraint @p cons and check for conflicts.
      *
@@ -239,112 +211,7 @@ private:
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    std::optional<Clause> unit(Trail& trail, Models_type& models, Constraint_type& cons);
-
-    /** Check if @p cons is implied by @p trail (i.e., we know @p cons is true in @p trail but it
-     * has not been propagated to @p trail yet)
-     *
-     * Preconditions:
-     * -# @p cons is unit
-     * -# the boolean variable of @p cons is not on the @p trail
-     *
-     * @param trail current solver trail
-     * @param models partial assignment of variables from @p trail
-     * @param cons unit constraint which is not on @p trail (i.e., its boolean variable is not on
-     * the trail)
-     * @return decision level at which @p cons is implied or none if @p cons is not implied by @p
-     * trail
-     */
-    std::optional<int> implied(Trail& trail, Models_type const& models, Constraint_type cons);
-
-    /** Group elements in @p polynomial by variable and sum up coefficients in each group.
-     *
-     * This method also drops variables whose coefficient becomes 0.
-     *
-     * @param polynomial polynomial to normalize
-     */
-    void normalize(Linear_polynomial& polynomial);
-
-    /** Get linear polynomial from @p cons
-     *
-     * @param cons linear constraint
-     * @param mult constant by which we multiply linear polynomial of @p cons
-     * @return linear polynomial of @p cons multiplied by @p mult
-     */
-    Linear_polynomial polynomial(Constraint_type const& cons, Value_type mult);
-
-    /** Eliminate the first variable in @p polynomial and @p cons using Fourier-Motzkin
-     * elimination.
-     *
-     * @param polynomial the first polynomial used in the FM rule
-     * @param cons the second polynomial used in the FM rule
-     * @return polynomial derived using Fourier-Motzkin elimination of the first variable in @p
-     * polynomial
-     */
-    Linear_polynomial fm(Linear_polynomial&& polynomial, Constraint_type const& cons);
-
-    /** Combine @p first and @p second using Fourier-Motzkin elimination of the first unassigned
-     * variable in @p first and @p second
-     *
-     * Preconditions:
-     * -# the first variable in both @p first and @p second is the only unassigned variable in both
-     * constraints.
-     *
-     * @param trail current solver trail
-     * @param first first constraint
-     * @param second second constraint
-     * @return Fourier-Motzkin derivation from @p first and @p second
-     */
-    Constraint_type eliminate(Trail& trail, Constraint_type const& first,
-                              Constraint_type const& second);
-
-    /** Compute value implied for the first variable in @p poly (assuming @p poly is a linear
-     * polynomial of a linear constraint)
-     *
-     * @param models partial assignment of variables
-     * @param poly polynomial to evaluate
-     * @return value on the right-hand-side of a constraint
-     */
-    Value_type implied_value(Models_type const& models, Linear_polynomial const& poly) const;
-
-    /** Find a constraint which is in a bound conflict with @p poly
-     *
-     * @param models partial assignment of variables
-     * @param poly linear polynomial
-     * @param pred predicate which defines a linear constraint with @p poly
-     * @return linear constraint in a bound conflict with @p poly or none if there is none
-     */
-    std::optional<Constraint_type> find_bound_conflict(Models_type const& models,
-                                                       Linear_polynomial const& poly,
-                                                       Order_predicate pred);
-
-    /** Create a bound conflict clause
-     *
-     * @param trail current solver trail
-     * @param cons linear constraint whose first variable is in a bound conflict
-     * @return bound conflict clause
-     */
-    Clause resolve_bound_conflict(Trail& trail, Constraint_type const& cons);
-
-    /** Check if there is a bound conflict (i.e., `L <= x && x <= U` and `U < L` or similar
-     * conflicts with strict bounds)
-     *
-     * @param trail current solver trail
-     * @param models partial assignment of variables
-     * @param bounds implied bounds for a variable
-     * @return conflict clause if a bound conflict is detected. None, otherwise.
-     */
-    std::optional<Clause> check_bound_conflict(Trail& trail, Models_type& models,
-                                               Bounds_type& bounds);
-
-    /** Check if there is an inequality conflict (i.e., `L <= x && x <= U` and `L = U` and `x != L`)
-     *
-     * @param models partial assignment of variables
-     * @param bounds implied bounds for a variable
-     * @return conflict clause if a conflict is detected. None, otherwise.
-     */
-    std::optional<Clause> check_inequality_conflict(Trail& trail, Models_type& models,
-                                                    Bounds_type& bounds);
+    std::optional<Clause> unit(Trail& trail, Models& models, Constraint& cons);
 
     /** Check whether the unit constraint @p cons implies an equality for the only unassigned
      * variable (e.g., `x == 5`)
@@ -352,7 +219,7 @@ private:
      * @param cons linear constraint with exactly one unassigned variable
      * @return true iff @p cons implies an equality
      */
-    bool implies_equality(Constraint_type const& cons) const;
+    bool implies_equality(Constraint const& cons) const;
 
     /** Check whether the unit constraint @p cons implies an inequality for the only unassigned
      * variable (e.g., `x != 4`)
@@ -360,7 +227,7 @@ private:
      * @param cons linear constraint with exactly one unassigned variable
      * @return true iff @p cons implies an inequality
      */
-    bool implies_inequality(Constraint_type const& cons) const;
+    bool implies_inequality(Constraint const& cons) const;
 
     /** Check whether the unit constraint @p cons implies a lower bound for the only unassigned
      * variable (e.g., `x > 0`, or `x >= 0`)
@@ -368,7 +235,7 @@ private:
      * @param cons linear constraint with exactly one unassigned variable
      * @return true iff @p cons implies a lower bound
      */
-    bool implies_lower_bound(Constraint_type const& cons) const;
+    bool implies_lower_bound(Constraint const& cons) const;
 
     /** Check whether the unit constraint @p cons implies an upper bound for the only unassigned
      * variable (e.g., `x < 0`, or `x <= 0`)
@@ -376,17 +243,7 @@ private:
      * @param cons linear constraint with exactly one unassigned variable
      * @return true iff @p cons implies an upper bound
      */
-    bool implies_upper_bound(Constraint_type const& cons) const;
-
-    /** Propagate a fully assigned constraint @p cons to @p trail
-     *
-     * Precondition: @p cons (its boolean variable) is not on the trail
-     *
-     * @param trail current solver trail
-     * @param models partial assignment of variables
-     * @param cons linear constraint to propagate
-     */
-    void propagate(Trail& trail, Models_type& models, Constraint_type const& cons);
+    bool implies_upper_bound(Constraint const& cons) const;
 
     /** Check if @p var is in @p models
      *
@@ -394,7 +251,7 @@ private:
      * @param var checked variables
      * @return true iff @p var is in @p models
      */
-    bool is_new(Models_type const& models, Variable var) const;
+    bool is_new(Models const& models, Variable var) const;
 
     /** Allocate space for a new variable @p var in @p trail if it is necessary.
      *
@@ -402,7 +259,7 @@ private:
      * @param models partial assignment of variables in @p trail
      * @param var variable to add if it is not already in @p trail
      */
-    void add_variable(Trail& trail, Models_type const& models, Variable var);
+    void add_variable(Trail& trail, Models const& models, Variable var);
 
     /** Try to find an integer value allowed by @p bounds
      *
@@ -410,9 +267,9 @@ private:
      * @param bounds implied bounds of a variable
      * @return integer value allowed by @p bounds or none if there is no such value
      */
-    std::optional<Value_type> find_integer(Models_type const& models, Bounds_type& bounds);
+    std::optional<Rational> find_integer(Models const& models, Variable_bounds& bounds);
 
-    inline bool is_unit(Model<Value_type> const& model, Constraint_type const& cons) const
+    inline bool is_unit(Model<Rational> const& model, Constraint const& cons) const
     {
         assert(!model.is_defined(cons.vars().front()));
         return cons.size() == 1 || (cons.size() > 1 && model.is_defined(cons.vars()[1]));

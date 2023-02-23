@@ -70,9 +70,9 @@ protected:
  */
 template <typename T> class Model final : public Model_base {
 public:
-    using Value_type = T;
-    using Reference = typename std::vector<Value_type>::reference;
-    using Const_reference = typename std::vector<Value_type>::const_reference;
+    using Value = T;
+    using Reference = typename std::vector<Value>::reference;
+    using Const_reference = typename std::vector<Value>::const_reference;
 
     virtual ~Model() = default;
 
@@ -82,7 +82,7 @@ public:
      */
     void resize(int num_vars) override
     {
-        values.resize(num_vars, Value_type{});
+        values.resize(num_vars, Value{});
         defined.resize(num_vars, false);
         ts.resize(num_vars, -1);
     }
@@ -99,7 +99,7 @@ public:
      * @param ord ordinal number of a variable
      * @param val new value of variable @p ord
      */
-    inline void set_value(int ord, Value_type val)
+    inline void set_value(int ord, Value val)
     {
         values[ord] = val;
         defined[ord] = true;
@@ -108,7 +108,7 @@ public:
 
 private:
     // map variable ordinal -> value
-    std::vector<Value_type> values;
+    std::vector<Value> values;
 };
 
 /** Evaluate @p lit in @p model

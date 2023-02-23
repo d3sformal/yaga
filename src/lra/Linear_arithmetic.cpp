@@ -69,7 +69,7 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
     return {}; // no conflict
 }
 
-void Linear_arithmetic::watch(Constraint_type& cons)
+void Linear_arithmetic::watch(Constraint& cons)
 {
     assert(!cons.empty());
 
@@ -80,7 +80,7 @@ void Linear_arithmetic::watch(Constraint_type& cons)
     }
 }
 
-void Linear_arithmetic::watch(Constraint_type& cons, Model<Value_type> const& model)
+void Linear_arithmetic::watch(Constraint& cons, Model<Rational> const& model)
 {
     // move 2 unassigned variables to the front
     auto out_var_it = cons.vars().begin();
@@ -100,7 +100,7 @@ void Linear_arithmetic::watch(Constraint_type& cons, Model<Value_type> const& mo
     watch(cons);
 }
 
-bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Watched_constraint& watch,
+bool Linear_arithmetic::replace_watch(Model<Rational> const& lra_model, Watched_constraint& watch,
                                       int lra_var_ord)
 {
     auto& cons = watch.constraint;
@@ -162,7 +162,7 @@ bool Linear_arithmetic::replace_watch(Model<Value_type> const& lra_model, Watche
     return *rep_var_it != lra_var_ord;
 }
 
-std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models_type& models,
+std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models& models,
                                                        int lra_var_ord)
 {
     assert(models.owned().is_defined(lra_var_ord));
@@ -205,69 +205,7 @@ std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models_type
     return {}; // no conflict
 }
 
-std::optional<int> Linear_arithmetic::implied(Trail& trail, Models_type const& models,
-                                              Constraint_type cons)
-{
-    if (cons.pred() == Order_predicate::eq)
-    {
-        return {};
-    }
-
-    assert(!cons.empty());
-    assert(!models.boolean().is_defined(cons.lit().var().ord()));
-    assert(!models.owned().is_defined(cons.vars().front()));
-    assert(cons.coef().front() != 0);
-
-    if (implies_lower_bound(cons))
-    {
-        if (auto lower_bound = bounds[cons.vars().front()].lower_bound(models))
-        {
-            auto lb = lower_bound.value();
-            auto implied_lb = cons.implied_value(models.owned()) / cons.coef().front();
-            if (implied_lb < lb.value()) // `cons` implies a worse lower bound
-            {
-                auto level = trail.decision_level(lb.reason().lit().var());
-                assert(level.has_value());
-                for (auto var : cons.vars() | std::views::drop(1))
-                {
-                    level = std::max<int>(
-                        level.value(),
-                        trail.decision_level(Variable{var, Variable::rational}).value());
-                }
-                return level;
-            }
-        }
-    }
-    else // implies_upper_bound(cons)
-    {
-        assert(implies_upper_bound(cons));
-        assert(!cons.empty());
-        assert(!models.boolean().is_defined(cons.lit().var().ord()));
-        assert(!models.owned().is_defined(cons.vars().front()));
-        assert(cons.coef().front() != 0);
-
-        if (auto upper_bound = bounds[cons.vars().front()].upper_bound(models))
-        {
-            auto ub = upper_bound.value();
-            auto implied_ub = cons.implied_value(models.owned()) / cons.coef().front();
-            if (implied_ub > ub.value()) // `cons` implies a worse upper bound
-            {
-                auto level = trail.decision_level(ub.reason().lit().var());
-                assert(level.has_value());
-                for (auto var : cons.vars() | std::views::drop(1))
-                {
-                    level = std::max<int>(
-                        level.value(),
-                        trail.decision_level(Variable{var, Variable::rational}).value());
-                }
-                return level;
-            }
-        }
-    }
-    return {}; // none, `cons` is not implied by current trail
-}
-
-void Linear_arithmetic::update_bounds(Models_type const& models, Constraint_type& cons)
+void Linear_arithmetic::update_bounds(Models const& models, Constraint& cons)
 {
     assert(!cons.empty());
     assert(!models.owned().is_defined(cons.vars().front()));
@@ -298,17 +236,17 @@ void Linear_arithmetic::update_bounds(Models_type const& models, Constraint_type
     }
 }
 
-bool Linear_arithmetic::implies_equality(Constraint_type const& cons) const
+bool Linear_arithmetic::implies_equality(Constraint const& cons) const
 {
     return cons.pred() == Order_predicate::eq && !cons.lit().is_negation();
 }
 
-bool Linear_arithmetic::implies_inequality(Constraint_type const& cons) const
+bool Linear_arithmetic::implies_inequality(Constraint const& cons) const
 {
     return cons.pred() == Order_predicate::eq && cons.lit().is_negation();
 }
 
-bool Linear_arithmetic::implies_lower_bound(Constraint_type const& cons) const
+bool Linear_arithmetic::implies_lower_bound(Constraint const& cons) const
 {
     if (cons.pred() == Order_predicate::eq)
     {
@@ -319,7 +257,7 @@ bool Linear_arithmetic::implies_lower_bound(Constraint_type const& cons) const
            (cons.coef().front() < 0 && !cons.lit().is_negation());
 }
 
-bool Linear_arithmetic::implies_upper_bound(Constraint_type const& cons) const
+bool Linear_arithmetic::implies_upper_bound(Constraint const& cons) const
 {
     if (cons.pred() == Order_predicate::eq)
     {
@@ -330,392 +268,31 @@ bool Linear_arithmetic::implies_upper_bound(Constraint_type const& cons) const
            (cons.coef().front() > 0 && !cons.lit().is_negation());
 }
 
-std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, Models_type& models,
-                                                      Bounds_type& bounds)
+std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, Variable_bounds& bounds)
 {
-    if (auto conflict = check_bound_conflict(trail, models, bounds))
+    if (auto conflict = Bound_conflict_analysis{this}.analyze(trail, bounds))
     {
         return conflict;
     }
 
-    if (auto conflict = check_inequality_conflict(trail, models, bounds))
+    if (auto conflict = Inequality_conflict_analysis{this}.analyze(trail, bounds))
     {
         return conflict;
     }
     return {}; // no conflict
 }
 
-std::optional<Clause> Linear_arithmetic::unit(Trail& trail, Models_type& models,
-                                              Constraint_type& cons)
+std::optional<Clause> Linear_arithmetic::unit(Trail& trail, Models& models, Constraint& cons)
 {
     update_bounds(models, cons);
-    if (auto conflict = check_bounds(trail, models, bounds[cons.vars().front()]))
+    if (auto conflict = check_bounds(trail, bounds[cons.vars().front()]))
     {
         return conflict;
     }
     return {};
 }
 
-void Linear_arithmetic::normalize(Linear_polynomial& poly)
-{
-    // sort by variable
-    std::sort(poly.begin(), poly.end(), [&](auto lhs, auto rhs) { return lhs.first < rhs.first; });
-
-    // combine coefficients if they belong to the same variable
-    auto out_it = poly.begin();
-    for (auto [var, coef] : poly | std::views::drop(1))
-    {
-        if (out_it->first != var)
-        {
-            if (out_it->second != 0) // drop variables with 0 coefficient
-            {
-                ++out_it;
-            }
-            out_it->first = var;
-            out_it->second = coef;
-        }
-        else
-        {
-            out_it->second += coef;
-        }
-    }
-
-    if (!poly.empty() && out_it->second != 0) // drop variables with 0 coefficient
-    {
-        ++out_it;
-    }
-    poly.variables.erase(out_it, poly.end());
-}
-
-Linear_arithmetic::Linear_polynomial Linear_arithmetic::polynomial(Constraint_type const& cons,
-                                                                   Value_type mult)
-{
-    Linear_polynomial poly;
-    auto var_it = cons.vars().begin();
-    auto coef_it = cons.coef().begin();
-    for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
-    {
-        poly.variables.emplace_back(*var_it, *coef_it * mult);
-    }
-    poly.constant = -cons.rhs() * mult;
-    return poly;
-}
-
-Linear_arithmetic::Linear_polynomial Linear_arithmetic::fm(Linear_polynomial&& poly,
-                                                           Constraint_type const& cons)
-{
-    assert(!poly.empty());
-    assert(!cons.empty());
-
-    // find the variable to eliminate in `poly`
-    auto poly_it = poly.begin();
-
-    // find the variable to eliminate in `cons`
-    auto cons_var_it = std::find(cons.vars().begin(), cons.vars().end(), poly_it->first);
-    auto cons_coef_it = cons.coef().begin() + std::distance(cons.vars().begin(), cons_var_it);
-    assert(cons_var_it != cons.vars().end());
-    assert(cons_coef_it != cons.coef().end());
-    assert(*cons_var_it == poly_it->first);
-
-    // compute constant s.t. `poly + mult * cons` eliminates the first variable in `poly`
-    auto mult = -poly_it->second / *cons_coef_it;
-    assert(mult > 0 || cons.lit().is_negation() || cons.pred() == Order_predicate::eq);
-
-    // multiply-add the polynomial of constraint `cons`
-    auto var_it = cons.vars().begin();
-    auto coef_it = cons.coef().begin();
-    for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
-    {
-        poly.variables.emplace_back(*var_it, *coef_it * mult);
-    }
-    poly.constant = poly.constant - cons.rhs() * mult;
-    normalize(poly);
-
-    assert(std::find_if(poly.begin(), poly.end(),
-                        [&](auto var) { return var.first == *cons_var_it; }) == poly.end());
-    return poly;
-}
-
-Linear_arithmetic::Constraint_type Linear_arithmetic::eliminate(Trail& trail,
-                                                                Constraint_type const& first,
-                                                                Constraint_type const& second)
-{
-    assert(!first.empty());
-    assert(!second.empty());
-    assert(first.vars().front() == second.vars().front());
-    assert(implies_lower_bound(first));
-    assert(implies_upper_bound(second));
-
-    // find predicate of the combination
-    Order_predicate pred = Order_predicate::leq;
-    if (first.pred() == Order_predicate::eq && second.pred() == Order_predicate::eq &&
-        !first.lit().is_negation() && !second.lit().is_negation())
-    {
-        pred = Order_predicate::eq;
-    }
-    else if (first.is_strict() || second.is_strict())
-    {
-        pred = Order_predicate::lt;
-    }
-
-    // eliminate the first unassigned variable
-    auto poly = fm(polynomial(first, first.coef().front() > 0 ? -1 : 1), second);
-    if (poly.empty())
-    {
-        return {};
-    }
-
-    // sort the polynomial by decision level
-    std::sort(poly.begin(), poly.end(), [&](auto lhs, auto rhs) {
-        Variable lhs_var{lhs.first, Variable::rational};
-        Variable rhs_var{rhs.first, Variable::rational};
-        return trail.decision_level(lhs_var).value() > trail.decision_level(rhs_var).value();
-    });
-
-    // create a new constraint
-    auto result =
-        constraint(trail, std::views::keys(poly), std::views::values(poly), pred, -poly.constant);
-    assert(!result.vars().empty());
-
-    // propagate the new constraint semantically
-    auto models = relevant_models(trail);
-    if (!models.boolean().is_defined(result.lit().var().ord()))
-    {
-        propagate(trail, models, result);
-    }
-
-    return result;
-}
-
-Linear_arithmetic::Value_type Linear_arithmetic::implied_value(Models_type const& models,
-                                                               Linear_polynomial const& poly) const
-{
-    assert(!poly.empty());
-
-    auto var_coef = poly.begin()->second;
-    auto bound = -poly.constant;
-    for (auto [ord, coef] : poly | std::views::drop(1))
-    {
-        assert(models.owned().is_defined(ord));
-        bound -= coef * models.owned().value(ord);
-    }
-    return bound / var_coef;
-}
-
-std::optional<Linear_arithmetic::Constraint_type>
-Linear_arithmetic::find_bound_conflict(Models_type const& models, Linear_polynomial const& poly,
-                                       Order_predicate pred)
-{
-    // compute bound implied by `poly` for the first variable
-    auto bound = implied_value(models, poly);
-    auto [var_ord, var_coef] = *poly.begin();
-
-    if (var_coef < 0 || pred == Order_predicate::eq) // `bound` is a lower bound
-    {
-        if (auto upper_bound = bounds[var_ord].upper_bound(models))
-        {
-            auto ub = upper_bound.value();
-            auto is_strict = ub.reason().is_strict() || pred == Order_predicate::lt;
-            if (ub.value() < bound || (ub.value() == bound && is_strict))
-            {
-                return ub.reason();
-            }
-        }
-    }
-
-    if (var_coef > 0 || pred == Order_predicate::eq) // `bound` is an upper bound
-    {
-        if (auto lower_bound = bounds[var_ord].lower_bound(models))
-        {
-            auto lb = lower_bound.value();
-            auto is_strict = lb.reason().is_strict() || pred == Order_predicate::lt;
-            if (lb.value() > bound || (lb.value() == bound && is_strict))
-            {
-                return lb.reason();
-            }
-        }
-    }
-
-    return {};
-}
-
-Clause Linear_arithmetic::resolve_bound_conflict(Trail& trail, Constraint_type const& cons)
-{
-    Clause conflict{cons.lit().negate()};
-
-    auto models = relevant_models(trail);
-    auto poly = polynomial(cons, cons.coef().front() > 0 ? -1 : 1);
-    auto pred = cons.pred();
-    if (cons.lit().is_negation())
-    {
-        if (pred == Order_predicate::leq)
-        {
-            pred = Order_predicate::lt;
-        }
-        else if (pred == Order_predicate::lt)
-        {
-            pred = Order_predicate::leq;
-        }
-    }
-
-    // combine current predicate `pred` with a predicate of other constraint
-    auto combine_pred = [](Order_predicate pred, Constraint_type const& other) {
-        if (pred == Order_predicate::eq && other.pred() == Order_predicate::eq)
-        {
-            return Order_predicate::eq;
-        }
-        else if (pred != Order_predicate::lt && !other.is_strict())
-        {
-            return Order_predicate::leq;
-        }
-        else
-        {
-            return Order_predicate::lt;
-        }
-    };
-
-    while (!poly.empty())
-    {
-        // Move the top level variable to the front.
-        // In the first iteration, the first variable will be unassigned. In subsequent iterations,
-        // all variables will be assigned.
-        int top_level = trail.decision_level(Variable{poly.begin()->first, Variable::rational})
-                            .value_or(trail.decision_level());
-        auto top_it = poly.begin();
-        for (auto it = ++poly.begin(); it != poly.end(); ++it)
-        {
-            Variable new_var{it->first, Variable::rational};
-            if (trail.decision_level(new_var).value() > top_level)
-            {
-                top_level = trail.decision_level(new_var).value();
-                top_it = it;
-            }
-        }
-        std::iter_swap(top_it, poly.begin());
-
-        // eliminate the first variable if it is in a bound conflict
-        if (auto reason = find_bound_conflict(models, poly, pred))
-        {
-            poly = fm(std::move(poly), reason.value());
-            pred = combine_pred(pred, reason.value());
-            conflict.push_back(reason.value().lit().negate());
-        }
-        else
-        {
-            break;
-        }
-    }
-    assert(conflict.size() >= 2);
-    assert(eval(models.boolean(), conflict) == false);
-
-    if (poly.empty())
-    {
-        return conflict;
-    }
-
-    // sort the polynomial by decision level
-    std::sort(poly.begin(), poly.end(), [&](auto lhs, auto rhs) {
-        Variable lhs_var{lhs.first, Variable::rational};
-        Variable rhs_var{rhs.first, Variable::rational};
-        return trail.decision_level(lhs_var).value() > trail.decision_level(rhs_var).value();
-    });
-
-    // create a linear constraint from `poly` and `pred` (head of the implication)
-    auto head =
-        constraint(trail, std::views::keys(poly), std::views::values(poly), pred, -poly.constant);
-    assert(!head.empty());
-    if (!models.boolean().is_defined(head.lit().var().ord()))
-    {
-        propagate(trail, models, head);
-    }
-    assert(eval(models.boolean(), head.lit()) == false);
-    assert(eval(models.owned(), head) == false);
-
-    // add the constraint as head of the implication
-    conflict.push_back(head.lit());
-    assert(eval(models.boolean(), conflict) == false);
-    return conflict;
-}
-
-std::optional<Clause> Linear_arithmetic::check_bound_conflict(Trail& trail, Models_type& models,
-                                                              Bounds_type& bounds)
-{
-    auto lower_bound = bounds.lower_bound(models);
-    auto upper_bound = bounds.upper_bound(models);
-    if (!lower_bound || !upper_bound)
-    {
-        return {}; // no conflict
-    }
-
-    auto lb = lower_bound.value(); // L
-    auto ub = upper_bound.value(); // U
-    auto is_strict = lb.reason().is_strict() || ub.reason().is_strict();
-    if (lb.value() < ub.value() || (lb.value() == ub.value() && !is_strict))
-    {
-        return {}; // no conflict
-    }
-
-    return resolve_bound_conflict(trail, lb.reason());
-}
-
-std::optional<Clause>
-Linear_arithmetic::check_inequality_conflict(Trail& trail, Models_type& models, Bounds_type& bounds)
-{
-    auto lower_bound = bounds.lower_bound(models);
-    auto upper_bound = bounds.upper_bound(models);
-    if (!lower_bound || !upper_bound)
-    {
-        return {}; // no conflict
-    }
-
-    // check if `L <= x && x <= U` and `L = U` where `x` is the unassigned variable
-    auto lb = lower_bound.value(); // L
-    auto ub = upper_bound.value(); // U
-    if (lb.value() != ub.value() || lb.reason().is_strict() || ub.reason().is_strict())
-    {
-        return {};
-    }
-
-    // check if `x != D` where `D = L`
-    auto inequality = bounds.inequality(models, lb.value());
-    if (!inequality)
-    {
-        return {};
-    }
-
-    Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate(),
-                    inequality.value().reason().lit().negate()};
-
-    // if `L < D` is non-trivial (i.e., it contains at least one variable)
-    if (lb.reason().vars().size() > 1 || inequality.value().reason().vars().size() > 1)
-    {
-        // create and propagate `L < D` semantically
-        auto cons = eliminate(trail, lb.reason(), inequality.value().reason());
-        if (!cons.empty())
-        {
-            assert(eval(models.owned(), cons) == false);
-            assert(eval(models.boolean(), cons.lit()) == false);
-            conflict.push_back(cons.lit());
-        }
-    }
-
-    // if `D < U` is non-trivial (i.e., it contains at least one variable)
-    if (ub.reason().vars().size() > 1 || inequality.value().reason().vars().size() > 1)
-    {
-        // create and propagate `D < U` semantically
-        auto cons = eliminate(trail, inequality.value().reason(), ub.reason());
-        if (!cons.empty())
-        {
-            assert(eval(models.owned(), cons) == false);
-            assert(eval(models.boolean(), cons.lit()) == false);
-            conflict.push_back(cons.lit());
-        }
-    }
-
-    return conflict;
-}
-
-void Linear_arithmetic::propagate(Trail& trail, Models_type& models, Constraint_type const& cons)
+void Linear_arithmetic::propagate(Trail& trail, Models& models, Constraint const& cons)
 {
     assert(!eval(models.boolean(), cons.lit()));
 
@@ -734,7 +311,7 @@ void Linear_arithmetic::propagate(Trail& trail, Models_type& models, Constraint_
     trail.propagate(cons.lit().var(), /*reason=*/nullptr, dec_level);
 }
 
-bool Linear_arithmetic::is_new(Models_type const& models, Variable var) const
+bool Linear_arithmetic::is_new(Models const& models, Variable var) const
 {
     return (var.type() == Variable::boolean &&
             var.ord() >= static_cast<int>(models.boolean().num_vars())) ||
@@ -742,7 +319,7 @@ bool Linear_arithmetic::is_new(Models_type const& models, Variable var) const
             var.ord() >= static_cast<int>(models.owned().num_vars()));
 }
 
-void Linear_arithmetic::add_variable(Trail& trail, Models_type const& models, Variable var)
+void Linear_arithmetic::add_variable(Trail& trail, Models const& models, Variable var)
 {
     if (is_new(models, var))
     {
@@ -750,8 +327,8 @@ void Linear_arithmetic::add_variable(Trail& trail, Models_type const& models, Va
     }
 }
 
-std::optional<Linear_arithmetic::Value_type>
-Linear_arithmetic::find_integer(Models_type const& models, Bounds_type& bounds)
+std::optional<Linear_arithmetic::Rational> Linear_arithmetic::find_integer(Models const& models,
+                                                                           Variable_bounds& bounds)
 {
     auto abs = [](int val) -> int {
         if (val == std::numeric_limits<int>::min())
@@ -761,8 +338,8 @@ Linear_arithmetic::find_integer(Models_type const& models, Bounds_type& bounds)
         return val >= 0 ? val : -val;
     };
 
-    Value_type lb{std::numeric_limits<int>::lowest()};
-    Value_type ub{std::numeric_limits<int>::max()};
+    Rational lb{std::numeric_limits<int>::lowest()};
+    Rational ub{std::numeric_limits<int>::max()};
     if (auto lower_bound = bounds.lower_bound(models))
     {
         lb = lower_bound.value().value();
@@ -775,11 +352,11 @@ Linear_arithmetic::find_integer(Models_type const& models, Bounds_type& bounds)
 
     int abs_min_value = 0;
     int abs_bound = 0;
-    if (lb <= Value_type{0} && ub >= Value_type{0})
+    if (lb <= Rational{0} && ub >= Rational{0})
     {
         abs_bound = std::max<int>(abs(static_cast<int>(lb)), static_cast<int>(ub));
     }
-    else if (lb > Value_type{0})
+    else if (lb > Rational{0})
     {
         abs_min_value = static_cast<int>(lb);
         abs_bound = static_cast<int>(ub);
@@ -792,23 +369,23 @@ Linear_arithmetic::find_integer(Models_type const& models, Bounds_type& bounds)
     assert(abs_bound >= 0);
     assert(abs_min_value >= 0);
 
-    Value_type value{0};
+    Rational value{0};
     for (int int_value = abs_min_value; int_value <= abs_bound; ++int_value)
     {
-        value = static_cast<Value_type>(int_value);
+        value = static_cast<Rational>(int_value);
         if (lb <= value && value <= ub && bounds.is_allowed(models, value))
         {
             break;
         }
 
-        value = static_cast<Value_type>(-int_value);
+        value = static_cast<Rational>(-int_value);
         if (lb <= value && value <= ub && bounds.is_allowed(models, value))
         {
             break;
         }
     }
 
-    return bounds.is_allowed(models, value) ? value : std::optional<Value_type>{};
+    return bounds.is_allowed(models, value) ? value : std::optional<Rational>{};
 }
 
 void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
@@ -821,8 +398,8 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     auto models = relevant_models(trail);
     auto& bnds = bounds[var.ord()];
 
-    Value_type value =
-        cached_values.is_defined(var.ord()) ? cached_values.value(var.ord()) : Value_type{0};
+    Rational value =
+        cached_values.is_defined(var.ord()) ? cached_values.value(var.ord()) : Rational{0};
     if (!bnds.is_allowed(models, value))
     {
         if (auto int_value = find_integer(models, bnds))
@@ -840,7 +417,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
             value = ub;
             while (!bnds.is_allowed(models, value))
             {
-                value = lb / Value_type{2} + value / Value_type{2};
+                value = lb / Rational{2} + value / Rational{2};
             }
         }
     }
