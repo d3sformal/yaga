@@ -50,9 +50,9 @@ void Theory_combination::on_before_backtrack(Database& db, Trail& trail, int lev
 
 void Theory_combination::on_variable_resize(Variable::Type type, int num_vars)
 {
-    if (num_vars >= static_cast<int>(current_num_vars.size()))
+    if (type >= current_num_vars.size())
     {
-        current_num_vars.resize(num_vars + 1);
+        current_num_vars.resize(type + 1);
     }
     current_num_vars[type] = num_vars;
 
