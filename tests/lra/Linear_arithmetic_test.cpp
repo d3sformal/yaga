@@ -257,6 +257,32 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
+    SECTION("with lower bound implied by an equality")
+    {
+        decide(trail, y, -1);
+        propagate(trail, linear(x == 0));
+        propagate(trail, linear(x - y <= 0));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(x == 0), -linear(x - y <= 0), linear(y >= 0)));
+        REQUIRE(perun::eval(models.owned(), linear(y >= 0)) == false);
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    }
+
+    SECTION("with upper bound implied by an equality")
+    {
+        decide(trail, x, 1);
+        propagate(trail, linear(y == 0));
+        propagate(trail, linear(x - y <= 0));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(x - y <= 0), -linear(y == 0), linear(x <= 0)));
+        REQUIRE(perun::eval(models.owned(), linear(x <= 0)) == false);
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    }
+
     SECTION("with a strict lower bound")
     {
         decide(trail, y, 0);

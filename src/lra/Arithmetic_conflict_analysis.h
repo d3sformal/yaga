@@ -124,14 +124,24 @@ public:
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
+    using Variable_coefficient = std::pair<int, Rational>;
 
-    inline Fourier_motzkin_elimination(Linear_arithmetic* lra) : lra(lra) {}
+    inline explicit Fourier_motzkin_elimination(Linear_arithmetic* lra) : lra(lra) {}
 
-    /** Set current constraint to @p lb which implies a lower bound for its first variable.
+    /** Set current constraint to @p cons
      *
-     * @param lb constraint which implies a lower bound for its first variable
+     * @param cons linear constraint
      */
-    void init_lower_bound(Constraint const& lb);
+    void init(Constraint const& cons);
+
+    /** Set current constraint to the polynomial of @p cons multiplied by @p mult with predicate
+     * @p pred
+     *
+     * @param cons linear constraint
+     * @param pred predicate of the current constraint (predicate of @p cons is ignored)
+     * @param mult constant by which we multiply linear polynomial from @p cons
+     */
+    void init(Constraint const& cons, Order_predicate pred, Rational mult);
 
     /** Fourier-Motzkin elimination of the first variable in current constraint.
      *
@@ -142,7 +152,7 @@ public:
      */
     void resolve(Constraint const& cons);
 
-    /** Create a linear constraint from current derivation and propagate it on the @p trail
+    /** Create a linear constraint from current derivation and propagate it to the @p trail
      *
      * @param trail current solver trail
      * @return FM derivation
@@ -156,6 +166,34 @@ private:
     Order_predicate pred = Order_predicate::eq;
     // LRA plugin
     Linear_arithmetic* lra;
+
+    // check if a linear constraint implies a lower bound for a variable with coefficient `coef`
+    inline bool is_lower_bound(Rational coef, Order_predicate pred, bool is_negation) const
+    {
+        return pred == Order_predicate::eq || (coef < 0 && !is_negation) ||
+               (coef > 0 && is_negation);
+    }
+
+    // check if a linear constraint implies an upper bound for a variable with coefficient `coef`
+    inline bool is_upper_bound(Rational coef, Order_predicate pred, bool is_negation) const
+    {
+        return pred == Order_predicate::eq || (coef > 0 && !is_negation) ||
+               (coef < 0 && is_negation);
+    }
+
+    // check if current constraint implies a lower bound
+    inline bool is_lower_bound() const
+    {
+        assert(!poly.empty());
+        return is_lower_bound(poly.variables.front().second, pred, false);
+    }
+
+    // check if current constraint implies an upper bound
+    inline bool is_upper_bound() const
+    {
+        assert(!poly.empty());
+        return is_upper_bound(poly.variables.front().second, pred, false);
+    }
 };
 
 class Bound_conflict_analysis {

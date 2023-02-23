@@ -3,51 +3,51 @@
 
 namespace perun {
 
-void Fourier_motzkin_elimination::init_lower_bound(Constraint const& lb)
+void Fourier_motzkin_elimination::init(Constraint const& cons)
 {
-    assert(!lb.empty());
-    // lb implies a lower bound
-    assert(lb.coef().front() < 0 || lb.lit().is_negation() || lb.pred() == Order_predicate::eq);
+    assert(cons.pred() != Order_predicate::eq || !cons.lit().is_negation()); // cons is not !=
 
+    // Convert `cons` to an internal representation of a linear constraint: 
+    // `polynomial {<,<=,=} 0`. If `cons` is negated, its polynomial has to be multiplied
+    // by -1 and we have to switch < to <= and <= to <.
+    // For example, `not(x <= 0)` -> `x > 0` -> `-x < 0`.
+    auto new_pred = cons.pred();
+    if (cons.lit().is_negation())
+    {
+        if (new_pred == Order_predicate::leq)
+        {
+            new_pred = Order_predicate::lt;
+        }
+        else if (new_pred == Order_predicate::lt)
+        {
+            new_pred = Order_predicate::leq;
+        }
+    }
+    init(cons, new_pred, new_pred != cons.pred() ? -1 : 1);
+}
+
+void Fourier_motzkin_elimination::init(Constraint const& cons, Order_predicate p, Rational mult)
+{
+    assert(!cons.empty());
+
+    pred = p;
     poly.variables.clear();
+    poly.variables.reserve(cons.vars().size());
 
-    auto mult = lb.coef().front() > 0 ? Rational{-1} : Rational{1};
-    auto var_it = lb.vars().begin();
-    auto coef_it = lb.coef().begin();
-    for (; var_it != lb.vars().end(); ++var_it, ++coef_it)
+    auto var_it = cons.vars().begin();
+    auto coef_it = cons.coef().begin();
+    for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
     {
         poly.variables.emplace_back(*var_it, *coef_it * mult);
     }
-    poly.constant = -lb.rhs() * mult;
-
-    pred = lb.pred();
-    if (lb.lit().is_negation())
-    {
-        // After we negate the constraint and multiply by -1, the inequality will change from
-        // strict to non-strict or from non-strict to strict.
-        // For example: `not(x < 1)` -> `x >= 1` -> `-x <= -1`
-        assert(mult < 0 || pred == Order_predicate::eq);
-        if (pred == Order_predicate::leq)
-        {
-            pred = Order_predicate::lt;
-        }
-        else if (pred == Order_predicate::lt)
-        {
-            pred = Order_predicate::leq;
-        }
-        else // if (pred == Order_predicate::eq)
-        {
-            // We have a constraint of type `x != D` which implies `x < D` or `x > D`. Given the
-            // assumption that `lb` implies a lower bound, we assume `x > D`.
-            pred = Order_predicate::lt;
-        }
-    }
+    poly.constant = -cons.rhs() * mult;
 }
 
 void Fourier_motzkin_elimination::resolve(Constraint const& cons)
 {
     assert(!poly.empty());
     assert(!cons.empty());
+    assert(cons.pred() != Order_predicate::eq || !cons.lit().is_negation()); // cons is not !=
 
     // find the variable to eliminate in `poly`
     auto poly_it = poly.begin();
@@ -58,27 +58,41 @@ void Fourier_motzkin_elimination::resolve(Constraint const& cons)
     assert(cons_var_it != cons.vars().end());
     assert(cons_coef_it != cons.coef().end());
     assert(*cons_var_it == poly_it->first);
+    assert(
+        (is_lower_bound() &&
+         is_upper_bound(*cons_coef_it, cons.pred(), cons.lit().is_negation())) ||
+        (is_upper_bound() && is_lower_bound(*cons_coef_it, cons.pred(), cons.lit().is_negation())));
 
-    // compute constant s.t. `poly + mult * cons` eliminates the first variable in `poly`
-    auto mult = -poly_it->second / *cons_coef_it;
-    assert(mult > 0 || cons.lit().is_negation() || cons.pred() == Order_predicate::eq);
+    // compute constants s.t. `poly + cons_mult * cons` eliminates the first variable in `poly`
+    auto cons_mult = -poly_it->second / *cons_coef_it;
+    auto cons_mult_signbit = cons_mult < 0;
+    if (cons.pred() != Order_predicate::eq && cons_mult_signbit != cons.lit().is_negation())
+    {
+        // predicate of the derived constraint would be > or >= if we used `cons_mult`
+        cons_mult = -cons_mult;
+        // multiply `poly` by -1
+        for (auto& [_, coef] : poly)
+        {
+            coef = -coef;
+        }
+        poly.constant = -poly.constant;
+    }
 
     // multiply-add the polynomial of constraint `cons`
     auto var_it = cons.vars().begin();
     auto coef_it = cons.coef().begin();
     for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
     {
-        poly.variables.emplace_back(*var_it, *coef_it * mult);
+        poly.variables.emplace_back(*var_it, *coef_it * cons_mult);
     }
-    poly.constant = poly.constant - cons.rhs() * mult;
+    poly.constant = poly.constant - cons.rhs() * cons_mult;
     poly.normalize();
 
     assert(std::find_if(poly.begin(), poly.end(),
                         [&](auto var) { return var.first == *cons_var_it; }) == poly.end());
 
     // find predicate of the derivation
-    if (pred == Order_predicate::eq && cons.pred() == Order_predicate::eq &&
-        !cons.lit().is_negation())
+    if (pred == Order_predicate::eq && cons.pred() == Order_predicate::eq)
     {
         pred = Order_predicate::eq;
     }
@@ -133,9 +147,10 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
     {
         return {}; // no conflict
     }
+    assert(lb.reason().vars().front() == ub.reason().vars().front());
 
     Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate()};
-    fm.init_lower_bound(lb.reason());
+    fm.init(lb.reason());
     fm.resolve(ub.reason());
     auto derived = fm.finish(trail);
     if (!derived.empty())
@@ -160,7 +175,8 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
         return {}; // no conflict
     }
 
-    // check if `L <= x && x <= U` and `L = U` where `x` is the unassigned variable
+    // check if `L <= x` and `x <= U` and L, U evaluate to the same value where `x` is the
+    // unassigned variable
     auto lb = lower_bound.value(); // L
     auto ub = upper_bound.value(); // U
     if (lb.value() != ub.value() || lb.reason().is_strict() || ub.reason().is_strict())
@@ -168,24 +184,28 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
         return {};
     }
 
-    // check if `x != D` where `D = L`
+    // check if `x != D` where D, L, U evaluate to the same value
     auto inequality = bounds.inequality(models, lb.value());
     if (!inequality)
     {
         return {};
     }
+    auto neq = inequality.value();
+    assert(neq.reason().vars().front() == lb.reason().vars().front());
+    assert(neq.reason().vars().front() == ub.reason().vars().front());
 
     Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate(),
-                    inequality.value().reason().lit().negate()};
+                    neq.reason().lit().negate()};
 
-    // if `L < D` may be non-trivial (i.e., it contains at least one variable)
-    if (lb.reason().vars().size() > 1 || inequality.value().reason().vars().size() > 1)
+    // if `L < D` may be non-trivial (i.e., it may contain at least one variable)
+    if (lb.reason().vars().size() > 1 || neq.reason().vars().size() > 1)
     {
         // create and propagate `L < D` semantically
-        fm.init_lower_bound(lb.reason());
-        fm.resolve(inequality.value().reason());
+        auto mult = neq.reason().coef().front() > 0 ? 1 : -1;
+        fm.init(neq.reason(), Order_predicate::lt, mult);
+        fm.resolve(lb.reason());
         auto cons = fm.finish(trail);
-        if (!cons.empty())
+        if (!cons.empty()) // `L < D` is non-trivial
         {
             assert(eval(models.owned(), cons) == false);
             assert(eval(models.boolean(), cons.lit()) == false);
@@ -193,14 +213,15 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
         }
     }
 
-    // if `D < U` is non-trivial (i.e., it contains at least one variable)
-    if (ub.reason().vars().size() > 1 || inequality.value().reason().vars().size() > 1)
+    // if `D < U` may be non-trivial (i.e., it may contain at least one variable)
+    if (ub.reason().vars().size() > 1 || neq.reason().vars().size() > 1)
     {
         // create and propagate `D < U` semantically
-        fm.init_lower_bound(inequality.value().reason());
+        auto mult = neq.reason().coef().front() > 0 ? -1 : 1;
+        fm.init(neq.reason(), Order_predicate::lt, mult);
         fm.resolve(ub.reason());
         auto cons = fm.finish(trail);
-        if (!cons.empty())
+        if (!cons.empty()) // `D < U` is non-trivial
         {
             assert(eval(models.owned(), cons) == false);
             assert(eval(models.boolean(), cons.lit()) == false);
