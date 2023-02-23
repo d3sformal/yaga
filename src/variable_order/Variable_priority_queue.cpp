@@ -2,7 +2,7 @@
 
 namespace perun {
 
-void Variable_priority_queue::push(Variable var, float score)
+void Variable_priority_queue::push(Variable var, Score score)
 {
     if (position.size() <= var.type())
     {
@@ -37,7 +37,7 @@ void Variable_priority_queue::pop()
     position[var.type()][var.ord()] = missing;
 }
 
-void Variable_priority_queue::update(Variable var, float score)
+void Variable_priority_queue::update(Variable var, Score score)
 {
     auto it = find(var);
     if (it == pq.end())
@@ -59,7 +59,7 @@ void Variable_priority_queue::update(Variable var, float score)
     }
 }
 
-void Variable_priority_queue::rescale(float factor)
+void Variable_priority_queue::rescale(Score factor)
 {
     for (auto& [_, score] : pq)
     {

@@ -18,6 +18,8 @@ namespace perun {
  */
 class Variable_priority_queue {
 public:
+    using Score = float;
+
     /** Add a new variable to the priority queue
      *
      * Precondition: @p var is not in this priority queue
@@ -25,7 +27,7 @@ public:
      * @param var new variable to add to the queue
      * @param score initial score of @p var
      */
-    void push(Variable var, float score);
+    void push(Variable var, Score score);
 
     /** Remove variable with the maximal score (`top()`) from the priority queue.
      *
@@ -52,13 +54,13 @@ public:
      * @param var variable to update
      * @param score new score of @p var
      */
-    void update(Variable var, float score);
+    void update(Variable var, Score score);
 
     /** Divide all scores by @p factor
      *
      * @param factor constant by which all scores in the queue will be divided
      */
-    void rescale(float factor);
+    void rescale(Score factor);
 
     /** Get variable with the highest score in this priority queue
      *
@@ -79,7 +81,7 @@ public:
     inline bool empty() const { return pq.empty(); }
 
 private:
-    using Node = std::pair<Variable, float>;
+    using Node = std::pair<Variable, Score>;
     using Iterator = std::vector<Node>::iterator;
 
     // priority queue

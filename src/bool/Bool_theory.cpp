@@ -22,7 +22,7 @@ void Bool_theory::on_variable_resize(Variable::Type type, int num_vars)
 
 void Bool_theory::on_learned_clause(Database& db, Trail&, Clause const& learned)
 {
-    // find the learned clause in database (should be exactly one comparison since learned clases
+    // find the learned clause in database (should be exactly one comparison since learned clauses
     // are added to the back)
     auto it = std::find_if(
         db.learned().rbegin(), db.learned().rend(),

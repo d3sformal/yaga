@@ -21,6 +21,8 @@ namespace perun {
  */
 class Generalized_vsids final : public Variable_order {
 public:
+    using Score = float;
+
     virtual ~Generalized_vsids() = default;
 
     inline Generalized_vsids(Linear_arithmetic& lra) : lra(&lra) {}
@@ -77,7 +79,7 @@ public:
      * @param var queried variable
      * @return VSIDS score of @p var
      */
-    inline float score(Variable var) const 
+    inline Score score(Variable var) const 
     { 
         if (vsids.size() <= var.type() || vsids[var.type()].size() <= static_cast<std::size_t>(var.ord()))
         {
@@ -87,21 +89,21 @@ public:
     }
 private:
     // map variable type -> variable ordinal -> VSIDS score
-    std::vector<std::vector<float>> vsids;
+    std::vector<std::vector<Score>> vsids;
     // priority queue of variables sorted by VSIDS score
     Variable_priority_queue variables;
     // score grow factor (inverse decay factor)
-    float grow = 1.05f;
+    Score grow = 1.05;
     // current amount by which a variable VSIDS is increased in `bump()`
-    float inc = 1.0f;
+    Score inc = 1.0;
     // LRA plugin with linear constraints
     Linear_arithmetic* lra;
 
     // when a score exceeds this threshold, all scores are rescaled
-    inline static float const score_threshold = 1e35f;
+    inline static Score const score_threshold = 1e35;
 
     // get VSIDS score of a variable
-    inline float& score(Variable var) { return vsids[var.type()][var.ord()]; }
+    inline Score& score(Variable var) { return vsids[var.type()][var.ord()]; }
 
     // divide all scores by `score_threshold`
     inline void rescale()
