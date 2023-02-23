@@ -72,10 +72,15 @@ private:
         // clause signature
         std::uint64_t clause_sig;
     };
-    // map literal -> clauses in which it occurs (created by index())
+    
+    using Clause_iterator = std::deque<Clause>::iterator;
+
+    // map literal -> clauses in which it occurs (set by `index()`)
     Literal_map<std::vector<Clause_ptr>> occur;
     // auxiliary bitset for subset tests in subsumes() and selfsubsumes()
     Literal_map<bool> lit_bitset;
+    // number of learned clauses in previous restart
+    std::size_t old_size = 0;
 
     // compute signature of a clause and create a proxy object which includes
     // this signature
@@ -91,12 +96,6 @@ private:
         }
         return {clause, sig};
     }
-
-    /** Construct `occur` from learned clauses in @p db
-     *
-     * @param db clause database
-     */
-    void index(std::deque<Clause>& db);
 
     /** Check if @p first is a proper subset of @p second
      *
@@ -116,6 +115,13 @@ private:
      * second
      */
     bool selfsubsumes(Clause const& first, Clause const& second, Literal lit);
+
+    /** Construct `occur` from learned clauses in @p db
+     *
+     * @param begin begin iterator of a range of clauses to index
+     * @param end end iterator of a range of clauses to index
+     */
+    void index(Clause_iterator being, Clause_iterator end);
 
     /** Mark clauses subsumed by @p clause (by making them empty)
      *

@@ -29,24 +29,6 @@ void Subsumption::on_variable_resize(Variable::Type type, int num_vars)
 
 void Subsumption::on_restart(Database& db, Trail&) { remove_subsumed(db); }
 
-void Subsumption::index(std::deque<Clause>& clauses)
-{
-    for (auto& list : occur)
-    {
-        list.clear();
-    }
-
-    for (auto& clause : clauses)
-    {
-        auto clause_ptr = make_proxy(&clause);
-
-        for (auto lit : clause)
-        {
-            occur[lit].emplace_back(clause_ptr);
-        }
-    }
-}
-
 bool Subsumption::subsumes(Subsumption::Clause_ptr first, Subsumption::Clause_ptr second)
 {
     if ((first.sig() & ~second.sig()) != 0)
@@ -102,6 +84,25 @@ bool Subsumption::selfsubsumes(Clause const& first, Clause const& second, Litera
     return true;
 }
 
+void Subsumption::index(Clause_iterator it, Clause_iterator end)
+{
+    for (auto& list : occur)
+    {
+        list.clear();
+    }
+
+    for (; it != end; ++it)
+    {
+        auto& clause = *it;
+        auto clause_ptr = make_proxy(&clause);
+
+        for (auto lit : clause)
+        {
+            occur[lit].emplace_back(clause_ptr);
+        }
+    }
+}
+
 void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause)
 {
     if (clause->empty())
@@ -133,18 +134,27 @@ void Subsumption::remove_subsumed(Subsumption::Clause_ptr clause)
 
 void Subsumption::remove_subsumed(Database& db)
 {
-    index(db.learned());
+    auto const old_end = db.learned().begin() + old_size;
 
-    // find subsumed clauses
+    // find old clauses subsumed by a new clause
+    index(db.learned().begin(), old_end);
+    for (auto it = old_end; it != db.learned().end(); ++it)
+    {
+        remove_subsumed(make_proxy(&*it));
+    }
+
+    // find new clauses subsumed by any clause (old or new)
+    index(old_end, db.learned().end());
     for (auto& clause : db.learned())
     {
         remove_subsumed(make_proxy(&clause));
     }
 
-    // remove them from the list
+    // remove all subsumed clauses from the database
     db.learned().erase(std::remove_if(db.learned().begin(), db.learned().end(),
                                       [](auto const& clause) { return clause.empty(); }),
                        db.learned().end());
+    old_size = db.learned().size();
 }
 
 } // namespace perun
