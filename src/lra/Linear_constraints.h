@@ -26,7 +26,6 @@ namespace perun {
  */
 template <typename Value> class Linear_constraints {
 public:
-    using Value_type = Value;
     using Constraint = Linear_constraint<Value>;
 
     /** Create a new linear constraint.
@@ -44,7 +43,7 @@ public:
      */
     template <std::ranges::range Var_range, std::ranges::range Value_range>
     Constraint make(Var_range&& var_range, Value_range&& coef_range, Order_predicate pred,
-                    Value_type rhs)
+                    Value rhs)
     {
         // normalize the input and add it to the constraints list
         auto mult = find_norm_constant(var_range, coef_range);
@@ -55,17 +54,17 @@ public:
             auto [lit, range] = add(mult.value(), var_range, coef_range);
             cons = constraints.emplace_back(lit, range, norm_pred(mult.value(), pred),
                                             mult.value() * rhs, this);
-            is_negation = pred != Order_predicate::eq && mult.value() < Value_type{0};
+            is_negation = pred != Order_predicate::eq && mult.value() < Value{0};
         }
         else // constraint without variables
         {
             // normalize to `0 == 0`
-            is_negation = !pred(Value_type{0}, rhs);
-            rhs = Value_type{0};
+            is_negation = !pred(Value{0}, rhs);
+            rhs = Value{0};
             pred = Order_predicate::eq;
             Literal lit{static_cast<int>(constraints.size())};
             cons = constraints.emplace_back(lit, std::pair{0, 0}, pred, rhs, this);
-            mult = Value_type{1};
+            mult = Value{1};
         }
 
         // check whether the constraint is a duplicate
@@ -152,11 +151,11 @@ public:
      *
      * Precondition: all variables in the @p cons are assigned.
      *
-     * @param model current partial assignment of variables of Value_type
+     * @param model current partial assignment of variables of Value
      * @param cons linear constraint to evaluate
      * @return true iff @p cons is true in @p model
      */
-    inline bool eval(Model<Value_type> const& model, Constraint const& cons) const
+    inline bool eval(Model<Value> const& model, Constraint const& cons) const
     {
         auto rhs = cons.rhs();
         auto [var_it, var_end] = vars(cons);
@@ -167,7 +166,7 @@ public:
             assert(model.is_defined(*var_it));
             rhs -= *coef_it * model.value(*var_it);
         }
-        return cons.lit().is_negation() ^ cons.pred()(Value_type{0}, rhs);
+        return cons.lit().is_negation() ^ cons.pred()(Value{0}, rhs);
     }
 
     /** Given @p cons with exactly one unassigned variable, evaluate the rest of the constraint.
@@ -175,11 +174,11 @@ public:
      * Precondition: the first variable in @p cons is unassigned, the rest of variables is assigned
      * in @p model
      *
-     * @param model current partial assignment of variables of Value_type
+     * @param model current partial assignment of variables of Value
      * @param cons unit linear constraint with the first variable being the only unassigned variable
      * @return constant on the right-hand-side after evaluating all assigned variables in @p cons
      */
-    inline Value_type implied_value(Model<Value_type> const& model, Constraint const& cons) const
+    inline Value implied_value(Model<Value> const& model, Constraint const& cons) const
     {
         auto value = cons.rhs();
         auto [var_it, var_end] = vars(cons);
@@ -201,14 +200,14 @@ public:
     }
 
 private:
-    using Constraint_hash = Linear_constraint_hash<Value_type>;
-    using Constraint_equal = Linear_constraint_equal<Value_type>;
+    using Constraint_hash = Linear_constraint_hash<Value>;
+    using Constraint_equal = Linear_constraint_equal<Value>;
     using Constraint_set = std::unordered_set<Constraint, Constraint_hash, Constraint_equal>;
 
     // vector of variables of all linear constraints
     std::vector<int> variables;
     // vector of coefficients of all linear constraints
-    std::vector<Value_type> coefficients;
+    std::vector<Value> coefficients;
     // map boolean variable -> linear constraint
     std::vector<Constraint> constraints;
     // set of constraints for deduplication
@@ -216,11 +215,11 @@ private:
 
     // find a constant by which the constraint will be multiplied in order to normalize coefficients
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline std::optional<Value_type> find_norm_constant(Var_range&& var_range,
-                                                        Coef_range&& coef_range) const
+    inline std::optional<Value> find_norm_constant(Var_range&& var_range,
+                                                   Coef_range&& coef_range) const
     {
         int min_var = std::numeric_limits<int>::max();
-        Value_type min_coef{0};
+        Value min_coef{0};
 
         auto var_it = std::begin(var_range);
         auto coef_it = std::begin(coef_range);
@@ -236,13 +235,13 @@ private:
         {
             return {}; // none
         }
-        return Value_type{1} / min_coef;
+        return Value{1} / min_coef;
     }
 
     // flip inequalities if mult is negative
-    inline Order_predicate norm_pred(Value_type mult, Order_predicate pred) const
+    inline Order_predicate norm_pred(Value mult, Order_predicate pred) const
     {
-        if (mult < Value_type{0})
+        if (mult < Value{0})
         {
             switch (pred)
             {
@@ -259,7 +258,7 @@ private:
 
     // copy constraint values multiplied by normalization constant `mult`
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline std::pair<Literal, std::pair<int, int>> add(Value_type mult, Var_range&& var_range,
+    inline std::pair<Literal, std::pair<int, int>> add(Value mult, Var_range&& var_range,
                                                        Coef_range&& coef_range)
     {
         auto size = std::distance(std::begin(var_range), std::end(var_range));
@@ -280,7 +279,7 @@ private:
         auto coef_it = out_coef_it;
         for (; var_it != variables.end(); ++var_it, ++coef_it)
         {
-            if (*coef_it != Value_type{0})
+            if (*coef_it != Value{0})
             {
                 *out_var_it++ = *var_it;
                 *out_coef_it++ = *coef_it;
