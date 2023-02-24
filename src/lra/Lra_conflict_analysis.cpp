@@ -1,4 +1,4 @@
-#include "Arithmetic_conflict_analysis.h"
+#include "Lra_conflict_analysis.h"
 #include "Linear_arithmetic.h"
 
 namespace perun {

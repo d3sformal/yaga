@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Arithmetic_conflict_analysis.h"
+#include "Lra_conflict_analysis.h"
 #include "Bounds.h"
 #include "Fraction.h"
 #include "Linear_constraints.h"

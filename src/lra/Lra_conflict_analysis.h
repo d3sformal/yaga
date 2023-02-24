@@ -1,5 +1,5 @@
-#ifndef PERUN_ARITHMETIC_CONFLICT_ANALYSIS_H
-#define PERUN_ARITHMETIC_CONFLICT_ANALYSIS_H
+#ifndef PERUN_LRA_CONFLICT_ANALYSIS_H
+#define PERUN_LRA_CONFLICT_ANALYSIS_H
 
 #include <algorithm>
 #include <cassert>
@@ -246,4 +246,4 @@ private:
 
 } // namespace perun
 
-#endif // PERUN_ARITHMETIC_CONFLICT_ANALYSIS_H
+#endif // PERUN_LRA_CONFLICT_ANALYSIS_H
