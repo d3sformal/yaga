@@ -18,6 +18,14 @@ bool Flex_lexer::eatTokenChoice(Token t, Token f)
     return false;
 }
 
+void Flex_lexer::eat_token(Token t)
+{
+    Token tt = next_token();
+    if (t != tt) {
+        unexpected_token_error(tt);
+    }
+}
+
 Token Flex_lexer::next_token()
 {
     return lex_scan();

@@ -22,6 +22,8 @@ public:
 
     void parseError(std::string_view msg);
 
+    void eat_token(Token t);
+
     bool eatTokenChoice(Token t, Token f);
 
     Token next_token();
