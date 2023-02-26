@@ -34,27 +34,34 @@ std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
     return {learned, level};
 }
 
-void Solver::backtrack_with(Clause&& clause, int level)
+Clause& Solver::learn(Clause&& clause)
+{
+    // add the clause to database
+    auto& learned = db().learn_clause(std::move(clause));
+    // trigger events
+    for (auto listener : listeners())
+    {
+        listener->on_learned_clause(db(), trail(), learned);
+    }
+    return learned;
+}
+
+bool Solver::is_semantic_split(Clause const& clause) const
+{
+    return clause.size() >= 2 && trail().decision_level(clause[0].var()).value() ==
+                                     trail().decision_level(clause[1].var()).value();
+}
+
+void Solver::backtrack_with(Clause& learned, int level)
 {
     for (auto listener : listeners())
     {
         listener->on_before_backtrack(db(), trail(), level);
     }
 
-    // add the clause to database
-    auto& learned = db().learn_clause(std::move(clause));
-
-    // trigger events
-    for (auto listener : listeners())
+    if (is_semantic_split(learned))
     {
-        listener->on_learned_clause(db(), trail(), learned);
-    }
-
-    trail().backtrack(level);
-
-    if (learned.size() >= 2 &&
-        trail().decision_level(learned[0].var()) == trail().decision_level(learned[1].var()))
-    {
+        trail().backtrack(level);
         // decide the first or the second literal in `learned`
         trail().decide(learned[0].var());
         trail()
@@ -63,6 +70,7 @@ void Solver::backtrack_with(Clause&& clause, int level)
     }
     else // UIP
     {
+        trail().backtrack(level);
         // propagate the top level literal at assertion level
         trail().propagate(learned[0].var(), &learned, level);
         trail()
@@ -140,13 +148,14 @@ Solver::Result Solver::check()
                 return Result::unsat;
             }
 
+            auto& learned_ref = learn(std::move(learned));
             if (restart_policy->should_restart())
             {
                 restart();
             }
             else // backtrack instead of restarting
             {
-                backtrack_with(std::move(learned), level);
+                backtrack_with(learned_ref, level);
             }
         }
         else // no conflict

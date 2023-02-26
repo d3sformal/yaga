@@ -159,7 +159,11 @@ private:
     // analyze conflict clause
     std::pair<Clause, int> analyze_conflict(Clause&& conflict);
     // backtrack with conflict clause `learned` to assertion level `level`
-    void backtrack_with(Clause&& learned, int level);
+    void backtrack_with(Clause& learned, int level);
+    // add a new clause to learned clauses
+    Clause& learn(Clause&& learned);
+    // check if conflict `clause` is a semantic split clause
+    bool is_semantic_split(Clause const& clause) const;
     // pick the next variable to assign
     std::optional<Variable> pick_variable();
     // decide value of an unassigned variable
