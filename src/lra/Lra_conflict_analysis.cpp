@@ -140,8 +140,8 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
         return {}; // no conflict
     }
 
-    auto lb = lower_bound.value(); // L
-    auto ub = upper_bound.value(); // U
+    auto lb = lower_bound.value(); 
+    auto ub = upper_bound.value(); 
     auto is_strict = lb.reason().is_strict() || ub.reason().is_strict();
     if (lb.value() < ub.value() || (lb.value() == ub.value() && !is_strict))
     {
@@ -177,8 +177,8 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
 
     // check if `L <= x` and `x <= U` and L, U evaluate to the same value where `x` is the
     // unassigned variable
-    auto lb = lower_bound.value(); // L
-    auto ub = upper_bound.value(); // U
+    auto lb = lower_bound.value();
+    auto ub = upper_bound.value();
     if (lb.value() != ub.value() || lb.reason().is_strict() || ub.reason().is_strict())
     {
         return {};
@@ -196,6 +196,26 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
 
     Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate(),
                     neq.reason().lit().negate()};
+
+    // special case where `x = E` and `x != D` where E, D evaluate to the same value
+    if (lb.reason().lit() == ub.reason().lit())
+    {
+        // see: http://leodemoura.github.io/files/fmcad2013.pdf
+        // We use `x = E && x != D -> E != D` as an explanation which is equivalent to 
+        // the disequality lemma (Fig. 2) in this special case (we apply one final normalization
+        // rule in the derivation in Fig. 2).
+        assert(lb.reason().pred() == Order_predicate::eq);
+        assert(!lb.reason().lit().is_negation());
+        assert(lb.reason().vars().size() > 1 || neq.reason().vars().size() > 1);
+        fm.init(neq.reason(), Order_predicate::eq, 1);
+        fm.resolve(lb.reason());
+        auto cons = fm.finish(trail);
+        assert(!cons.empty());
+        assert(eval(models.owned(), cons.negate()) == false);
+        assert(eval(models.boolean(), cons.lit().negate()) == false);
+        return Clause{lb.reason().lit().negate(), neq.reason().lit().negate(), 
+                      cons.lit().negate()};
+    }
 
     // if `L < D` may be non-trivial (i.e., it may contain at least one variable)
     if (lb.reason().vars().size() > 1 || neq.reason().vars().size() > 1)

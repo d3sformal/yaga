@@ -519,6 +519,18 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
                 clause(-linear(x >= 4), -linear(x + y <= 4), linear(x == 4), linear(y < 0)));
         REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
     }
+
+    SECTION("with upper bound and lower bound implied by the same equality")
+    {
+        decide(trail, y, 0);
+        propagate(trail, linear(x == 0));
+        propagate(trail, linear(x + y != 0));
+
+        auto conflict = lra.propagate(db, trail);
+        REQUIRE(conflict);
+        REQUIRE(conflict.value() == clause(-linear(x == 0), -linear(x + y != 0), linear(y != 0)));
+        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    }
 }
 
 TEST_CASE("Backtrack-decide a constraint", "[linear_arithmetic]")
