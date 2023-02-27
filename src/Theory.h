@@ -55,8 +55,8 @@ protected:
     // current decision level to check whether `next_index` is valid
     int current_level = 0;
 
-    /** Find range of assigned elements at current decision level on @p trail which have not been
-     * processed yet by this plugin.
+    /** Find range of assigned variables on @p trail which have not been processed yet by this 
+     * plugin.
      *
      * @param trail current solver trail
      * @return range or assigned, unprocessed elements on the @p trail

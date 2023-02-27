@@ -6,7 +6,7 @@ std::optional<Clause> Theory_combination::propagate(Database& db, Trail& trail)
 {
     for (;;)
     {
-        auto old_size = trail.assigned(trail.decision_level()).size();
+        auto old_size = trail.recent().size();
         for (auto& theory : theories)
         {
             if (auto conflict = theory->propagate(db, trail))
@@ -16,7 +16,7 @@ std::optional<Clause> Theory_combination::propagate(Database& db, Trail& trail)
         }
 
         // if no new propagations were made
-        if (old_size == trail.assigned(trail.decision_level()).size())
+        if (old_size == trail.recent().size())
         {
             break;
         }

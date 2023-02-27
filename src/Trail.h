@@ -146,9 +146,12 @@ public:
         assert(var.type() < var_reason.size());
         assert(var.type() < var_models.size());
 
-        assigned_stack.emplace_back(std::vector<Assignment>{Assignment{var, nullptr}});
+        assigned_stack.emplace_back(std::vector<Assignment>{Assignment{var, /*reason=*/nullptr}});
         var_level[var.type()][var.ord()] = decision_level();
         var_reason[var.type()][var.ord()] = nullptr;
+
+        recent_variables.clear();
+        recent_variables.push_back(Assignment{var, /*reason=*/nullptr});
     }
 
     /** Propagate variable @p var due to clause @p reason at decision level @p
@@ -170,6 +173,8 @@ public:
         assigned_stack[level].push_back(Assignment{var, reason});
         var_level[var.type()][var.ord()] = level;
         var_reason[var.type()][var.ord()] = reason;
+
+        recent_variables.push_back(Assignment{var, reason});
     }
 
     /** Make all variables decided or propagated at levels > @p level
@@ -180,6 +185,7 @@ public:
     inline void backtrack(int level)
     {
         assert(0 <= level);
+        recent_variables.clear();
 
         for (; decision_level() > level; assigned_stack.pop_back())
         {
@@ -230,7 +236,17 @@ public:
 
         assigned_stack.clear();
         assigned_stack.emplace_back();
+        recent_variables.clear();
     }
+
+    /** Get recently assigned variables.
+     * 
+     * Variables assigned between the last `backtrack()`, `clear()`, or `decide()`
+     * call and this call. The decided variable is also part of recent variables.
+     * 
+     * @return range of recently assigned variables
+     */
+    inline auto const& recent() const { return recent_variables; }
 
 private:
     // level in `var_level` of unassigned variables
@@ -246,6 +262,8 @@ private:
     std::vector<std::vector<int>> var_level;
     // models managed by this trail
     std::vector<std::unique_ptr<Model_base>> var_models;
+    // list of recently propagated variables
+    std::vector<Assignment> recent_variables;
 };
 
 } // namespace perun

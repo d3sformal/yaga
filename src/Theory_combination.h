@@ -43,7 +43,7 @@ public:
     void on_init(Database&, Trail&) override;
 
     /** Call the event in all theories
-     * 
+     *
      * @param db clause database
      * @param trail current solver trail before backtracking
      * @param decision_level decision level to backtrack to
