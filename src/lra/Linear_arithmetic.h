@@ -129,6 +129,22 @@ public:
      */
     inline Constraint constraint(int bool_var_ord) { return constraints[bool_var_ord]; }
 
+    /** Find linear constraint which is defined by @p lit
+     * 
+     * @param lit literal
+     * @return constraint represented by @p lit or an empty constraint if @p lit does not 
+     * represent a linear constraint. 
+     */
+    inline Constraint constraint(Literal lit) 
+    {
+        auto cons = constraint(lit.var().ord());
+        if (cons.empty())
+        {
+            return cons;
+        }
+        cons = cons.lit() != lit ? cons.negate() : cons;
+        return cons;
+    }
 private:
     struct Watched_constraint {
         // watched constraint

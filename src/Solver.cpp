@@ -61,12 +61,24 @@ void Solver::backtrack_with(Clause& learned, int level)
 
     if (is_semantic_split(learned))
     {
+        // find the best variable to decide
+        auto top_it = learned.begin();
+        auto top_level = trail().decision_level(top_it->var()).value();
+        for (auto it = top_it + 1; it != learned.end() && trail().decision_level(it->var()) == top_level; ++it)
+        {
+            assert(trail().reason(it->var()) == nullptr);
+            if (variable_order->is_before(it->var(), top_it->var()))
+            {
+                top_it = it;
+            }
+        }
+
         trail().backtrack(level);
-        // decide the first or the second literal in `learned`
-        trail().decide(learned[0].var());
+        // decide one of the literals at the highest decision level
+        trail().decide(top_it->var());
         trail()
             .model<bool>(Variable::boolean)
-            .set_value(learned[0].var().ord(), !learned[0].is_negation());
+            .set_value(top_it->var().ord(), !top_it->is_negation());
     }
     else // UIP
     {

@@ -37,6 +37,14 @@ public:
      */
     std::optional<Variable> pick(Database&, Trail&) override;
 
+    /** Check whether @p lhs should be decided before @p rhs
+     * 
+     * @param lhs first variable
+     * @param rhs second variable
+     * @return true iff @p lhs should be decided before @p rhs
+     */
+    bool is_before(Variable lhs, Variable rhs) const override;
+
 private:
     std::optional<Variable::Type> var_type;
 };

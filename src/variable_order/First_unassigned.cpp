@@ -2,6 +2,11 @@
 
 namespace perun {
 
+bool First_unassigned::is_before(Variable lhs, Variable rhs) const
+{
+    return lhs.type() < rhs.type() || (lhs.type() == rhs.type() && lhs.ord() < rhs.ord());
+}
+
 std::optional<Variable> First_unassigned::pick(Database&, Trail& trail)
 {
     auto models = trail.models();

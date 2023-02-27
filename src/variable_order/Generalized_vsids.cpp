@@ -70,6 +70,11 @@ void Generalized_vsids::on_conflict_resolved(Database&, Trail&, Clause const& ot
     }
 }
 
+bool Generalized_vsids::is_before(Variable lhs, Variable rhs) const
+{
+    return score(lhs) > score(rhs);
+}
+
 std::optional<Variable> Generalized_vsids::pick(Database&, Trail& trail)
 {
     // remove assigned variables from the top of the variables priority queue

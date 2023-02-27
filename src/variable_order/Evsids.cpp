@@ -46,6 +46,13 @@ void Evsids::on_learned_clause(Database&, Trail&, Clause const& learned)
     decay();
 }
 
+bool Evsids::is_before(Variable lhs, Variable rhs) const
+{
+    assert(lhs.type() == Variable::boolean);
+    assert(rhs.type() == Variable::boolean);
+    return score(lhs.ord()) > score(rhs.ord());
+}
+
 std::optional<Variable> Evsids::pick(Database&, Trail& trail)
 {
     auto const& model = trail.model<bool>(Variable::boolean);

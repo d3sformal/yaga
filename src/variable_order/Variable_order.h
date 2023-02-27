@@ -21,6 +21,14 @@ public:
      * assigned
      */
     virtual std::optional<Variable> pick(Database&, Trail&) = 0;
+
+    /** Check whether @p lhs should be decided before @p rhs
+     * 
+     * @param lhs first variable
+     * @param rhs second variable
+     * @return true iff @p lhs should be decided before @p rhs
+     */
+    virtual bool is_before(Variable lhs, Variable rhs) const = 0;
 };
 
 } // namespace perun
