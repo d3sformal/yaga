@@ -1,6 +1,7 @@
 #ifndef PERUN_FRACTION_H
 #define PERUN_FRACTION_H
 
+#include <cassert>
 #include <cmath>
 #include <concepts>
 #include <cstdint>
