@@ -119,7 +119,7 @@ public:
      */
     inline Models relevant_models(Trail& trail) const
     {
-        return {&trail.model<bool>(Variable::boolean), &trail.model<Rational>(Variable::rational)};
+        return {trail.model<bool>(Variable::boolean), trail.model<Rational>(Variable::rational)};
     }
 
     /** Get constraint which implements @p bool_var_ord

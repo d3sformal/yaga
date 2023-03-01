@@ -21,7 +21,7 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
     Model<Value_type> lra_model;
     bool_model.resize(10);
     lra_model.resize(5);
-    Theory_models<Value_type> models{&bool_model, &lra_model};
+    Theory_models<Value_type> models{bool_model, lra_model};
     Bounds<Value_type> bounds;
     Linear_constraints<Value_type> constraints;
     auto make = factory(constraints);
