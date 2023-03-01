@@ -86,7 +86,7 @@ void Linear_arithmetic::watch(Constraint& cons, Model<Rational> const& model)
     // move 2 unassigned variables to the front
     auto out_var_it = cons.vars().begin();
     auto out_var_end = cons.size() == 1 ? out_var_it + 1 : out_var_it + 2;
-    auto out_coef_it = cons.vars().begin();
+    auto out_coef_it = cons.coef().begin();
     auto var_it = out_var_it;
     auto coef_it = out_coef_it;
     for (; var_it != cons.vars().end() && out_var_it != out_var_end; ++var_it, ++coef_it)
