@@ -8,6 +8,7 @@
 #include <numeric>
 #include <ostream>
 #include <type_traits>
+#include <limits>
 
 namespace perun {
 
@@ -145,9 +146,10 @@ namespace literals {
  * @param val value to convert
  * @return fraction which represents @p val
  */
-inline constexpr Fraction<int> operator"" _r(unsigned long long val)
+inline constexpr Fraction<int> operator""_r(unsigned long long int val)
 {
-    return {static_cast<int>(val), 1, Normalized_tag{}};
+    assert(val <= std::numeric_limits<int>::max());
+    return val;
 }
 
 } // namespace literals
