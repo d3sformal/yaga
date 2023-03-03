@@ -85,7 +85,7 @@ bool Smt2_command_context::parse_command()
             lexer.eat_token(Token::RPAREN_TOK);
         }
         terms::type_t t = term_parser.parse_sort();
-        parser_context.mk_constant(t, name);
+        parser_context.declare_uninterpreted_constant(t, name);
     }
     break;
 

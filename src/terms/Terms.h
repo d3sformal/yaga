@@ -93,6 +93,7 @@ public:
     term_t construct_composite(Kind kind, type_t type, std::span<type_t> args);
     term_t construct_rational(Kind kind, type_t type, Rational const & value);
     term_t construct_constant(Kind kind, type_t type, int32_t index);
+    term_t construct_uninterpreted_constant(type_t type);
 
 
     term_t or_term(std::span<term_t> args);
@@ -105,7 +106,7 @@ public:
     /*
      * Uninterpreted constant of the given type ("free variables" in formulae)
      */
-    term_t uninterpreted_constant(type_t tau);
+    term_t new_uninterpreted_constant(type_t tau);
 
     term_t arithmetic_constant(Rational const & value);
 };

@@ -43,8 +43,9 @@ Solver_answer Parser_context::check_sat()
     UNIMPLEMENTED;
 }
 
-term_t Parser_context::mk_constant(terms::type_t sort, std::string const& name)
+term_t Parser_context::declare_uninterpreted_constant(terms::type_t sort, std::string const& name)
 {
+    term_manager.mk_uninterpreted_constant(sort);
     UNIMPLEMENTED;
 }
 

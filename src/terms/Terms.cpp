@@ -92,6 +92,14 @@ term_t Term_table::construct_constant(Kind kind, type_t type, int32_t index)
     return positive_term(term_index);
 }
 
+term_t Term_table::construct_uninterpreted_constant(type_t type)
+{
+    auto term_descriptor = std::unique_ptr<term_descriptor_t>();
+    auto term_index = static_cast<int32_t>(inner_table.size()); // TODO: Check Max term count
+    this->inner_table.push_back(Term{Kind::UNINTERPRETED_TERM, type, std::move(term_descriptor)});
+    return positive_term(term_index);
+}
+
 void Term_table::add_primitive_terms()
 {
     assert(inner_table.empty());
@@ -121,9 +129,15 @@ term_t Term_table::or_term(std::span<term_t> args)
     Composite_term_proxy proxy{Kind::OR_TERM, types::bool_type, hash_composite_term(Kind::OR_TERM, args), *this, args};
     return known_terms.get_composite_term(proxy);
 }
-term_t Term_table::uninterpreted_constant(type_t tau)
+
+/*
+ * Declare a new uninterpreted constant of the given type.
+ * Always creates a fresh term!
+ */
+term_t Term_table::new_uninterpreted_constant(type_t tau)
 {
-        throw std::logic_error("UNIMPLEMETED!");
+    // TODO: This does not insert the term into the hash table; Should it be inserted?
+    return construct_uninterpreted_constant(tau);
 }
 
 } // namespace terms

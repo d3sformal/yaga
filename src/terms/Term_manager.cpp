@@ -15,7 +15,7 @@ Term_manager::~Term_manager() = default;
 
 term_t Term_manager::mk_uninterpreted_constant(type_t type)
 {
-    return term_table->uninterpreted_constant(type);
+    return term_table->new_uninterpreted_constant(type);
 }
 
 term_t Term_manager::mk_or(std::span<term_t> args)
