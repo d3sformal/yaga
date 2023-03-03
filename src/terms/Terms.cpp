@@ -140,5 +140,26 @@ term_t Term_table::new_uninterpreted_constant(type_t tau)
     return construct_uninterpreted_constant(tau);
 }
 
+void Term_table::set_term_name(term_t t, std::string const& name)
+{
+    {
+        auto [it, inserted] = symbol_table.insert({name, t});
+        assert(inserted);
+        (void)inserted;
+    }
+
+    {
+        auto [it, inserted] = name_table.insert({t, name});
+        assert(inserted);
+        (void)inserted;
+    }
+}
+
+term_t Term_table::get_term_by_name(std::string const& name)
+{
+    auto it = symbol_table.find(name);
+    return it == symbol_table.end() ? null_term : it->second;
+}
+
 } // namespace terms
 } // namespace perun

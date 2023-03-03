@@ -125,7 +125,8 @@ term_t Smt2_term_parser::parse_term() {
         break;
         case Token::INTEGER_LITERAL:
         {
-            UNIMPLEMENTED;
+            auto numeral_string = lexer.token_string();
+            ret = parser_context.mk_numeral(numeral_string);
         }
         break;
         case Token::DECIMAL_LITERAL:

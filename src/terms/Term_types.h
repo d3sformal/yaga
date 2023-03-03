@@ -15,6 +15,11 @@ static constexpr type_t bool_type = 0;
 static constexpr type_t real_type = 1;
 }
 
+inline constexpr term_t null_term = -1;
+inline constexpr term_t true_term = 2;
+inline constexpr term_t false_term = 3;
+inline constexpr term_t zero_term = 4;
+
 enum class Kind {
     /*
      * Special marks

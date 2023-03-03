@@ -23,10 +23,23 @@ public:
     term_t mk_or(std::span<term_t> args);
     term_t mk_and(std::span<term_t> args);
 
-
     term_t mk_binary_or(term_t x, term_t y);
     term_t mk_binary_and(term_t x, term_t y);
     term_t mk_implies(term_t x, term_t y);
+    term_t mk_iff(term_t t1, term_t t2);
+
+
+    // Arithmetic terms
+    term_t mk_arithmetic_constant(std::string const& str);
+
+    term_t mk_arithmetic_eq(term_t t1, term_t t2);
+
+    // names
+    void set_term_name(term_t t, std::string const& name);
+    term_t get_term_by_name(std::string const& name);
+
+    // types
+    type_t get_term_type(term_t term);
 
 };
 } // namespace perun::terms

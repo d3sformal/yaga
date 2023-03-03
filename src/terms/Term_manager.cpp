@@ -13,6 +13,21 @@ Term_manager::Term_manager()
 
 Term_manager::~Term_manager() = default;
 
+void Term_manager::set_term_name(term_t t, std::string const& name)
+{
+    term_table->set_term_name(t, name);
+}
+
+term_t Term_manager::get_term_by_name(std::string const& name)
+{
+    return term_table->get_term_by_name(name);
+}
+
+type_t Term_manager::get_term_type(term_t term)
+{
+    return term_table->get_type(term);
+}
+
 term_t Term_manager::mk_uninterpreted_constant(type_t type)
 {
     return term_table->new_uninterpreted_constant(type);
@@ -73,4 +88,23 @@ term_t Term_manager::mk_binary_and(term_t x, term_t y)
 term_t Term_manager::mk_implies(term_t x, term_t y) {
     return mk_binary_or(opposite_term(x), y);
 }
+
+term_t Term_manager::mk_iff(term_t t1, term_t t2)
+{
+    throw std::logic_error("UNIMPLEMENTED!");
+}
+
+term_t Term_manager::mk_arithmetic_constant(std::string const& str)
+{
+    // TODO: This is very prototypish
+    auto num = std::stoi(str);
+    Rational rat(num);
+    return term_table->arithmetic_constant(rat);
+}
+
+term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
+{
+    throw std::logic_error("UNIMPLEMENTED!");
+}
+
 } // namespace perun::terms

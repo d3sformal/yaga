@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <span>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -59,10 +60,6 @@ inline constexpr uint32_t polarity_of(term_t t) { return ((uint32_t)t) & 1; }
 
 inline constexpr term_t opposite_term(term_t t) { return t ^ 1; }
 
-inline constexpr term_t true_term = 2;
-inline constexpr term_t false_term = 3;
-inline constexpr term_t zero_term = 4;
-
 inline constexpr term_t positive_term(int32_t i) { return (i << 1); }
 inline constexpr term_t negative_term(int32_t i) { return (i << 1) | 1; }
 
@@ -75,16 +72,24 @@ class Term_table {
     };
 
     using inner_table_t = std::vector<Term>;
+    using symbol_table_t = std::unordered_map<std::string, term_t>; // Maps name to term
+    using name_table_t = std::unordered_map<term_t, std::string>; // Maps term to a canonical name
 
     inner_table_t inner_table;
 
     Term_hash_table known_terms;
+
+    symbol_table_t symbol_table;
+    name_table_t name_table;
 
     // Necessary initialization
     void add_primitive_terms();
 
 public:
     Term_table();
+
+    void set_term_name(term_t, std::string const&);
+    term_t get_term_by_name(std::string const&);
 
     Kind get_kind(term_t);
     type_t get_type(term_t);
