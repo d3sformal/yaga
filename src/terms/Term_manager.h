@@ -34,6 +34,14 @@ public:
 
     term_t mk_arithmetic_eq(term_t t1, term_t t2);
 
+    term_t mk_arithmetic_geq(term_t t1, term_t t2);
+
+    term_t mk_arithmetic_leq(term_t t1, term_t t2);
+
+    term_t mk_arithmetic_gt(term_t t1, term_t t2);
+
+    term_t mk_arithmetic_lt(term_t t1, term_t t2);
+
     // names
     void set_term_name(term_t t, std::string const& name);
     term_t get_term_by_name(std::string const& name);

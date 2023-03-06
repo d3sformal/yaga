@@ -114,6 +114,21 @@ public:
     term_t new_uninterpreted_constant(type_t tau);
 
     term_t arithmetic_constant(Rational const & value);
+
+    /*
+     * Atom (t >= 0) for an arithmetic term t
+     */
+    term_t arithmetic_geq_zero(term_t t);
+
+    /*
+     * Atom (t = 0) for an arithmetic term t
+     */
+    term_t arithmetic_eq_zero(term_t t);
+
+    /*
+     * Atom (t1 = t2) for arithmetic terms t1, t2
+     */
+    term_t arithmetic_binary_eq(term_t t1, term_t t2);
 };
 
 } // namespace perun::terms

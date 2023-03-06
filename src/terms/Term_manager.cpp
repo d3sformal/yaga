@@ -107,4 +107,25 @@ term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
     throw std::logic_error("UNIMPLEMENTED!");
 }
 
+term_t Term_manager::mk_arithmetic_geq(term_t t1, term_t t2)
+{
+    // Transform to a form (t >= 0)
+    throw std::logic_error("UNIMPLEMENTED!");
+}
+
+term_t Term_manager::mk_arithmetic_leq(term_t t1, term_t t2)
+{
+    return mk_arithmetic_geq(t2, t1);
+}
+
+term_t Term_manager::mk_arithmetic_lt(term_t t1, term_t t2)
+{
+    return opposite_term(mk_arithmetic_geq(t1, t2));
+}
+
+term_t Term_manager::mk_arithmetic_gt(term_t t1, term_t t2)
+{
+    return mk_arithmetic_lt(t2, t1);
+}
+
 } // namespace perun::terms
