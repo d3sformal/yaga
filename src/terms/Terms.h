@@ -54,14 +54,14 @@ public:
 /*
  * Extract term and polarity bit
  */
-inline constexpr int32_t index_of(term_t t) { return t >> 1; }
+inline constexpr int32_t index_of(term_t t) { return t.x >> 1; }
 
-inline constexpr uint32_t polarity_of(term_t t) { return ((uint32_t)t) & 1; }
+inline constexpr uint32_t polarity_of(term_t t) { return ((uint32_t)t.x) & 1; }
 
-inline constexpr term_t opposite_term(term_t t) { return t ^ 1; }
+inline constexpr term_t opposite_term(term_t t) { return term_t{t.x ^ 1}; }
 
-inline constexpr term_t positive_term(int32_t i) { return (i << 1); }
-inline constexpr term_t negative_term(int32_t i) { return (i << 1) | 1; }
+inline constexpr term_t positive_term(int32_t i) { return term_t{i << 1}; }
+inline constexpr term_t negative_term(int32_t i) { return term_t{(i << 1) | 1}; }
 
 
 class Term_table {
@@ -95,7 +95,7 @@ public:
     type_t get_type(term_t);
     term_descriptor_t const& get_descriptor(term_t);
 
-    term_t construct_composite(Kind kind, type_t type, std::span<type_t> args);
+    term_t construct_composite(Kind kind, type_t type, std::span<term_t> args);
     term_t construct_rational(Kind kind, type_t type, Rational const & value);
     term_t construct_constant(Kind kind, type_t type, int32_t index);
     term_t construct_uninterpreted_constant(type_t type);

@@ -2,9 +2,16 @@
 #define PERUN_TERM_TYPES_H
 
 #include <cstdint>
+#include <functional>
 
 namespace perun::terms {
-using term_t = int32_t;
+struct term_t {
+    int32_t x;
+    static const term_t Undef;
+
+    friend auto operator<=>(term_t, term_t) = default;
+};
+
 using type_t = int32_t;
 
 namespace types {
@@ -15,10 +22,14 @@ static constexpr type_t bool_type = 0;
 static constexpr type_t real_type = 1;
 }
 
-inline constexpr term_t null_term = -1;
-inline constexpr term_t true_term = 2;
-inline constexpr term_t false_term = 3;
-inline constexpr term_t zero_term = 4;
+inline constexpr term_t null_term { -1 };
+inline constexpr term_t true_term { 2 };
+inline constexpr term_t false_term { 3 };
+inline constexpr term_t zero_term { 4 };
+
+inline constexpr term_t term_t::Undef = null_term;
+
+
 
 enum class Kind {
     /*
@@ -63,6 +74,16 @@ enum class Kind {
 
 };
 
+}
+
+namespace std {
+template <> struct hash<perun::terms::term_t>
+{
+    size_t operator()(perun::terms::term_t t) const
+    {
+        return std::hash<int32_t>()(t.x);
+    }
+};
 }
 
 #endif // PERUN_TERM_TYPES_H

@@ -10,7 +10,7 @@ uint64_t hash_composite_term(Kind kind, std::span<term_t> args) {
     std::hash<int32_t> hasher;
     uint64_t result = hasher(static_cast<std::underlying_type<Kind>::type>(kind));
     for (term_t arg : args) {
-        result = result * 31 + hasher(arg);
+        result = result * 31 + hasher(arg.x);
     }
     return result;
 }
@@ -62,13 +62,13 @@ constant_term_descriptor_t::make(int32_t index)
 
 
 
-Kind Term_table::get_kind(term_t t) { return inner_table[t].kind; }
+Kind Term_table::get_kind(term_t t) { return inner_table[t.x].kind; }
 
-type_t Term_table::get_type(term_t t) { return inner_table[t].type; }
+type_t Term_table::get_type(term_t t) { return inner_table[t.x].type; }
 
-term_descriptor_t const& Term_table::get_descriptor(term_t t) { return *inner_table[t].descriptor; }
+term_descriptor_t const& Term_table::get_descriptor(term_t t) { return *inner_table[t.x].descriptor; }
 
-term_t Term_table::construct_composite(Kind kind, type_t type, std::span<type_t> args)
+term_t Term_table::construct_composite(Kind kind, type_t type, std::span<term_t> args)
 {
     auto term = composite_term_descriptor_t::make(args);
     auto index = static_cast<int32_t>(inner_table.size()); // TODO: Check Max term count
