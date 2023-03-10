@@ -115,6 +115,10 @@ public:
 
     term_t arithmetic_constant(Rational const & value);
 
+    term_t arithmetic_product(Rational const& coeff, term_t var);
+
+    term_t arithmetic_polynomial(std::span<term_t> monomials);
+
     /*
      * Atom (t >= 0) for an arithmetic term t
      */
@@ -129,6 +133,27 @@ public:
      * Atom (t1 = t2) for arithmetic terms t1, t2
      */
     term_t arithmetic_binary_eq(term_t t1, term_t t2);
+
+    /*
+     * Queries on terms
+     */
+
+    bool is_arithmetic_constant(term_t t) const;
+
+    bool is_uninterpreted_constant(term_t) const;
+
+    bool is_arithmetic_product(term_t) const;
+
+    bool is_arithmetic_polynomial(term_t) const;
+
+    Rational const& arithmetic_constant_value(term_t) const;
+
+    term_t var_of_product(term_t) const;
+
+    Rational const& coeff_of_product(term_t) const;
+
+    std::span<const term_t> monomials_of(term_t) const;
+
 };
 
 } // namespace perun::terms

@@ -4,9 +4,12 @@
 #include <memory>
 #include <span>
 
+#include "Arithmetic_polynomial.h"
 #include "Term_types.h"
 
 namespace perun::terms {
+
+using poly_t = Polynomial<term_t>;
 
 class Term_table;
 
@@ -42,12 +45,19 @@ public:
 
     term_t mk_arithmetic_lt(term_t t1, term_t t2);
 
+    term_t mk_arithmetic_minus(term_t t1, term_t t2);
+
     // names
     void set_term_name(term_t t, std::string const& name);
     term_t get_term_by_name(std::string const& name);
 
     // types
     type_t get_term_type(term_t term);
+
+private:
+    term_t poly_to_term(poly_t const& poly);
+    poly_t term_to_poly(term_t term);
+
 
 };
 } // namespace perun::terms

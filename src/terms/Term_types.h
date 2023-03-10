@@ -70,7 +70,8 @@ enum class Kind {
     ARITH_DIVIDES_ATOM, // divisibility test: (divides x y) is true if y = n * x for an integer n
 
     // Polynomials
-    ARITH_POLY, // polynomial with rational coefficients
+    ARITH_PRODUCT, // arithmetic product, only linear for now
+    ARITH_POLY, // polynomial with rational coefficients (more than one (product) monomial
 
 };
 

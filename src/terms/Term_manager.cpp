@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "Arithmetic_polynomial.h"
 #include "Terms.h"
 
 namespace perun::terms {
@@ -107,12 +108,6 @@ term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
     throw std::logic_error("UNIMPLEMENTED!");
 }
 
-term_t Term_manager::mk_arithmetic_geq(term_t t1, term_t t2)
-{
-    // Transform to a form (t >= 0)
-    throw std::logic_error("UNIMPLEMENTED!");
-}
-
 term_t Term_manager::mk_arithmetic_leq(term_t t1, term_t t2)
 {
     return mk_arithmetic_geq(t2, t1);
@@ -126,6 +121,89 @@ term_t Term_manager::mk_arithmetic_lt(term_t t1, term_t t2)
 term_t Term_manager::mk_arithmetic_gt(term_t t1, term_t t2)
 {
     return mk_arithmetic_lt(t2, t1);
+}
+
+term_t Term_manager::mk_arithmetic_geq(term_t t1, term_t t2)
+{
+    // Transform to a form (t >= 0)
+    term_t diff = mk_arithmetic_minus(t1, t2);
+    return term_table->arithmetic_geq_zero(diff);
+}
+
+/*
+ * Returns normalized term equal to "t1 - t2"
+ */
+term_t Term_manager::mk_arithmetic_minus(term_t t1, term_t t2)
+{
+    poly_t p1 = term_to_poly(t1);
+    poly_t p2 = term_to_poly(t2);
+    Rational neg_one = -1;
+    p1.merge(p2, neg_one);
+    return poly_to_term(p1);
+}
+
+poly_t Term_manager::term_to_poly(term_t term)
+{
+    poly_t poly;
+    if (term_table->is_arithmetic_constant(term))
+    {
+        poly.add_term(term_t::Undef, term_table->arithmetic_constant_value(term));
+        return poly;
+    }
+    if (term_table->is_uninterpreted_constant(term))
+    {
+        poly.add_term(term, Rational(1));
+        return poly;
+    }
+    if (term_table->is_arithmetic_product(term))
+    {
+        poly.add_term(term_table->var_of_product(term), term_table->coeff_of_product(term));
+        return poly;
+    }
+    if (term_table->is_arithmetic_polynomial(term))
+    {
+        auto const& children = term_table->monomials_of(term);
+        for (term_t child : children)
+        {
+            poly.merge(term_to_poly(child), Rational(1));
+        }
+        return poly;
+    }
+    assert(false);
+    throw std::logic_error("UNREACHABLE");
+}
+
+term_t Term_manager::poly_to_term(poly_t const& poly)
+{
+    auto n = poly.size();
+    if (n == 0) { return zero_term; }
+
+    auto monomial_to_term = [&](auto const& mono) {
+        assert(!is_zero(mono.coeff));
+        if (mono.var == term_t::Undef)
+        {
+            return term_table->arithmetic_constant(mono.coeff);
+        }
+        if (mono.coeff == Rational(1))
+        {
+            return mono.var;
+        }
+        return term_table->arithmetic_product(mono.coeff, mono.var);
+    };
+
+    if (n == 1)
+    {
+        auto const& mono = *poly.begin();
+        return monomial_to_term(mono);
+    }
+
+    std::vector<term_t> mono_terms;
+    mono_terms.reserve(n);
+    for (auto const& mono : poly)
+    {
+        mono_terms.push_back(monomial_to_term(mono));
+    }
+    return term_table->arithmetic_polynomial(mono_terms);
 }
 
 } // namespace perun::terms

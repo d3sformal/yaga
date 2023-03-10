@@ -130,6 +130,49 @@ term_t Term_table::or_term(std::span<term_t> args)
     return known_terms.get_composite_term(proxy);
 }
 
+term_t Term_table::arithmetic_product(Rational const& coeff, term_t var)
+{
+    assert(is_uninterpreted_constant(var));
+    term_t coeff_term = arithmetic_constant(coeff);
+    std::array<term_t, 2> args{var, coeff_term};
+    Composite_term_proxy proxy{Kind::ARITH_PRODUCT, types::real_type, hash_composite_term(Kind::ARITH_PRODUCT, args), *this, args};
+    return known_terms.get_composite_term(proxy);
+}
+
+term_t Term_table::arithmetic_polynomial(std::span<term_t> args)
+{
+    Composite_term_proxy proxy{Kind::ARITH_POLY, types::real_type, hash_composite_term(Kind::ARITH_POLY, args), *this, args};
+    return known_terms.get_composite_term(proxy);
+}
+
+term_t Term_table::arithmetic_geq_zero(term_t t)
+{
+    assert(get_type(t) == types::real_type);
+    std::array<term_t, 1> args{t};
+    Composite_term_proxy proxy{Kind::ARITH_GE_ATOM, types::bool_type, hash_composite_term(Kind::ARITH_GE_ATOM, args), *this, args};
+    return known_terms.get_composite_term(proxy);
+}
+
+term_t Term_table::arithmetic_eq_zero(term_t t)
+{
+    assert(get_type(t) == types::real_type);
+    std::array<term_t, 1> args{t};
+    Composite_term_proxy proxy{Kind::ARITH_EQ_ATOM, types::bool_type, hash_composite_term(Kind::ARITH_EQ_ATOM, args), *this, args};
+    return known_terms.get_composite_term(proxy);
+}
+
+term_t Term_table::arithmetic_binary_eq(term_t t1, term_t t2)
+{
+    assert(get_type(t1) == types::real_type);
+    assert(get_type(t2) == types::real_type);
+    assert(get_kind(t1) != Kind::ARITH_PRODUCT and get_kind(t1) != Kind::ARITH_POLY);
+    assert(get_kind(t2) != Kind::ARITH_PRODUCT and get_kind(t2) != Kind::ARITH_POLY);
+    assert(t1 < t2);
+    std::array<term_t, 2> args{t1, t2};
+    Composite_term_proxy proxy{Kind::ARITH_BINEQ_ATOM, types::real_type, hash_composite_term(Kind::ARITH_BINEQ_ATOM, args), *this, args};
+    return known_terms.get_composite_term(proxy);
+}
+
 /*
  * Declare a new uninterpreted constant of the given type.
  * Always creates a fresh term!
@@ -159,6 +202,60 @@ term_t Term_table::get_term_by_name(std::string const& name)
 {
     auto it = symbol_table.find(name);
     return it == symbol_table.end() ? null_term : it->second;
+}
+
+/*
+ * Queries on terms
+ */
+
+bool Term_table::is_arithmetic_constant(term_t t) const
+{
+    return this->inner_table[index_of(t)].kind == Kind::ARITH_CONSTANT;
+}
+
+Rational const& Term_table::arithmetic_constant_value(term_t t) const
+{
+    assert(is_arithmetic_constant(t));
+    auto const& descriptor = static_cast<rational_term_descriptor_t const&>(*this->inner_table[index_of(t)].descriptor);
+    return descriptor.value();
+}
+
+bool Term_table::is_uninterpreted_constant(term_t t) const
+{
+    return this->inner_table[index_of(t)].kind == Kind::UNINTERPRETED_TERM;
+}
+
+bool Term_table::is_arithmetic_product(term_t t) const
+{
+    return this->inner_table[index_of(t)].kind == Kind::ARITH_PRODUCT;
+}
+
+bool Term_table::is_arithmetic_polynomial(term_t t) const
+{
+    return this->inner_table[index_of(t)].kind == Kind::ARITH_POLY;
+}
+
+term_t Term_table::var_of_product(term_t t) const
+{
+    assert(is_arithmetic_product(t));
+    auto const& descriptor = static_cast<composite_term_descriptor_t const&>(*this->inner_table[index_of(t)].descriptor);
+    assert(descriptor.size() == 2);
+    return descriptor.args()[1];
+}
+
+Rational const& Term_table::coeff_of_product(term_t t) const
+{
+    assert(is_arithmetic_product(t));
+    auto const& descriptor = static_cast<composite_term_descriptor_t const&>(*this->inner_table[index_of(t)].descriptor);
+    assert(descriptor.size() == 2);
+    return arithmetic_constant_value(descriptor.args()[0]);
+}
+
+std::span<const term_t> Term_table::monomials_of(term_t t) const
+{
+    assert(is_arithmetic_polynomial(t));
+    auto const& descriptor = static_cast<composite_term_descriptor_t const&>(*this->inner_table[index_of(t)].descriptor);
+    return descriptor.args();
 }
 
 } // namespace terms
