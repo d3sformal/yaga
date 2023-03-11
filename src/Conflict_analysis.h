@@ -32,7 +32,6 @@ public:
     std::pair<Clause, int> analyze(Trail const& trail, Clause&& conflict,
                                    Resolve_callback&& on_resolve)
     {
-        // TODO: handle a semantic split correctly
         auto const& model = trail.model<bool>(Variable::boolean);
         assert(eval(model, conflict) == false);
 
