@@ -62,7 +62,7 @@ std::optional<Clause> Bool_theory::initialize(Database& db, Trail& trail)
                 if (clause.size() == 1) // propagate unit clauses
                 {
                     watched[clause[0]].emplace_back(Watched_clause{&clause});
-                    satisfied.push_back({clause[0], &clause});
+                    satisfied.push_back({clause[0], &clause, /*decision_level=*/0});
                 }
                 else // non-unit clause
                 {
@@ -79,7 +79,9 @@ std::optional<Clause> Bool_theory::initialize(Database& db, Trail& trail)
         if (var.type() == Variable::boolean)
         {
             auto lit = model.value(var.ord()) ? Literal{var.ord()} : Literal{var.ord()}.negate();
-            satisfied.push_back({lit, reason});
+            auto level = trail.decision_level(lit.var());
+            assert(level.has_value());
+            satisfied.push_back({lit, reason, level.value()});
         }
     }
 
@@ -95,23 +97,24 @@ std::optional<Clause> Bool_theory::propagate(Database& db, Trail& trail)
 
     while (!conflict && !satisfied.empty())
     {
-        auto [lit, reason] = satisfied.back();
+        auto [lit, reason, level] = satisfied.back();
         satisfied.pop_back();
 
         // propagate the literal if necessary
         if (reason != nullptr && !model.is_defined(lit.var().ord()))
         {
             model.set_value(lit.var().ord(), !lit.is_negation());
-            trail.propagate(lit.var(), reason, trail.decision_level());
+            trail.propagate(lit.var(), reason, level);
         }
         assert(eval(model, lit) == true);
 
-        conflict = falsified(model, lit.negate());
+        conflict = falsified(trail, model, lit.negate());
     }
     return conflict;
 }
 
-bool Bool_theory::replace_second_watch(Model<bool> const& model, Watched_clause& watch)
+bool Bool_theory::replace_second_watch(Trail const& trail, Model<bool> const& model, 
+                                       Watched_clause& watch)
 {
     auto& clause = *watch.clause;
 
@@ -139,11 +142,53 @@ bool Bool_theory::replace_second_watch(Model<bool> const& model, Watched_clause&
                 watch.index = 2; // skip the watched literals
             }
         } while (watch.index != end);
+
+        // The second literal has not been replaced. Make sure that the assigned, watched literal 
+        // has the highest decision level. It is not guaranteed that the second literal will be 
+        // the top literal because plugins can retroactively propagate literals at lower levels.
+        auto top_it = clause.begin() + 1;
+        auto top_level = trail.decision_level(top_it->var()).value();
+        for (auto it = top_it + 1; it != clause.end(); ++it) 
+        {
+            auto other_level = trail.decision_level(it->var()).value();
+            if (other_level > top_level)
+            {
+                top_it = it;
+                top_level = other_level;
+            }
+        }
+
+        bool replaced = false;
+        if (*top_it != clause[1])
+        {
+            // start watching `*top_it`
+            watched[*top_it].push_back(watch);
+            std::iter_swap(top_it, clause.begin() + 1);
+            replaced = true;
+        }
+
+        // order watched literals by decision level
+        auto front_level = trail.decision_level(clause[0].var()).value_or(top_level);
+        if (front_level < top_level)
+        {
+            std::swap(clause[0], clause[1]);
+        }
+        return replaced;
     }
     return false;
 }
 
-std::optional<Clause> Bool_theory::falsified(Model<bool> const& model, Literal falsified_lit)
+bool Bool_theory::is_unit(Model<bool> const& model, Clause const& clause) const
+{
+    if (clause.empty())
+    {
+        return false;
+    }
+    return clause.size() == 1 || eval(model, clause[1]) == false;
+}
+
+std::optional<Clause> 
+Bool_theory::falsified(Trail const& trail, Model<bool> const& model, Literal falsified_lit)
 {
     assert(eval(model, falsified_lit) == false);
 
@@ -173,19 +218,27 @@ std::optional<Clause> Bool_theory::falsified(Model<bool> const& model, Literal f
             continue;
         }
 
-        if (replace_second_watch(model, watch))
+        if (replace_second_watch(trail, model, watch))
         {
             std::swap(watch, watchlist.back());
             watchlist.pop_back();
         }
-        else // there is no other non-falsified literal in clause
+        else // `falsified_lit` is still a watched literal in `clause`
         {
+            ++i;
             if (eval(model, clause[0]) == false) // if the clause is false
             {
+                assert(eval(model, clause) == false);
                 return clause;
             }
-            satisfied.push_back({clause[0], &clause});
-            ++i;
+        }
+
+        if (is_unit(model, clause))
+        {
+            assert(!eval(model, clause[0]).has_value());
+            int level = clause.size() > 1 ? trail.decision_level(clause[1].var()).value() 
+                                          : trail.decision_level();
+            satisfied.push_back({clause[0], &clause, level});
         }
     }
     return {};

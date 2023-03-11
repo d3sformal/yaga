@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <optional>
 #include <vector>
+#include <ranges>
 
 #include "Database.h"
 #include "Literal.h"
@@ -64,10 +65,13 @@ private:
         }
     };
 
+    // satisfied literal with pointer to the reason clause (or nullptr) and decision level
+    using Satisfied_literal = std::tuple<Literal, Clause*, int>;
+
     // map literal -> list of clauses in which it is watched
     Literal_map<std::vector<Watched_clause>> watched;
     // stack of true literals to propagate with a pointer to the reason clause
-    std::vector<std::pair<Literal, Clause*>> satisfied;
+    std::vector<Satisfied_literal> satisfied;
 
     /** Propagate assigned literals at current decision level in @p trail
      *
@@ -84,21 +88,31 @@ private:
      * -# If some clause becomes false, this method will return a copy of that
      * clause.
      *
+     * @param trail current solver trail
      * @param model current assignment of boolean variables
      * @param lit recently falsified literal in @p model
-     * @return conflict clause if a clause becomes flase. None, otherwise.
+     * @return conflict clause if a clause becomes false. None, otherwise.
      */
-    std::optional<Clause> falsified(Model<bool> const& model, Literal lit);
+    std::optional<Clause> falsified(Trail const& trail, Model<bool> const& model, Literal lit);
 
     /** Try to replace the second watched literal in @p watch with some other
      * non-falsified literal
      *
+     * @param trail current solver trail
      * @param model current assignment of boolean variables
      * @param watch
-     * @return true iff the second watched literal has been replaced with some
-     * other non-falsified literal in the clause
+     * @return true iff the second watched literal has been replaced with some other literal in 
+     * the clause (however, the newly watched literal could be also assigned)
      */
-    bool replace_second_watch(Model<bool> const& model, Watched_clause& watch);
+    bool replace_second_watch(Trail const& trail, Model<bool> const& model, Watched_clause& watch);
+
+    /** Check whether @p clause is a unit clause.
+     * 
+     * @param model partial assignment of boolean variables
+     * @param clause queried clause
+     * @return true iff @p clause has exactly one unassigned variable
+     */
+    bool is_unit(Model<bool> const& model, Clause const& clause) const;
 };
 
 } // namespace perun

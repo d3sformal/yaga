@@ -45,7 +45,7 @@ void Generalized_vsids::on_before_backtrack(Database&, Trail& trail, int level)
     {
         for (auto [var, _] : trail.assigned(i))
         {
-            if (!variables.contains(var))
+            if (!variables.contains(var) && trail.decision_level(var).value() > level)
             {
                 variables.push(var, score(var));
             }

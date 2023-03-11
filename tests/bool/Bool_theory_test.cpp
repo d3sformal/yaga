@@ -170,5 +170,44 @@ TEST_CASE("Skip satisfied clauses", "[bool_theory][bcp]")
     REQUIRE(model.value(1) == false);
     REQUIRE(model.is_defined(2));
     REQUIRE(model.value(2) == true);
+}
 
+TEST_CASE("Propagate unit clauses at lower decision levels", "[bool_theory][bcp]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Bool_theory theory;
+
+    Database db;
+    db.assert_clause(lit(0), lit(1));
+    db.assert_clause(lit(1), lit(2), lit(3));
+
+    Trail trail;
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
+
+    auto conflict = theory.propagate(db, trail);
+    REQUIRE(!conflict);
+    REQUIRE(!model.is_defined(0));
+    REQUIRE(!model.is_defined(1));
+    REQUIRE(!model.is_defined(2));
+    REQUIRE(!model.is_defined(3));
+
+    model.set_value(4, true);
+    trail.decide(bool_var(4));
+
+    // semantic propagation of not(boolean(0)) at decision level 0
+    model.set_value(0, false);
+    trail.propagate(bool_var(0), nullptr, 0);
+
+    conflict = theory.propagate(db, trail);
+    REQUIRE(!conflict);
+    REQUIRE(model.is_defined(0));
+    REQUIRE(model.value(0) == false);
+    REQUIRE(model.is_defined(1));
+    REQUIRE(model.value(1) == true);
+    REQUIRE(!model.is_defined(2));
+    REQUIRE(!model.is_defined(3));
+
+    REQUIRE(trail.decision_level(bool_var(1)).value() == 0);
 }
