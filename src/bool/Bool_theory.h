@@ -98,21 +98,25 @@ private:
     /** Try to replace the second watched literal in @p watch with some other
      * non-falsified literal
      *
-     * @param trail current solver trail
      * @param model current assignment of boolean variables
      * @param watch
-     * @return true iff the second watched literal has been replaced with some other literal in 
-     * the clause (however, the newly watched literal could be also assigned)
+     * @return true iff the second watched literal has been replaced with some non-falsified 
+     * literal in the clause
      */
-    bool replace_second_watch(Trail const& trail, Model<bool> const& model, Watched_clause& watch);
+    bool replace_second_watch(Model<bool> const& model, Watched_clause& watch);
 
-    /** Check whether @p clause is a unit clause.
+    /** Make sure the second watched variable has the highest decision level in a unit or a false
+     * clause.
      * 
+     * Precondition: clause of @p watch is unit or false in @p model
+     * 
+     * @param trail current solver trail
      * @param model partial assignment of boolean variables
-     * @param clause queried clause
-     * @return true iff @p clause has exactly one unassigned variable
+     * @param watch unit or false clause where the second watched variable is false
+     * @return true iff the second watch has been replaced with a literal with higher decision 
+     * level
      */
-    bool is_unit(Model<bool> const& model, Clause const& clause) const;
+    bool fix_second_watch(Trail const& trail, Model<bool> const& model, Watched_clause& watch);
 };
 
 } // namespace perun

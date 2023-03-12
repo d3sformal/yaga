@@ -211,3 +211,65 @@ TEST_CASE("Propagate unit clauses at lower decision levels", "[bool_theory][bcp]
 
     REQUIRE(trail.decision_level(bool_var(1)).value() == 0);
 }
+
+TEST_CASE("Maintain watched literals invariants", "[bool_theory][bcp]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    Bool_theory theory;
+    Database db;
+    Trail trail;
+    auto& model = trail.set_model<bool>(Variable::boolean, 10);
+
+    SECTION("move true literals to the front")
+    {
+        db.assert_clause(lit(0), lit(1), lit(2));
+        auto conflict = theory.propagate(db, trail);
+        REQUIRE(!conflict);
+
+        model.set_value(2, true);
+        trail.propagate(bool_var(2), nullptr, 0);
+
+        model.set_value(1, false);
+        trail.propagate(bool_var(1), nullptr, 0);
+
+        model.set_value(0, false);
+        trail.propagate(bool_var(0), nullptr, 0);
+
+        conflict = theory.propagate(db, trail);
+        REQUIRE(!conflict);
+    }
+
+    SECTION("move false, watched literals to the second position")
+    {
+        db.assert_clause(lit(0), lit(1), lit(2));
+        auto conflict = theory.propagate(db, trail);
+        REQUIRE(!conflict);
+
+        model.set_value(1, false);
+        trail.propagate(bool_var(1), nullptr, 0);
+
+        model.set_value(0, false);
+        trail.propagate(bool_var(0), nullptr, 0);
+
+        conflict = theory.propagate(db, trail);
+        REQUIRE(!conflict);
+    }
+
+    SECTION("reassign both watched literals in the same call")
+    {
+        db.assert_clause(lit(0), lit(1), lit(2), lit(3));
+        auto conflict = theory.propagate(db, trail);
+        REQUIRE(!conflict);
+
+        model.set_value(0, false);
+        trail.propagate(bool_var(0), nullptr, 0);
+
+        model.set_value(1, false);
+        trail.propagate(bool_var(1), nullptr, 0);
+
+        conflict = theory.propagate(db, trail);
+        REQUIRE(!conflict);
+    }
+}

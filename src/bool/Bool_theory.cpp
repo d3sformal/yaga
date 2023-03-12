@@ -106,15 +106,18 @@ std::optional<Clause> Bool_theory::propagate(Database& db, Trail& trail)
             model.set_value(lit.var().ord(), !lit.is_negation());
             trail.propagate(lit.var(), reason, level);
         }
+        assert(reason == nullptr || std::all_of(reason->begin(), reason->end(), [&](auto other_lit) {
+            return other_lit == lit || eval(model, other_lit) == false;
+        }));
         assert(eval(model, lit) == true);
 
         conflict = falsified(trail, model, lit.negate());
     }
+
     return conflict;
 }
 
-bool Bool_theory::replace_second_watch(Trail const& trail, Model<bool> const& model, 
-                                       Watched_clause& watch)
+bool Bool_theory::replace_second_watch(Model<bool> const& model, Watched_clause& watch)
 {
     auto& clause = *watch.clause;
 
@@ -129,7 +132,8 @@ bool Bool_theory::replace_second_watch(Trail const& trail, Model<bool> const& mo
         do
         {
             // check if the next literal is non-falsified
-            if (eval(model, clause[watch.index]) != false)
+            auto value = eval(model, clause[watch.index]);
+            if (value != false)
             {
                 std::swap(clause[1], clause[watch.index]);
                 watched[clause[1]].push_back(watch);
@@ -142,49 +146,50 @@ bool Bool_theory::replace_second_watch(Trail const& trail, Model<bool> const& mo
                 watch.index = 2; // skip the watched literals
             }
         } while (watch.index != end);
-
-        // The second literal has not been replaced. Make sure that the assigned, watched literal 
-        // has the highest decision level. It is not guaranteed that the second literal will be 
-        // the top literal because plugins can retroactively propagate literals at lower levels.
-        auto top_it = clause.begin() + 1;
-        auto top_level = trail.decision_level(top_it->var()).value();
-        for (auto it = top_it + 1; it != clause.end(); ++it) 
-        {
-            auto other_level = trail.decision_level(it->var()).value();
-            if (other_level > top_level)
-            {
-                top_it = it;
-                top_level = other_level;
-            }
-        }
-
-        bool replaced = false;
-        if (*top_it != clause[1])
-        {
-            // start watching `*top_it`
-            watched[*top_it].push_back(watch);
-            std::iter_swap(top_it, clause.begin() + 1);
-            replaced = true;
-        }
-
-        // order watched literals by decision level
-        auto front_level = trail.decision_level(clause[0].var()).value_or(top_level);
-        if (front_level < top_level)
-        {
-            std::swap(clause[0], clause[1]);
-        }
-        return replaced;
     }
     return false;
 }
 
-bool Bool_theory::is_unit(Model<bool> const& model, Clause const& clause) const
+bool Bool_theory::fix_second_watch(Trail const& trail, Model<bool> const& model, 
+                                   Watched_clause& watch)
 {
-    if (clause.empty())
+    auto& clause = *watch.clause;
+    assert(eval(model, clause[0]) != true);
+    assert(std::all_of(clause.begin() + 1, clause.end(), [&](auto lit) {
+        return eval(model, lit) == false;
+    }));
+
+    // Make sure that the false, watched literal has the highest decision level. The second 
+    // watched literal might not be the top level literal at this point because plugins can 
+    // propagate literals retroactively at lower decision levels.
+    auto top_it = clause.begin() + 1;
+    auto top_level = trail.decision_level(top_it->var()).value();
+    for (auto it = top_it + 1; it != clause.end(); ++it) 
     {
-        return false;
+        auto other_level = trail.decision_level(it->var()).value();
+        if (other_level > top_level)
+        {
+            top_it = it;
+            top_level = other_level;
+        }
     }
-    return clause.size() == 1 || eval(model, clause[1]) == false;
+
+    bool replaced = false;
+    if (*top_it != clause[1])
+    {
+        // start watching `*top_it`
+        watched[*top_it].push_back(watch);
+        std::iter_swap(top_it, clause.begin() + 1);
+        replaced = true;
+    }
+
+    // order watched literals by decision level
+    auto front_level = trail.decision_level(clause[0].var()).value_or(top_level);
+    if (front_level < top_level)
+    {
+        std::swap(clause[0], clause[1]);
+    }
+    return replaced;
 }
 
 std::optional<Clause> 
@@ -201,6 +206,7 @@ Bool_theory::falsified(Trail const& trail, Model<bool> const& model, Literal fal
         assert(clause.size() >= 1);
         if (clause.size() == 1)
         {
+            assert(eval(model, clause) == false);
             return clause; // the clause has just become empty
         }
 
@@ -218,24 +224,35 @@ Bool_theory::falsified(Trail const& trail, Model<bool> const& model, Literal fal
             continue;
         }
 
-        if (replace_second_watch(trail, model, watch))
+        if (replace_second_watch(model, watch))
         {
             std::swap(watch, watchlist.back());
             watchlist.pop_back();
         }
-        else // `falsified_lit` is still a watched literal in `clause`
+        else // `clause` is unit or false
         {
-            ++i;
+            // watch the highest level variable instead of `falsified_lit`
+            if (fix_second_watch(trail, model, watch))
+            {
+                std::swap(watch, watchlist.back());
+                watchlist.pop_back();
+            }
+            else // we are still watching `falsified_lit`
+            {
+                ++i;
+            }
+
             if (eval(model, clause[0]) == false) // if the clause is false
             {
                 assert(eval(model, clause) == false);
                 return clause;
             }
-        }
-
-        if (is_unit(model, clause))
-        {
+            
+            // the clause is unit
             assert(!eval(model, clause[0]).has_value());
+            assert(std::all_of(clause.begin() + 1, clause.end(), [&](auto lit) {
+                return eval(model, lit) == false;
+            }));
             int level = clause.size() > 1 ? trail.decision_level(clause[1].var()).value() 
                                           : trail.decision_level();
             satisfied.push_back({clause[0], &clause, level});

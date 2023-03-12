@@ -175,7 +175,10 @@ public:
         assert(var.type() < var_reason.size());
         assert(var.type() < var_models.size());
 
-        trail.back().push_back(Assignment{var, reason});
+        for (int i = level; i <= decision_level(); ++i)
+        {
+            trail[i].push_back(Assignment{var, reason});
+        }
         var_level[var.type()][var.ord()] = level;
         var_reason[var.type()][var.ord()] = reason;
     }
@@ -188,16 +191,11 @@ public:
     {
         assert(0 <= level);
 
-        std::vector<Assignment> keep;
         for (; decision_level() > level; trail.pop_back())
         {
             for (auto assignment : trail[decision_level()])
             {
-                if (var_level[assignment.var.type()][assignment.var.ord()] <= level)
-                {
-                    keep.push_back(assignment);
-                }
-                else // backtrack the assignment
+                if (var_level[assignment.var.type()][assignment.var.ord()] > level)
                 {
                     var_level[assignment.var.type()][assignment.var.ord()] = unassigned;
                     var_reason[assignment.var.type()][assignment.var.ord()] = nullptr;
@@ -206,9 +204,6 @@ public:
             }
         }
         assert(level == decision_level());
-
-        // add all kept propagations back to the top of the trail
-        trail.back().insert(trail.back().end(), keep.begin(), keep.end());
     }
 
     /** Check if some variable is assigned.
