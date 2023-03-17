@@ -105,7 +105,54 @@ term_t Term_manager::mk_arithmetic_constant(std::string const& str)
 
 term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
 {
-    throw std::logic_error("UNIMPLEMENTED!");
+    if (t1 == t2)
+    {
+        return true_term;
+    }
+    auto p = term_to_poly(t1);
+    auto other = term_to_poly(t2);
+    p.merge(other, -1);
+    assert(p.size() != 0);
+    if (p.size() <= 2)
+    {
+        if (p.size() == 1)
+        {
+            auto const& mono = *p.begin();
+            if (mono.var == term_t::Undef)
+            {
+                // t1 - t2 is a non-zero constant
+                assert(mono.coeff != 0);
+                return false_term;
+            }
+            else
+            {
+                // t1 - t2 is c*x for some constant c and variable x
+                return term_table->arithmetic_eq_zero(mono.var);
+            }
+            assert(false);
+        }
+        assert(p.size() == 2);
+        auto it = p.begin();
+        auto const& mono1 = *it;
+        auto const& mono2 = *(++it);
+        // p is c1*x1 + c2*x2
+        // Simplify (p = 0) to (x2 = -c1/c2) if x1 is UNDEF
+        // NOTE that x2 can never be UNDEF, because UNDEF (constant monomial) is always the first one
+        // Simplify (p = 0) to (x1 = x2) if c1 + c2 = 0
+        if (mono1.var == term_t::Undef)
+        {
+            term_t coeff = term_table->arithmetic_constant(-mono1.coeff / mono2.coeff);
+            return term_table->arithmetic_binary_eq(mono2.var, coeff);
+        }
+        assert(mono2.var != term_t::Undef);
+        if (mono1.coeff + mono2.coeff == 0)
+        {
+            return term_table->arithmetic_binary_eq(mono1.var, mono2.var);
+        }
+    }
+    // TODO: Normalize the polynomial!
+    term_t t = poly_to_term(p);
+    return term_table->arithmetic_eq_zero(t);
 }
 
 term_t Term_manager::mk_arithmetic_leq(term_t t1, term_t t2)
@@ -147,7 +194,10 @@ poly_t Term_manager::term_to_poly(term_t term)
     poly_t poly;
     if (term_table->is_arithmetic_constant(term))
     {
-        poly.add_term(term_t::Undef, term_table->arithmetic_constant_value(term));
+        if (term != zero_term)
+        {
+            poly.add_term(term_t::Undef, term_table->arithmetic_constant_value(term));
+        }
         return poly;
     }
     if (term_table->is_uninterpreted_constant(term))
