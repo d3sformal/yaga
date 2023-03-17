@@ -5,8 +5,9 @@
 #include <vector>
 
 #include "Smt2_term_parser.h"
-#include "Term_types.h"
+#include "Solver_wrapper.h"
 #include "Term_manager.h"
+#include "Term_types.h"
 #include "smt2_lexer.h"
 
 namespace perun::parser {
@@ -65,7 +66,7 @@ bool Smt2_command_context::parse_command()
     // (check-sat)
     case Token::CHECK_SAT_TOK:
     {
-        auto res = parser_context.check_sat();
+        auto res = parser_context.check_sat(assertions);
         print_answer(res);
     }
     break;
@@ -231,7 +232,22 @@ void Smt2_command_context::parse_error(std::string const& msg)
 }
 void Smt2_command_context::print_answer(Solver_answer answer)
 {
-    UNIMPLEMENTED;
+    switch (answer)
+    {
+    case Solver_answer::SAT:
+        std::cout << "sat" << std::endl;
+        break;
+    case Solver_answer::UNSAT:
+        std::cout << "unsat" << std::endl;
+        break;
+    case Solver_answer::UNKNOWN:
+        std::cout << "unknown" << std::endl;
+        break;
+    case Solver_answer::ERROR:
+        std::cout << "error" << std::endl;
+        break;
+    }
+
 }
 
 void Smt2_parser::parse_file(std::string const& file_name)

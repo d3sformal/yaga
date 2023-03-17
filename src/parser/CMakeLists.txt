@@ -10,6 +10,7 @@ target_sources(perun PRIVATE
         Smt2_parser.cpp
         Smt2_term_parser.cpp
         Parser_context.cpp
+        Solver_wrapper.cpp
         )
 
 add_executable(lexer_test lexer_test.cpp Flex_lexer.cpp ${FLEX_smt2_lexer_OUTPUTS})

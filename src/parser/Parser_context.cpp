@@ -1,5 +1,6 @@
 #include "Parser_context.h"
 
+#include "Solver_wrapper.h"
 #include "Term_manager.h"
 
 #define UNIMPLEMENTED throw std::logic_error("Not implemented yet!")
@@ -40,9 +41,9 @@ type_t Parser_context::get_type_for_symbol(std::string const& symbol)
     throw std::logic_error("Requested unknown type");
 }
 
-Solver_answer Parser_context::check_sat()
+Solver_answer Parser_context::check_sat(std::vector<term_t> const& assertions)
 {
-    UNIMPLEMENTED;
+    return Solver_wrapper(term_manager).check(assertions);
 }
 
 term_t Parser_context::declare_uninterpreted_constant(terms::type_t sort, std::string const& name)

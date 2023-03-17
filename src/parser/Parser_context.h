@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Solver_answer.h"
 #include "Term_types.h"
 
 namespace perun::terms {
@@ -80,10 +81,6 @@ public:
     }
 };
 
-enum class Solver_answer : char {
-    SAT, UNSAT, UNKNOWN, ERROR
-};
-
 class Parser_context {
 public:
     explicit Parser_context(terms::Term_manager& term_manager) : term_manager(term_manager) {}
@@ -98,7 +95,7 @@ public:
 
     type_t get_type_for_symbol(std::string const& symbol);
 
-    Solver_answer check_sat();
+    Solver_answer check_sat(std::vector<term_t> const& assertions);
 
     term_t declare_uninterpreted_constant(terms::type_t sort, std::string const& name);
 
