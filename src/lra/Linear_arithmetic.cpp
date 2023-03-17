@@ -452,4 +452,113 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     trail.decide(var);
 }
 
+void Linear_arithmetic::check_bounds_consistency(Trail const& trail, Models const& models)
+{
+    std::vector<Rational> ub;
+    std::vector<Rational> lb;
+    std::vector<Constraint> ub_reason;
+    std::vector<Constraint> lb_reason;
+    ub.resize(models.owned().num_vars(), std::numeric_limits<int>::max());
+    lb.resize(models.owned().num_vars(), std::numeric_limits<int>::lowest());
+    ub_reason.reserve(models.owned().num_vars());
+    lb_reason.reserve(models.owned().num_vars());
+
+    // compute actual bounds
+    for (auto c : constraints)
+    {
+        if (c.empty() || !models.boolean().is_defined(c.lit().var().ord()))
+        {
+            continue;
+        }
+
+        auto cons = models.boolean().value(c.lit().var().ord()) == !c.lit().is_negation() ? c : c.negate();
+        bool unit = !models.owned().is_defined(cons.vars().front()) && 
+            std::all_of(cons.vars().begin() + 1, cons.vars().end(), [&](auto ord) {
+                return models.owned().is_defined(ord);
+            });
+        if (unit)
+        {
+            auto var = cons.vars().front();
+            auto bound = cons.implied_value(models.owned()) / cons.coef().front();
+            if (implies_upper_bound(cons))
+            {
+                if (bound < ub[var])
+                {
+                    ub[var] = bound;
+                    ub_reason[var] = cons;
+                }
+            }
+            
+            if (implies_lower_bound(cons))
+            {
+                if (bound > lb[var])
+                {
+                    lb[var] = bound;
+                    lb_reason[var] = cons;
+                }
+            }
+        }
+    }
+
+    // check consistency with the bounds object
+    for (int var_ord = 0; var_ord < static_cast<int>(ub.size()); ++var_ord)
+    {
+        if (models.owned().is_defined(var_ord))
+        {
+            continue;
+        }
+
+        auto& bnds = bounds[var_ord];
+        if (auto lower_bound = bnds.lower_bound(models))
+        {
+            assert(lower_bound.value().value() == lb[var_ord]);
+        }
+        else
+        {
+            assert(lb[var_ord] == std::numeric_limits<int>::lowest());
+        }
+
+        if (auto upper_bound = bnds.upper_bound(models))
+        {
+            assert(upper_bound.value().value() == ub[var_ord]);
+        }
+        else
+        {
+            assert(ub[var_ord] == std::numeric_limits<int>::max());
+        }
+    }
+}
+
+void Linear_arithmetic::check_watch_consistency(Models const& models)
+{
+    for (auto cons : constraints)
+    {
+        if (cons.empty())
+        {
+            continue;
+        }
+
+        // the first variable is assigned => all variables are assigned
+        assert(!models.owned().is_defined(cons.vars().front()) || 
+                std::all_of(cons.vars().begin(), cons.vars().end(), [&](auto var) {
+                    return models.owned().is_defined(var);
+                }));
+        if (cons.size() > 1)
+        {
+            // the second variable is assigned => the constraint is unit
+            assert(!models.owned().is_defined(cons.vars()[1]) ||
+                    std::all_of(cons.vars().begin() + 2, cons.vars().end(), [&](auto var) {
+                        return models.owned().is_defined(var);
+                    }));
+        }
+
+        for (auto var : cons.vars() | std::views::take(2))
+        {
+            assert(std::find_if(watched[var].begin(), watched[var].end(), [cons](auto& watch) {
+                return watch.constraint.lit().var() == cons.lit().var();
+            }) != watched[var].end());
+        }
+    }
+}
+
 } // namespace perun

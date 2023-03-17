@@ -312,6 +312,19 @@ private:
      * @return integer value allowed by @p bounds or none if there is no such value
      */
     std::optional<Rational> find_integer(Models const& models, Variable_bounds& bounds);
+
+    /** Check that bounds is consistent with all unit constraints on the trail
+     * 
+     * @param trail solver trail
+     * @param models partial assignment of variables in @p trail
+     */
+    void check_bounds_consistency(Trail const& trail, Models const& models);
+
+    /** Check that watched variables are in watch lists
+     * 
+     * @param models partial assignment of variables
+     */
+    void check_watch_consistency(Models const& models);
 };
 
 } // namespace perun
