@@ -101,9 +101,9 @@ bool Term_hash_table::KeyEqual::operator()(Rational_proxy const& proxy,
         return false;
     }
     auto const& other_descriptor = term_table.get_descriptor(entry.term);
-    auto const& other_composite_descriptor =
+    auto const& other_rational_descriptor =
         static_cast<rational_term_descriptor_t const&>(other_descriptor);
-    return other_composite_descriptor.value() == proxy.value;
+    return other_rational_descriptor.value() == proxy.value;
 }
 
 bool Term_hash_table::KeyEqual::operator()(Term_hash_table::Entry const& first,
