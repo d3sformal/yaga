@@ -130,6 +130,21 @@ Fourier_motzkin_elimination::Constraint Fourier_motzkin_elimination::finish(Trai
     return cons;
 }
 
+bool Bound_conflict_analysis::in_conflict(Models const& models, Variable_bounds& bounds) const
+{
+    auto lower_bound = bounds.lower_bound(models);
+    auto upper_bound = bounds.upper_bound(models);
+    if (!lower_bound || !upper_bound)
+    {
+        return false;
+    }
+
+    auto lb = lower_bound.value(); 
+    auto ub = upper_bound.value(); 
+    auto is_strict = lb.reason().is_strict() || ub.reason().is_strict();
+    return lb.value() > ub.value() || (lb.value() == ub.value() && is_strict);
+}
+
 std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds)
 {
     auto models = lra->relevant_models(trail);
@@ -152,6 +167,7 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
     Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate()};
     fm.init(lb.reason());
     fm.resolve(ub.reason());
+    //minimize(trail, conflict);
     auto derived = fm.finish(trail);
     if (!derived.empty())
     {
@@ -163,6 +179,89 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
     assert(conflict.size() >= 2);
     assert(eval(models.boolean(), conflict) == false);
     return conflict;
+}
+
+void Bound_conflict_analysis::minimize(Trail& trail, Clause& conflict)
+{
+    auto models = lra->relevant_models(trail);
+    while (!fm.derived().empty())
+    {
+        // move the top level variable to the front
+        auto top_it = fm.derived().begin();
+        for (auto it = ++fm.derived().begin(); it != fm.derived().end(); ++it)
+        {
+            if (trail.decision_level(Variable{it->first, Variable::rational}).value() > trail.decision_level(Variable{top_it->first, Variable::rational}))
+            {
+                top_it = it;
+            }
+        }
+        std::iter_swap(top_it, fm.derived().begin());
+
+        // resolve bound conflict with the top level variable
+        if (auto cons = find_conflict(models))
+        {
+            fm.resolve(cons.value());
+            conflict.push_back(cons.value().lit().negate());
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+std::optional<Bound_conflict_analysis::Constraint> Bound_conflict_analysis::find_conflict(Models const& models)
+{
+    auto [var_ord, var_coef] = *fm.derived().begin();
+    auto& bounds = lra->find_bounds(var_ord);
+    auto value = fm.derived().implied_value(models);
+    if (var_coef < 0 || fm.predicate() == Order_predicate::eq) // `value` is a lower bound
+    {
+        if (auto upper_bound = bounds.upper_bound(models))
+        {
+            auto ub = upper_bound.value();
+            auto is_strict = ub.reason().is_strict() || fm.predicate() == Order_predicate::lt;
+            if (ub.value() < value || (ub.value() == value && is_strict))
+            {
+                return ub.reason();
+            }
+        }
+    }
+
+    if (var_coef > 0 || fm.predicate() == Order_predicate::eq) // `value` is an upper bound
+    {
+        if (auto lower_bound = bounds.lower_bound(models))
+        {
+            auto lb = lower_bound.value();
+            auto is_strict = lb.reason().is_strict() || fm.predicate() == Order_predicate::lt;
+            if (lb.value() > value || (lb.value() == value && is_strict))
+            {
+                return lb.reason();
+            }
+        }
+    }
+
+    return {};
+}
+
+bool Inequality_conflict_analysis::in_conflict(Models const& models, Variable_bounds& bounds) const
+{
+    auto lower_bound = bounds.lower_bound(models);
+    auto upper_bound = bounds.upper_bound(models);
+    if (!lower_bound || !upper_bound)
+    {
+        return false;
+    }
+
+    auto lb = lower_bound.value();
+    auto ub = upper_bound.value();
+    if (lb.value() != ub.value() || lb.reason().is_strict() || ub.reason().is_strict())
+    {
+        return false;
+    }
+
+    // check if `x != D` where D, L, U evaluate to the same value
+    return !!bounds.inequality(models, lb.value());
 }
 
 std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds)

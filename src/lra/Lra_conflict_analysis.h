@@ -73,7 +73,7 @@ template <typename T> struct Linear_polynomial {
      * @param models partial assignment of variables
      * @return
      */
-    T implied_value(Models models) const
+    T implied_value(Models const& models) const
     {
         assert(!empty());
 
@@ -159,6 +159,17 @@ public:
      */
     Constraint finish(Trail& trail);
 
+    /** Get current derived polynomial
+     * 
+     * @return current linear polynomial
+     */
+    inline Polynomial& derived() { return poly; }
+
+    /** Get current predicate
+     * 
+     * @return derived predicate
+     */
+    inline Order_predicate predicate() const { return pred; }
 private:
     // polynomial of the currently derived constraint
     Polynomial poly;
@@ -196,6 +207,20 @@ private:
     }
 };
 
+/** Analysis of bound conflicts.
+ * 
+ * Variable `x` is in a bound conflict if:
+ * -# `L {<=,<,=} x` is on the trail; and
+ * -# `x {<=,<,=} U` is on the trail; and
+ * -# `value(L) > value(U)` or `value(L) = value(U)` and at least one of 
+ * `L {<=,<,=} x`, `x {<=,<,=} U` is strict (i.e., `<`)
+ * 
+ * The `value` mapping maps linear polynomials to rational values according to current assignment 
+ * of rational variables.
+ * 
+ * We explain bound conflicts using an implication (Fourier-Motzkin elimination of `x`): 
+ * `L {<=,<,=} x && x {<=,<,=} U -> L {<=,<,=} U`
+ */
 class Bound_conflict_analysis {
 public:
     using Rational = Fraction<int>;
@@ -206,8 +231,15 @@ public:
 
     inline Bound_conflict_analysis(Linear_arithmetic* lra) : lra(lra), fm(lra) {}
 
-    /** Check if there is a bound conflict (i.e., `L <= x` and `x <= U` and `L > U` or similar
-     * conflicts with strict bounds)
+    /** Check whether there is a bound conflict in @p bounds
+     * 
+     * @param models partial assignment of variables
+     * @param bounds bounds of a real variable
+     * @return true iff @p bounds has a bound conflict
+     */
+    bool in_conflict(Models const& models, Variable_bounds& bounds) const;
+
+    /** Check if there is a bound conflict and provide an explanation if there is a conflict.
      *
      * @param trail current solver trail
      * @param bounds implied bounds for a variable
@@ -218,8 +250,36 @@ public:
 private:
     Linear_arithmetic* lra;
     Fourier_motzkin_elimination fm;
+
+    /** Apply the Fourier-Motzkin elimination as long as the derived constraint is in a bound 
+     * conflict.
+     * 
+     * @param trail solver trail
+     * @param conflict conflict clause (this method adds new assumptions to the implication)
+     */
+    void minimize(Trail& trail, Clause& conflict);
+
+    /** Check whether the first variable in currently derived constraint is in a bound conflict.
+     * 
+     * @param models 
+     * @return std::optional<Constraint> 
+     */
+    std::optional<Constraint> find_conflict(Models const& models);
 };
 
+/** Analysis of inequality conflicts.
+ * 
+ * Variable `x` is in an inequality conflict if:
+ * -# `L <= x`, `x <= U`, `x != D` are on the trail; and
+ * -# L, U, D evaluate to the same value 
+ * 
+ * We explain inequality conflicts using the disequality lemma in Fig. 2 [1]:
+ * `x < L || U < x || x = D || L < D || D < U`
+ * 
+ * [1] Jovanovic, Dejan, Clark Barrett, and Leonardo De Moura. "The design and implementation of 
+ * the model constructing satisfiability calculus." 2013 Formal Methods in Computer-Aided Design.
+ * IEEE, 2013.
+ */
 class Inequality_conflict_analysis {
 public:
     using Rational = Fraction<int>;
@@ -229,6 +289,14 @@ public:
     using Variable_bounds = Bounds<Rational>;
 
     inline Inequality_conflict_analysis(Linear_arithmetic* lra) : lra(lra), fm(lra) {}
+
+    /** Check if there is an inequality conflict.
+     * 
+     * @param models partial assignment of variables
+     * @param bounds bounds of a variable
+     * @return true iff there is an inequality conflict
+     */
+    bool in_conflict(Models const& models, Variable_bounds& bounds) const;
 
     /** Check if there is an inequality conflict - i.e., `L <= x` and `x <= U` and `x != D`
      * where L, U, D evaluate to the same value in @p trail
