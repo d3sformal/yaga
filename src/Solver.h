@@ -7,6 +7,7 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
+#include <ranges>
 
 #include "Clause.h"
 #include "Conflict_analysis.h"
@@ -139,6 +140,9 @@ private:
     std::unique_ptr<Variable_order> variable_order;
     int num_bool_vars = 0;
 
+    using Clause_iterator = std::deque<Clause>::iterator;
+    using Clause_range = std::ranges::subrange<Clause_iterator>;
+
     // statistics
     int total_conflicts = 0;
     int total_restarts = 0;
@@ -155,17 +159,18 @@ private:
         };
     }
 
-    std::optional<Clause> propagate();
-    // analyze conflict clause
-    std::pair<Clause, int> analyze_conflict(Clause&& conflict);
-    // backtrack with conflict clause `learned` to assertion level `level`
-    void backtrack_with(Clause& learned, int level);
-    // add a new clause to learned clauses
-    Clause& learn(Clause&& learned);
+    // run propagate in theory
+    [[nodiscard]] std::vector<Clause> propagate();
+    // analyze conflict clauses
+    [[nodiscard]] std::pair<std::vector<Clause>, int> analyze_conflicts(std::vector<Clause>&& conflict);
+    // backtrack with conflict clauses to assertion level `level`
+    void backtrack_with(Clause_range clauses, int level);
+    // process all learned clauses and add them to database
+    [[nodiscard]] Clause_range learn(std::vector<Clause>&& learned);
     // check if conflict `clause` is a semantic split clause
     bool is_semantic_split(Clause const& clause) const;
     // pick the next variable to assign
-    std::optional<Variable> pick_variable();
+    [[nodiscard]] std::optional<Variable> pick_variable();
     // decide value of an unassigned variable
     void decide(Variable var);
     // restart the solver

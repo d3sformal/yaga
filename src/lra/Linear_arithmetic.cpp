@@ -21,8 +21,9 @@ void Linear_arithmetic::on_learned_clause(Database&, Trail& trail, Clause const&
     cached_values = relevant_models(trail).owned();
 }
 
-std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
+std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 {
+    conflicts.clear();
     auto models = relevant_models(trail);
 
     // find relevant variables which have been assigned at current decision level
@@ -49,18 +50,12 @@ std::optional<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
             }
             else if (is_unit(models.owned(), cons))
             {
-                if (auto conflict = unit(trail, models, cons))
-                {
-                    return conflict;
-                }
+                unit(trail, models, cons);
             }
         }
         else if (var.type() == Variable::rational)
         {
-            if (auto conflict = replace_watch(trail, models, var.ord()))
-            {
-                return conflict;
-            }
+            replace_watch(trail, models, var.ord());
         }
         else
         {
@@ -163,8 +158,7 @@ bool Linear_arithmetic::replace_watch(Model<Rational> const& lra_model, Watched_
     return *rep_var_it != lra_var_ord;
 }
 
-std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models& models,
-                                                       int lra_var_ord)
+void Linear_arithmetic::replace_watch(Trail& trail, Models& models, int lra_var_ord)
 {
     assert(models.owned().is_defined(lra_var_ord));
 
@@ -188,9 +182,10 @@ std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models& mod
                 {
                     assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
                 }
-                else if (auto conflict = unit(trail, models, cons))
+                else // cons is unit
                 {
-                    return conflict;
+                    assert(is_unit(models.owned(), cons));
+                    unit(trail, models, cons);
                 }
             }
             else // cons is *not* on the trail
@@ -203,36 +198,47 @@ std::optional<Clause> Linear_arithmetic::replace_watch(Trail& trail, Models& mod
             ++i;
         }
     }
-    return {}; // no conflict
 }
 
-void Linear_arithmetic::update_bounds(Models const& models, Constraint& cons)
+int Linear_arithmetic::decision_level(Trail const& trail, Constraint const& cons) const
+{
+    int level = trail.decision_level(cons.lit().var()).value_or(0);
+    for (auto lra_var_ord : cons.vars())
+    {
+        Variable var{lra_var_ord, Variable::rational};
+        level = std::max<int>(level, trail.decision_level(var).value_or(0));
+    }
+    return level;
+}
+
+void Linear_arithmetic::update_bounds(Trail const& trail, Models const& models, Constraint& cons)
 {
     assert(is_unit(models.owned(), cons));
     assert(models.boolean().is_defined(cons.lit().var().ord()));
     assert(cons.coef().front() != 0);
 
+    auto level = decision_level(trail, cons);
     auto value = cons.implied_value(models.owned()) / cons.coef().front();
     // find constraint which should be true in current model (according to bool model)
     auto actual_cons = perun::eval(models.boolean(), cons.lit()).value() ? cons : cons.negate();
 
     if (implies_equality(actual_cons))
     {
-        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons, models});
-        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons, models});
+        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons, models, level});
+        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons, models, level});
     }
     else if (implies_inequality(actual_cons))
     {
-        bounds[cons.vars().front()].add_inequality({value, actual_cons, models});
+        bounds[cons.vars().front()].add_inequality({value, actual_cons, models, level});
     }
     else if (implies_lower_bound(actual_cons))
     {
-        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons, models});
+        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons, models, level});
     }
     else // upper bound
     {
         assert(implies_upper_bound(actual_cons));
-        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons, models});
+        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons, models, level});
     }
 }
 
@@ -299,14 +305,15 @@ std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, Variable_bou
     return {}; // no conflict
 }
 
-std::optional<Clause> Linear_arithmetic::unit(Trail& trail, Models& models, Constraint& cons)
+void Linear_arithmetic::unit(Trail& trail, Models& models, Constraint& cons)
 {
-    update_bounds(models, cons);
+    update_bounds(trail, models, cons);
     if (auto conflict = check_bounds(trail, bounds[cons.vars().front()]))
     {
-        return conflict;
+        conflicts.push_back(std::move(conflict.value()));
     }
-    return {};
+}
+
 }
 
 void Linear_arithmetic::propagate(Trail& trail, Models& models, Constraint const& cons)

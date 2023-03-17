@@ -22,10 +22,9 @@ public:
      *
      * @param db clause database
      * @param trail current trail. All propagations are added to the trail.
-     * @return a conflict clause -- clause that is false in @p trail -- if it
-     * detects a conflict. None, otherwise.
+     * @return conflict clause -- clause that is false in @p trail
      */
-    virtual std::optional<Clause> propagate(Database&, Trail&) = 0;
+    virtual std::vector<Clause> propagate(Database&, Trail&) = 0;
 
     /** Decide a value for variable @p var
      *

@@ -25,7 +25,7 @@ public:
      * @param trail current solver trail
      * @return conflict clause if there is a conflict, none otherwise.
      */
-    std::optional<Clause> propagate(Database& db, Trail& trail) override;
+    std::vector<Clause> propagate(Database& db, Trail& trail) override;
 
     /** Decide value for variable @p var if it is a boolean variable
      *
@@ -77,9 +77,8 @@ private:
      *
      * @param db clause database
      * @param trail current trail
-     * @return conflict clause if a clause becomes false. None, otherwise.
      */
-    std::optional<Clause> initialize(Database& db, Trail& trail);
+    void initialize(Database& db, Trail& trail);
 
     /** Move watch from recently falsified literal @p lit to some other literal.
      *

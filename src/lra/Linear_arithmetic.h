@@ -49,14 +49,14 @@ public:
      */
     void on_learned_clause(Database& db, Trail& trail, Clause const& learned) override;
 
-    /** Add all semantic propagations to the @p trail
+    /** Add all semantic propagations to the @p trail and update variable bounds
      *
      * @param db clause database
      * @param trail current solver trail
-     * @return conflict clause if there exists a real variable that cannot be assigned any value.
-     * None, otherwise.
+     * @return list of conflict clauses if there exists a real variable that cannot be assigned 
+     * any value. Empty list, otherwise.
      */
-    std::optional<Clause> propagate(Database&, Trail&) override;
+    std::vector<Clause> propagate(Database&, Trail&) override;
 
     /** Decide value for @p variable if it is a real variable and add it to the trail.
      *
@@ -166,6 +166,8 @@ private:
     std::vector<Bounds<Rational>> bounds;
     // cached assignment of LRA variables
     Model<Rational> cached_values;
+    // list of conflicts at this level
+    std::vector<Clause> conflicts;
 
     /** Start watching LRA variables in @p cons
      *
@@ -199,16 +201,16 @@ private:
      * @param trail current solver trail
      * @param models partial assignment of variables
      * @param lra_var_ord newly assigned LRA variable
-     * @return conflict clause if a conflict is detected. None, otherwise.
      */
-    std::optional<Clause> replace_watch(Trail& trail, Models& models, int lra_var_ord);
+    void replace_watch(Trail& trail, Models& models, int lra_var_ord);
 
     /** Update bounds using unit constraint @p cons
      *
+     * @param trail current solver trail
      * @param models partial assignment of variables
      * @param cons unit constraint
      */
-    void update_bounds(Models const& models, Constraint& cons);
+    void update_bounds(Trail const& trail, Models const& models, Constraint& cons);
 
     /** Check if @p bounds is empty (i.e., no value can be assigned to a variable)
      *
@@ -220,14 +222,14 @@ private:
 
     /** Report a new unit constraint @p cons and check for conflicts.
      *
-     * If the unassigned variable in @p cons cannot be assigned any value, this method returns a
-     * conflict clause.
+     * If the unassigned variable in @p cons cannot be assigned any value, this method adds 
+     * a new conflict clause.
      *
      * @param trail current solver trail
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    std::optional<Clause> unit(Trail& trail, Models& models, Constraint& cons);
+    void unit(Trail& trail, Models& models, Constraint& cons);
 
     /** Check whether the unit constraint @p cons implies an equality for the only unassigned
      * variable (e.g., `x == 5`)
@@ -276,6 +278,16 @@ private:
      * @return true iff all variables in @p cons are assigned.
      */
     bool is_fully_assigned(Model<Rational> const& model, Constraint const& cons) const;
+
+    /** Find the highest decision level of any assigned variable in @p cons including the boolean
+     * variable which represents @p cons (i.e., `cons.lit().var()`)
+     * 
+     * @param trail solver trail
+     * @param cons linear constraint
+     * @return the highest decision level of any variable in @p cons including the boolean variable
+     * which represents @p cons or 0 if no variable is assigned in @p cons
+     */
+    int decision_level(Trail const& trail, Constraint const& cons) const;
 
     /** Check if @p var is in @p models
      *

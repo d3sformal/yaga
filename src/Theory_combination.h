@@ -25,7 +25,7 @@ public:
      * @param trail current solver trail
      * @return conflict clause if a conflict is detected by any theory
      */
-    std::optional<Clause> propagate(Database&, Trail&) override;
+    std::vector<Clause> propagate(Database&, Trail&) override;
 
     /** Call decide in all theories
      *

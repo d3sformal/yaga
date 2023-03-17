@@ -37,7 +37,7 @@ void Bool_theory::on_learned_clause(Database& db, Trail&, Clause const& learned)
     }
 }
 
-std::optional<Clause> Bool_theory::initialize(Database& db, Trail& trail)
+void Bool_theory::initialize(Database& db, Trail& trail)
 {
     auto const& model = trail.model<bool>(Variable::boolean);
 
@@ -84,18 +84,17 @@ std::optional<Clause> Bool_theory::initialize(Database& db, Trail& trail)
             satisfied.push_back({lit, reason, level.value()});
         }
     }
-
-    return {};
 }
 
-std::optional<Clause> Bool_theory::propagate(Database& db, Trail& trail)
+std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
 {
     satisfied.clear();
 
     auto& model = trail.model<bool>(Variable::boolean);
-    auto conflict = initialize(db, trail);
+    initialize(db, trail);
 
-    while (!conflict && !satisfied.empty())
+    std::vector<Clause> conflicts;
+    while (!satisfied.empty())
     {
         auto [lit, reason, level] = satisfied.back();
         satisfied.pop_back();
@@ -106,15 +105,25 @@ std::optional<Clause> Bool_theory::propagate(Database& db, Trail& trail)
             model.set_value(lit.var().ord(), !lit.is_negation());
             trail.propagate(lit.var(), reason, level);
         }
+        // reason clause is a unit clause which implies lit
         assert(reason == nullptr || std::all_of(reason->begin(), reason->end(), [&](auto other_lit) {
             return other_lit == lit || eval(model, other_lit) == false;
         }));
-        assert(eval(model, lit) == true);
 
-        conflict = falsified(trail, model, lit.negate());
+        if (eval(model, lit) == true)
+        {
+            if (auto conflict = falsified(trail, model, lit.negate()))
+            {
+                conflicts.push_back(std::move(conflict.value()));
+            }
+        }
+        else // implied literal lit is not true in trail => there is a conflict
+        {
+            assert(eval(model, lit) == false);
+        }
     }
 
-    return conflict;
+    return conflicts;
 }
 
 bool Bool_theory::replace_second_watch(Model<bool> const& model, Watched_clause& watch)
@@ -123,7 +132,6 @@ bool Bool_theory::replace_second_watch(Model<bool> const& model, Watched_clause&
 
     assert(clause.size() >= 2);
     assert(eval(model, clause[1]) == false);
-    assert(eval(model, clause[0]) != true);
 
     if (clause.size() > 2)
     {
@@ -154,9 +162,8 @@ bool Bool_theory::fix_second_watch(Trail const& trail, Model<bool> const& model,
                                    Watched_clause& watch)
 {
     auto& clause = *watch.clause;
-    assert(eval(model, clause[0]) != true);
     assert(std::all_of(clause.begin() + 1, clause.end(), [&](auto lit) {
-        return eval(model, lit) == false;
+        return model.is_defined(lit.var().ord());
     }));
 
     // Make sure that the false, watched literal has the highest decision level. The second 
@@ -183,12 +190,12 @@ bool Bool_theory::fix_second_watch(Trail const& trail, Model<bool> const& model,
         replaced = true;
     }
 
-    // order watched literals by decision level
-    auto front_level = trail.decision_level(clause[0].var()).value_or(top_level);
-    if (front_level < top_level)
+    int front_level = trail.decision_level(clause[0].var()).value_or(top_level);
+    if (eval(model, clause[0]) != true && front_level < top_level)
     {
         std::swap(clause[0], clause[1]);
     }
+
     return replaced;
 }
 
@@ -253,8 +260,8 @@ Bool_theory::falsified(Trail const& trail, Model<bool> const& model, Literal fal
             assert(std::all_of(clause.begin() + 1, clause.end(), [&](auto lit) {
                 return eval(model, lit) == false;
             }));
-            int level = clause.size() > 1 ? trail.decision_level(clause[1].var()).value() 
-                                          : trail.decision_level();
+            assert(clause.size() > 1);
+            int level = trail.decision_level(clause[1].var()).value();
             satisfied.push_back({clause[0], &clause, level});
         }
     }

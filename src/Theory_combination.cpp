@@ -2,17 +2,17 @@
 
 namespace perun {
 
-std::optional<Clause> Theory_combination::propagate(Database& db, Trail& trail)
+std::vector<Clause> Theory_combination::propagate(Database& db, Trail& trail)
 {
+    std::vector<Clause> conflicts;
     for (;;)
     {
         auto old_size = trail.recent().size();
         for (auto& theory : theories)
         {
-            if (auto conflict = theory->propagate(db, trail))
-            {
-                return conflict;
-            }
+            auto new_conflicts = theory->propagate(db, trail);
+            conflicts.insert(conflicts.end(), std::make_move_iterator(new_conflicts.begin()), 
+                             std::make_move_iterator(new_conflicts.end()));
         }
 
         // if no new propagations were made
@@ -21,7 +21,7 @@ std::optional<Clause> Theory_combination::propagate(Database& db, Trail& trail)
             break;
         }
     }
-    return {};
+    return conflicts;
 }
 
 void Theory_combination::decide(Database& db, Trail& trail, Variable var)
