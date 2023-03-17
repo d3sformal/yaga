@@ -112,7 +112,7 @@ term_t Smt2_term_parser::parse_term() {
             assert(get<ParseCtx>(ctx_stack.back()) == ParseCtx::NEXT_ARG);
             // Construct the application term specified by ctx_stack.back()
             auto& op = get<OpInfo>(ctx_stack.back());
-            ret = make_term(op, get<arg_list_t>(ctx_stack.back()));
+            ret = make_term(op, std::move(get<arg_list_t>(ctx_stack.back())));
             ctx_stack.pop_back();
         }
         break;
@@ -245,9 +245,9 @@ std::string Smt2_term_parser::parse_symbol()
     return id;
 }
 
-term_t Smt2_term_parser::make_term(OpInfo const& op_info, std::vector<term_t> const& args)
+term_t Smt2_term_parser::make_term(OpInfo const& op_info, std::vector<term_t>&& args)
 {
-    return parser_context.resolve_term(op_info.name, args);
+    return parser_context.resolve_term(op_info.name, std::move(args));
 }
 
 term_t Smt2_term_parser::get_term_for_symbol(std::string const& symbol)

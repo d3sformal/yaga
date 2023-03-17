@@ -57,24 +57,28 @@ term_t Parser_context::mk_numeral(std::string const& numeric_string)
     return term_manager.mk_arithmetic_constant(numeric_string);
 }
 
-term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t> const& args)
+term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>&& args)
 {
     if (name == ">=")
     {
-        return mk_geq(args);
+        return mk_geq(std::move(args));
     }
     else if (name == "<=")
     {
-        return mk_leq(args);
+        return mk_leq(std::move(args));
     }
     else if (name == "=")
     {
-        return mk_eq(args);
+        return mk_eq(std::move(args));
+    }
+    else if (name == "or")
+    {
+        return mk_or(std::move(args));
     }
     UNIMPLEMENTED;
 }
 
-term_t Parser_context::mk_leq(std::vector<term_t> const& args)
+term_t Parser_context::mk_leq(std::vector<term_t>&& args)
 {
     if (args.size() == 2)
     {
@@ -83,7 +87,7 @@ term_t Parser_context::mk_leq(std::vector<term_t> const& args)
     UNIMPLEMENTED;
 }
 
-term_t Parser_context::mk_geq(std::vector<term_t> const& args)
+term_t Parser_context::mk_geq(std::vector<term_t>&& args)
 {
     if (args.size() == 2)
     {
@@ -92,7 +96,7 @@ term_t Parser_context::mk_geq(std::vector<term_t> const& args)
     UNIMPLEMENTED;
 }
 
-term_t Parser_context::mk_eq(std::vector<term_t> const& args)
+term_t Parser_context::mk_eq(std::vector<term_t>&& args)
 {
     if (args.size() == 2)
     {
@@ -126,6 +130,11 @@ term_t Parser_context::mk_binary_geq(term_t t1, term_t t2)
 term_t Parser_context::mk_binary_leq(term_t t1, term_t t2)
 {
     return term_manager.mk_arithmetic_leq(t1, t2);
+}
+
+term_t Parser_context::mk_or(std::vector<term_t>&& args)
+{
+    return term_manager.mk_or(args);
 }
 
 } // namespace perun::parser

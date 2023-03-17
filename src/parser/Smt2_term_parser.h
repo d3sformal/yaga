@@ -24,7 +24,7 @@ class Smt2_term_parser {
 
     std::string token_to_symbol(Token token);
 
-    term_t make_term(OpInfo const&, std::vector<term_t> const&);
+    term_t make_term(OpInfo const&, std::vector<term_t>&&);
 
     term_t get_term_for_symbol(std::string const&);
 

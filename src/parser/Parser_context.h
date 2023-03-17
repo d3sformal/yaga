@@ -92,7 +92,7 @@ public:
 
     void pop_let_bindings();
 
-    term_t resolve_term(std::string const& name, std::vector<term_t> const& args);
+    term_t resolve_term(std::string const& name, std::vector<term_t>&& args);
 
     term_t get_term_for_symbol(std::string const& symbol);
 
@@ -109,9 +109,10 @@ private:
 
     terms::Term_manager& term_manager;
 
-    term_t mk_eq(std::vector<term_t> const& args);
-    term_t mk_geq(std::vector<term_t> const& args);
-    term_t mk_leq(std::vector<term_t> const& args);
+    term_t mk_eq(std::vector<term_t>&& args);
+    term_t mk_geq(std::vector<term_t>&& args);
+    term_t mk_leq(std::vector<term_t>&& args);
+    term_t mk_or(std::vector<term_t>&& args);
 
     term_t mk_binary_eq(term_t t1, term_t t2);
     term_t mk_binary_geq(term_t t1, term_t t2);
