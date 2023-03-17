@@ -120,7 +120,7 @@ term_t Parser_context::mk_binary_eq(term_t t1, term_t t2)
 
 term_t Parser_context::mk_binary_geq(term_t t1, term_t t2)
 {
-    return term_manager.mk_arithmetic_eq(t1, t2);
+    return term_manager.mk_arithmetic_geq(t1, t2);
 }
 
 term_t Parser_context::mk_binary_leq(term_t t1, term_t t2)
