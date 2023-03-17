@@ -65,9 +65,17 @@ public:
     using Constraint = Linear_constraint<Value>;
     using Models = Theory_models<Value>;
 
-    inline Implied_value(Value val, Constraint cons, Models const& models)
+    /** Create new implied value
+     * 
+     * @param val computed value implied by @p cons for the only unassigned variable in @p cons
+     * @param cons unit constraint in @p models
+     * @param models partial assignment of variables
+     * @param level decision level at which @p val is implied
+     */
+    inline Implied_value(Value val, Constraint cons, Models const& models, int level)
         : val(val), cons(cons),
-          timestamp(cons.size() >= 2 ? models.owned().timestamp(*++cons.vars().begin()) : -1)
+          timestamp(cons.size() >= 2 ? models.owned().timestamp(*++cons.vars().begin()) : -1),
+          dec_level(level)
     {
     }
 
@@ -82,6 +90,12 @@ public:
      * @return linear constraint that implied this bound
      */
     inline Constraint reason() const { return cons; }
+
+    /** Get decision level when this bound was added.
+     * 
+     * @return decision level of this bound
+     */
+    inline int level() const { return dec_level; }
 
     /** Check whether this value is obsolete.
      *
@@ -126,6 +140,8 @@ private:
     Constraint cons;
     // timestamp of the most recently assigned variable in cons
     int timestamp;
+    // decision level of this bound
+    int dec_level;
 };
 
 /** This class keeps track of implied bounds and inequalities for a variable.
@@ -218,11 +234,8 @@ public:
      */
     inline void add_upper_bound(Models const& models, Implied_value_type bound)
     {
-        auto current_bound = upper_bound(models);
-        if (!current_bound || less(bound, current_bound.value()))
-        {
-            ub.push_back(bound);
-        }
+        remove_obsolete(ub, models);
+        insert(ub, bound, [this](auto bnd, auto other_bnd) { return less(bnd, other_bnd); });
     }
 
     /** Add a new lower @p bound
@@ -232,11 +245,8 @@ public:
      */
     inline void add_lower_bound(Models const& models, Implied_value_type bound)
     {
-        auto current_bound = lower_bound(models);
-        if (!current_bound || greater(bound, current_bound.value()))
-        {
-            lb.push_back(bound);
-        }
+        remove_obsolete(lb, models);
+        insert(lb, bound, [this](auto bnd, auto other_bnd) { return greater(bnd, other_bnd); });
     }
 
     /** Check whether @p value satisfies currently implied lower bound
@@ -330,6 +340,37 @@ private:
         {
             bounds.pop_back();
         }
+    }
+
+    /** Insert @p bound to @p bounds if it @p is_better than the best bound at the decision level 
+     * of @p bound 
+     *
+     * @param bounds list of bounds sorted by decision level
+     * @param bound new bound to insert to @p bounds
+     * @param is_better predicate which, given two implied values, returns true iff the first 
+     * value is strictly better than the second value
+     */
+    template<typename Predicate>
+    inline void insert(std::vector<Implied_value_type>& bounds, Implied_value_type bound, Predicate&& is_better)
+    {
+        assert(std::is_sorted(bounds.begin(), bounds.end(), [](auto&& lhs, auto&& rhs) {
+            return lhs.level() < rhs.level();
+        }));
+
+        // find position of the new element
+        auto rev_it = std::find_if(bounds.rbegin(), bounds.rend(), [&](auto&& other_bnd) {
+            return other_bnd.level() <= bound.level();
+        });
+
+        // insert the new bound if it is better
+        if (rev_it == bounds.rend() || is_better(bound, *rev_it))
+        {
+            auto it = ++bounds.insert(rev_it.base(), bound);
+            bounds.erase(it, std::find_if(it, bounds.end(), [&](auto&& other_bnd) {
+                return is_better(other_bnd, bound);
+            }));
+        }
+
     }
 };
 
