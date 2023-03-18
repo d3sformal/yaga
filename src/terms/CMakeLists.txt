@@ -4,4 +4,5 @@ target_sources(perun PRIVATE
     Terms.cpp
     Term_hash_table.cpp
     Term_manager.cpp
+    Term_visitor.h
 )
