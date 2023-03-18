@@ -37,7 +37,7 @@ Term_table::Term_table()
 }
 
 composite_term_descriptor_t::composite_term_descriptor_t(std::span<term_t> args)
-    : m_args(args.begin(), args.begin())
+    : m_args(args.begin(), args.end())
 {
 }
 
