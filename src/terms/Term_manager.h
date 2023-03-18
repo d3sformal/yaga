@@ -54,6 +54,8 @@ public:
     // types
     type_t get_term_type(term_t term);
 
+    Term_table const& get_term_table() const { return *term_table; }
+
 private:
     term_t poly_to_term(poly_t const& poly);
     poly_t term_to_poly(term_t term);
