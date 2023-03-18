@@ -62,11 +62,11 @@ constant_term_descriptor_t::make(int32_t index)
 
 
 
-Kind Term_table::get_kind(term_t t) { return inner_table[index_of(t)].kind; }
+Kind Term_table::get_kind(term_t t) const { return inner_table[index_of(t)].kind; }
 
-type_t Term_table::get_type(term_t t) { return inner_table[index_of(t)].type; }
+type_t Term_table::get_type(term_t t) const { return inner_table[index_of(t)].type; }
 
-term_descriptor_t const& Term_table::get_descriptor(term_t t) { return *inner_table[index_of(t)].descriptor; }
+term_descriptor_t const& Term_table::get_descriptor(term_t t) const { return *inner_table[index_of(t)].descriptor; }
 
 term_t Term_table::construct_composite(Kind kind, type_t type, std::span<term_t> args)
 {
@@ -198,7 +198,7 @@ void Term_table::set_term_name(term_t t, std::string const& name)
     }
 }
 
-term_t Term_table::get_term_by_name(std::string const& name)
+term_t Term_table::get_term_by_name(std::string const& name) const
 {
     auto it = symbol_table.find(name);
     return it == symbol_table.end() ? null_term : it->second;

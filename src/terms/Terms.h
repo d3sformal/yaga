@@ -89,11 +89,11 @@ public:
     Term_table();
 
     void set_term_name(term_t, std::string const&);
-    term_t get_term_by_name(std::string const&);
+    term_t get_term_by_name(std::string const&) const;
 
-    Kind get_kind(term_t);
-    type_t get_type(term_t);
-    term_descriptor_t const& get_descriptor(term_t);
+    Kind get_kind(term_t) const;
+    type_t get_type(term_t) const;
+    term_descriptor_t const& get_descriptor(term_t) const;
 
     term_t construct_composite(Kind kind, type_t type, std::span<term_t> args);
     term_t construct_rational(Kind kind, type_t type, Rational const & value);
