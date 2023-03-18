@@ -258,5 +258,22 @@ std::span<const term_t> Term_table::monomials_of(term_t t) const
     return descriptor.args();
 }
 
+std::span<const term_t> Term_table::get_args(term_t t) const
+{
+    auto kind = get_kind(t);
+    switch (kind)
+    {
+    case Kind::ARITH_CONSTANT:
+    case Kind::CONSTANT_TERM:
+    case Kind::UNINTERPRETED_TERM:
+    case Kind::VARIABLE:
+        return {};
+    default:
+        term_descriptor_t const& descriptor = get_descriptor(t);
+        auto const& composite_descriptor = dynamic_cast<composite_term_descriptor_t const&>(descriptor);
+        return composite_descriptor.args();
+    }
+}
+
 } // namespace terms
 } // namespace perun

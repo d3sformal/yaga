@@ -14,7 +14,10 @@
 namespace perun::terms {
 
 
-class term_descriptor_t {};
+struct term_descriptor_t
+{
+    virtual ~term_descriptor_t() = default;
+};
 
 class composite_term_descriptor_t : public term_descriptor_t {
     std::vector<term_t> m_args;
@@ -100,6 +103,8 @@ public:
     term_t construct_constant(Kind kind, type_t type, int32_t index);
     term_t construct_uninterpreted_constant(type_t type);
 
+
+    std::span<const term_t> get_args(term_t) const;
 
     term_t or_term(std::span<term_t> args);
 
