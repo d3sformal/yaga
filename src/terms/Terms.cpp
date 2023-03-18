@@ -271,6 +271,7 @@ std::span<const term_t> Term_table::get_args(term_t t) const
     default:
         term_descriptor_t const& descriptor = get_descriptor(t);
         auto const& composite_descriptor = dynamic_cast<composite_term_descriptor_t const&>(descriptor);
+        assert(composite_descriptor.size() != 0);
         return composite_descriptor.args();
     }
 }
