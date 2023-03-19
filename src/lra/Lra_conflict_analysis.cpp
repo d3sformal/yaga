@@ -132,41 +132,37 @@ Fourier_motzkin_elimination::Constraint Fourier_motzkin_elimination::finish(Trai
 
 bool Bound_conflict_analysis::in_conflict(Models const& models, Variable_bounds& bounds) const
 {
-    auto lower_bound = bounds.lower_bound(models);
-    auto upper_bound = bounds.upper_bound(models);
-    if (!lower_bound || !upper_bound)
+    auto lb = bounds.lower_bound(models);
+    auto ub = bounds.upper_bound(models);
+    if (!lb || !ub)
     {
         return false;
     }
 
-    auto lb = lower_bound.value(); 
-    auto ub = upper_bound.value(); 
-    auto is_strict = lb.reason().is_strict() || ub.reason().is_strict();
-    return lb.value() > ub.value() || (lb.value() == ub.value() && is_strict);
+    auto is_strict = lb->reason().is_strict() || ub->reason().is_strict();
+    return lb->value() > ub->value() || (lb->value() == ub->value() && is_strict);
 }
 
 std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds)
 {
     auto models = lra->relevant_models(trail);
-    auto lower_bound = bounds.lower_bound(models);
-    auto upper_bound = bounds.upper_bound(models);
-    if (!lower_bound || !upper_bound)
+    auto lb = bounds.lower_bound(models);
+    auto ub = bounds.upper_bound(models);
+    if (!lb || !ub)
     {
         return {}; // no conflict
     }
 
-    auto lb = lower_bound.value(); 
-    auto ub = upper_bound.value(); 
-    auto is_strict = lb.reason().is_strict() || ub.reason().is_strict();
-    if (lb.value() < ub.value() || (lb.value() == ub.value() && !is_strict))
+    auto is_strict = lb->reason().is_strict() || ub->reason().is_strict();
+    if (lb->value() < ub->value() || (lb->value() == ub->value() && !is_strict))
     {
         return {}; // no conflict
     }
-    assert(lb.reason().vars().front() == ub.reason().vars().front());
+    assert(lb->reason().vars().front() == ub->reason().vars().front());
 
-    Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate()};
-    fm.init(lb.reason());
-    fm.resolve(ub.reason());
+    Clause conflict{lb->reason().lit().negate(), ub->reason().lit().negate()};
+    fm.init(lb->reason());
+    fm.resolve(ub->reason());
     //minimize(trail, conflict);
     auto derived = fm.finish(trail);
     if (!derived.empty())
@@ -217,26 +213,24 @@ std::optional<Bound_conflict_analysis::Constraint> Bound_conflict_analysis::find
     auto value = fm.derived().implied_value(models);
     if (var_coef < 0 || fm.predicate() == Order_predicate::eq) // `value` is a lower bound
     {
-        if (auto upper_bound = bounds.upper_bound(models))
+        if (auto ub = bounds.upper_bound(models))
         {
-            auto ub = upper_bound.value();
-            auto is_strict = ub.reason().is_strict() || fm.predicate() == Order_predicate::lt;
-            if (ub.value() < value || (ub.value() == value && is_strict))
+            auto is_strict = ub->reason().is_strict() || fm.predicate() == Order_predicate::lt;
+            if (ub->value() < value || (ub->value() == value && is_strict))
             {
-                return ub.reason();
+                return ub->reason();
             }
         }
     }
 
     if (var_coef > 0 || fm.predicate() == Order_predicate::eq) // `value` is an upper bound
     {
-        if (auto lower_bound = bounds.lower_bound(models))
+        if (auto lb = bounds.lower_bound(models))
         {
-            auto lb = lower_bound.value();
-            auto is_strict = lb.reason().is_strict() || fm.predicate() == Order_predicate::lt;
-            if (lb.value() > value || (lb.value() == value && is_strict))
+            auto is_strict = lb->reason().is_strict() || fm.predicate() == Order_predicate::lt;
+            if (lb->value() > value || (lb->value() == value && is_strict))
             {
-                return lb.reason();
+                return lb->reason();
             }
         }
     }
@@ -246,83 +240,78 @@ std::optional<Bound_conflict_analysis::Constraint> Bound_conflict_analysis::find
 
 bool Inequality_conflict_analysis::in_conflict(Models const& models, Variable_bounds& bounds) const
 {
-    auto lower_bound = bounds.lower_bound(models);
-    auto upper_bound = bounds.upper_bound(models);
-    if (!lower_bound || !upper_bound)
+    auto lb = bounds.lower_bound(models);
+    auto ub = bounds.upper_bound(models);
+    if (!lb || !ub)
     {
         return false;
     }
 
-    auto lb = lower_bound.value();
-    auto ub = upper_bound.value();
-    if (lb.value() != ub.value() || lb.reason().is_strict() || ub.reason().is_strict())
+    if (lb->value() != ub->value() || lb->reason().is_strict() || ub->reason().is_strict())
     {
         return false;
     }
 
     // check if `x != D` where D, L, U evaluate to the same value
-    return !!bounds.inequality(models, lb.value());
+    return !!bounds.inequality(models, lb->value());
 }
 
 std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds)
 {
     auto models = lra->relevant_models(trail);
-    auto lower_bound = bounds.lower_bound(models);
-    auto upper_bound = bounds.upper_bound(models);
-    if (!lower_bound || !upper_bound)
+    auto lb = bounds.lower_bound(models);
+    auto ub = bounds.upper_bound(models);
+    if (!lb || !ub)
     {
         return {}; // no conflict
     }
 
     // check if `L <= x` and `x <= U` and L, U evaluate to the same value where `x` is the
     // unassigned variable
-    auto lb = lower_bound.value();
-    auto ub = upper_bound.value();
-    if (lb.value() != ub.value() || lb.reason().is_strict() || ub.reason().is_strict())
+    if (lb->value() != ub->value() || lb->reason().is_strict() || ub->reason().is_strict())
     {
         return {};
     }
 
     // check if `x != D` where D, L, U evaluate to the same value
-    auto inequality = bounds.inequality(models, lb.value());
-    if (!inequality)
+    auto neq = bounds.inequality(models, lb->value());
+    if (!neq)
     {
         return {};
     }
-    auto neq = inequality.value();
-    assert(neq.reason().vars().front() == lb.reason().vars().front());
-    assert(neq.reason().vars().front() == ub.reason().vars().front());
+    assert(neq->reason().vars().front() == lb->reason().vars().front());
+    assert(neq->reason().vars().front() == ub->reason().vars().front());
 
-    Clause conflict{lb.reason().lit().negate(), ub.reason().lit().negate(),
-                    neq.reason().lit().negate()};
+    Clause conflict{lb->reason().lit().negate(), ub->reason().lit().negate(),
+                    neq->reason().lit().negate()};
 
     // special case where `x = E` and `x != D` where E, D evaluate to the same value
-    if (lb.reason().lit() == ub.reason().lit())
+    if (lb->reason().lit() == ub->reason().lit())
     {
         // see: http://leodemoura.github.io/files/fmcad2013.pdf
         // We use `x = E && x != D -> E != D` as an explanation which is equivalent to 
         // the disequality lemma (Fig. 2) in this special case (we apply one final normalization
         // rule in the derivation in Fig. 2).
-        assert(lb.reason().pred() == Order_predicate::eq);
-        assert(!lb.reason().lit().is_negation());
-        assert(lb.reason().vars().size() > 1 || neq.reason().vars().size() > 1);
-        fm.init(neq.reason(), Order_predicate::eq, 1);
-        fm.resolve(lb.reason());
+        assert(lb->reason().pred() == Order_predicate::eq);
+        assert(!lb->reason().lit().is_negation());
+        assert(lb->reason().vars().size() > 1 || neq->reason().vars().size() > 1);
+        fm.init(neq->reason(), Order_predicate::eq, 1);
+        fm.resolve(lb->reason());
         auto cons = fm.finish(trail);
         assert(!cons.empty());
         assert(eval(models.owned(), cons.negate()) == false);
         assert(eval(models.boolean(), cons.lit().negate()) == false);
-        return Clause{lb.reason().lit().negate(), neq.reason().lit().negate(), 
+        return Clause{lb->reason().lit().negate(), neq->reason().lit().negate(), 
                       cons.lit().negate()};
     }
 
     // if `L < D` may be non-trivial (i.e., it may contain at least one variable)
-    if (lb.reason().vars().size() > 1 || neq.reason().vars().size() > 1)
+    if (lb->reason().vars().size() > 1 || neq->reason().vars().size() > 1)
     {
         // create and propagate `L < D` semantically
-        auto mult = neq.reason().coef().front() > 0 ? 1 : -1;
-        fm.init(neq.reason(), Order_predicate::lt, mult);
-        fm.resolve(lb.reason());
+        auto mult = neq->reason().coef().front() > 0 ? 1 : -1;
+        fm.init(neq->reason(), Order_predicate::lt, mult);
+        fm.resolve(lb->reason());
         auto cons = fm.finish(trail);
         if (!cons.empty()) // `L < D` is non-trivial
         {
@@ -333,12 +322,12 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
     }
 
     // if `D < U` may be non-trivial (i.e., it may contain at least one variable)
-    if (ub.reason().vars().size() > 1 || neq.reason().vars().size() > 1)
+    if (ub->reason().vars().size() > 1 || neq->reason().vars().size() > 1)
     {
         // create and propagate `D < U` semantically
-        auto mult = neq.reason().coef().front() > 0 ? -1 : 1;
-        fm.init(neq.reason(), Order_predicate::lt, mult);
-        fm.resolve(ub.reason());
+        auto mult = neq->reason().coef().front() > 0 ? -1 : 1;
+        fm.init(neq->reason(), Order_predicate::lt, mult);
+        fm.resolve(ub->reason());
         auto cons = fm.finish(trail);
         if (!cons.empty()) // `D < U` is non-trivial
         {

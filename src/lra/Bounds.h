@@ -161,17 +161,17 @@ public:
      * @param models partial assignment of variables
      * @return tightest upper bound or none if there is no implied upper bound
      */
-    inline std::optional<Implied_value_type> upper_bound(Models const& models)
+    inline Implied_value_type const* upper_bound(Models const& models)
     {
         remove_obsolete(ub, models);
 
         if (ub.empty()) // no bound
         {
-            return {};
+            return nullptr;
         }
         else // there is at least one implied upper bound
         {
-            return ub.back();
+            return &ub.back();
         }
     }
 
@@ -180,17 +180,17 @@ public:
      * @param models partial assignment of variables
      * @return tightest lower bound or none if there is no implied lower bound
      */
-    inline std::optional<Implied_value_type> lower_bound(Models const& models)
+    inline Implied_value_type const* lower_bound(Models const& models)
     {
         remove_obsolete(lb, models);
 
         if (lb.empty()) // no bound
         {
-            return {};
+            return nullptr;
         }
         else // there is at least one implied lower bound
         {
-            return lb.back();
+            return &lb.back();
         }
     }
 
@@ -200,7 +200,7 @@ public:
      * @param value checked value
      * @return implied inequality or none, if there is none.
      */
-    std::optional<Implied_value_type> inequality(Models const& models, Value value)
+    Implied_value_type const* inequality(Models const& models, Value value)
     {
         // remove obsolete values
         disallowed.erase(std::remove_if(disallowed.begin(), disallowed.end(),
@@ -212,9 +212,9 @@ public:
                                [value](auto v) { return v.value() == value; });
         if (it == disallowed.end())
         {
-            return {};
+            return nullptr;
         }
-        return *it;
+        return &*it;
     }
 
     /** Add a new value to the list of disallowed values
@@ -232,10 +232,12 @@ public:
      * @param models partial assignment variables
      * @param bound new upper bound
      */
-    inline void add_upper_bound(Models const& models, Implied_value_type bound)
+    inline void add_upper_bound(Models const& models, Implied_value_type&& bound)
     {
         remove_obsolete(ub, models);
-        insert(ub, bound, [this](auto bnd, auto other_bnd) { return less(bnd, other_bnd); });
+        insert(ub, std::move(bound), [this](auto bnd, auto other_bnd) { 
+            return less(bnd, other_bnd); 
+        });
     }
 
     /** Add a new lower @p bound
@@ -243,10 +245,12 @@ public:
      * @param models partial assignment of variables
      * @param bound new lower bound
      */
-    inline void add_lower_bound(Models const& models, Implied_value_type bound)
+    inline void add_lower_bound(Models const& models, Implied_value_type&& bound)
     {
         remove_obsolete(lb, models);
-        insert(lb, bound, [this](auto bnd, auto other_bnd) { return greater(bnd, other_bnd); });
+        insert(lb, std::move(bound), [this](auto bnd, auto other_bnd) { 
+            return greater(bnd, other_bnd); 
+        });
     }
 
     /** Check whether @p value satisfies currently implied lower bound
@@ -260,8 +264,7 @@ public:
     {
         if (auto lb = lower_bound(models))
         {
-            auto bound = lb.value();
-            return bound.value() < value || (bound.value() == value && !bound.reason().is_strict());
+            return lb->value() < value || (lb->value() == value && !lb->reason().is_strict());
         }
         return true;
     }
@@ -277,8 +280,7 @@ public:
     {
         if (auto ub = upper_bound(models))
         {
-            auto bound = ub.value();
-            return value < bound.value() || (bound.value() == value && !bound.reason().is_strict());
+            return value < ub->value() || (ub->value() == value && !ub->reason().is_strict());
         }
         return true;
     }
@@ -351,7 +353,7 @@ private:
      * value is strictly better than the second value
      */
     template<typename Predicate>
-    inline void insert(std::vector<Implied_value_type>& bounds, Implied_value_type bound, Predicate&& is_better)
+    inline void insert(std::vector<Implied_value_type>& bounds, Implied_value_type&& bound, Predicate&& is_better)
     {
         assert(std::is_sorted(bounds.begin(), bounds.end(), [](auto&& lhs, auto&& rhs) {
             return lhs.level() < rhs.level();
@@ -365,7 +367,7 @@ private:
         // insert the new bound if it is better
         if (rev_it == bounds.rend() || is_better(bound, *rev_it))
         {
-            auto it = ++bounds.insert(rev_it.base(), bound);
+            auto it = ++bounds.insert(rev_it.base(), std::move(bound));
             bounds.erase(it, std::find_if(it, bounds.end(), [&](auto&& other_bnd) {
                 return is_better(other_bnd, bound);
             }));

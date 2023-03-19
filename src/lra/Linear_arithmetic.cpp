@@ -62,7 +62,7 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
             assert(false);
         }
     }
-    return {}; // no conflict
+    return conflicts;
 }
 
 void Linear_arithmetic::watch(Constraint& cons)
@@ -366,12 +366,12 @@ std::optional<Linear_arithmetic::Rational> Linear_arithmetic::find_integer(Model
     Rational ub{std::numeric_limits<int>::max()};
     if (auto lower_bound = bounds.lower_bound(models))
     {
-        lb = lower_bound.value().value();
+        lb = lower_bound->value();
     }
 
     if (auto upper_bound = bounds.upper_bound(models))
     {
-        ub = upper_bound.value().value();
+        ub = upper_bound->value();
     }
 
     int abs_min_value = 0;
@@ -432,11 +432,11 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
         }
         else // there is no suitable integer value
         {
-            assert(bnds.lower_bound(models).has_value());
-            assert(bnds.upper_bound(models).has_value());
+            assert(bnds.lower_bound(models) != nullptr);
+            assert(bnds.upper_bound(models) != nullptr);
 
-            auto lb = bnds.lower_bound(models).value().value();
-            auto ub = bnds.upper_bound(models).value().value();
+            auto lb = bnds.lower_bound(models)->value();
+            auto ub = bnds.upper_bound(models)->value();
 
             value = ub;
             while (!bnds.is_allowed(models, value))
@@ -511,7 +511,7 @@ void Linear_arithmetic::check_bounds_consistency(Trail const& trail, Models cons
         auto& bnds = bounds[var_ord];
         if (auto lower_bound = bnds.lower_bound(models))
         {
-            assert(lower_bound.value().value() == lb[var_ord]);
+            assert(lower_bound->value() == lb[var_ord]);
         }
         else
         {
@@ -520,7 +520,7 @@ void Linear_arithmetic::check_bounds_consistency(Trail const& trail, Models cons
 
         if (auto upper_bound = bnds.upper_bound(models))
         {
-            assert(upper_bound.value().value() == ub[var_ord]);
+            assert(upper_bound->value() == ub[var_ord]);
         }
         else
         {

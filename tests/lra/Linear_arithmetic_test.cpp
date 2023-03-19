@@ -85,8 +85,8 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
     REQUIRE(conflicts.empty());
 
     auto& bounds_x = lra.find_bounds(x.ord());
-    REQUIRE(bounds_x.lower_bound(models).value().value() == 0);
-    REQUIRE(bounds_x.upper_bound(models).value().value() == 10);
+    REQUIRE(bounds_x.lower_bound(models)->value() == 0);
+    REQUIRE(bounds_x.upper_bound(models)->value() == 10);
 }
 
 TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_arithmetic]")
@@ -113,7 +113,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
 
         auto bounds_x = lra.find_bounds(x.ord());
         REQUIRE(!bounds_x.lower_bound(models));
-        REQUIRE(bounds_x.upper_bound(models).value().value() == 16);
+        REQUIRE(bounds_x.upper_bound(models)->value() == 16);
     }
 
     // make x + y <= 8 unit
@@ -124,7 +124,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
 
         auto bounds_x = lra.find_bounds(x.ord());
         REQUIRE(!bounds_x.lower_bound(models));
-        REQUIRE(bounds_x.upper_bound(models).value().value() == 8);
+        REQUIRE(bounds_x.upper_bound(models)->value() == 8);
     }
 
     // make x + y + z <= 4 unit
@@ -135,7 +135,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
 
         auto& bounds_x = lra.find_bounds(x.ord());
         REQUIRE(!bounds_x.lower_bound(models));
-        REQUIRE(bounds_x.upper_bound(models).value().value() == 4);
+        REQUIRE(bounds_x.upper_bound(models)->value() == 4);
     }
 }
 
@@ -171,7 +171,7 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
 
     auto& bounds_x = lra.find_bounds(x.ord());
     REQUIRE(!bounds_x.lower_bound(models));
-    REQUIRE(bounds_x.upper_bound(models).value().value() == 8);
+    REQUIRE(bounds_x.upper_bound(models)->value() == 8);
 }
 
 TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")
@@ -233,7 +233,7 @@ TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
 
     auto& bounds_x = lra.find_bounds(x.ord());
     REQUIRE(!bounds_x.lower_bound(models));
-    REQUIRE(bounds_x.upper_bound(models).value().value() == 4);
+    REQUIRE(bounds_x.upper_bound(models)->value() == 4);
 
     lra.on_before_backtrack(db, trail, 1);
     trail.backtrack(1);
@@ -241,7 +241,7 @@ TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
     REQUIRE(lra.propagate(db, trail).empty());
 
     REQUIRE(!bounds_x.lower_bound(models));
-    REQUIRE(bounds_x.upper_bound(models).value().value() == 12);
+    REQUIRE(bounds_x.upper_bound(models)->value() == 12);
 }
 
 TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
