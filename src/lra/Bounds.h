@@ -65,18 +65,41 @@ public:
     using Constraint = Linear_constraint<Value>;
     using Models = Theory_models<Value>;
 
-    /** Create new implied value
+    /** Create new value implied by a unit linear constraint
      * 
+     * @param var bounded variable
      * @param val computed value implied by @p cons for the only unassigned variable in @p cons
      * @param cons unit constraint in @p models
      * @param models partial assignment of variables
      * @param level decision level at which @p val is implied
      */
-    inline Implied_value(Value val, Constraint cons, Models const& models, int level)
-        : val(val), cons(cons),
-          timestamp(cons.size() >= 2 ? models.owned().timestamp(*++cons.vars().begin()) : -1),
-          dec_level(level)
+    inline Implied_value(int var, Value val, Constraint cons, Models const& models, int level)
+        : bound_var(var), val(val), cons(cons), dec_level(level)
     {
+        assert(!cons.empty());
+        assert(!models.owned().is_defined(cons.vars().front()));
+        assert(std::all_of(cons.vars().begin() + 1, cons.vars().end(), [&](auto var) {
+            return models.owned().is_defined(var);
+        }));
+        compute_timestamps(models);
+    }
+
+    /** Create a bound deduced from other bounds
+     * 
+     * @tparam Bound_range range with bounds
+     * @param var bounded variable
+     * @param val computed value implied by @p cons for @p var given @p deps 
+     * @param cons linear constraint where all variables are either assigned or bounded by @p deps
+     * @param models partial assignment of variables
+     * @param level decision level at which @p val is implied
+     * @param deps other bounds this bound depends on
+     */
+    template<std::ranges::range Bound_range>
+    inline Implied_value(int var, Value val, Constraint cons, Models const& models, int level, Bound_range&& deps)
+        : bound_var(var), val(val), cons(cons), deps(deps), dec_level(level)
+    {
+        assert(!cons.empty());
+        compute_timestamps(models);
     }
 
     /** Get the implied value
@@ -97,6 +120,29 @@ public:
      */
     inline int level() const { return dec_level; }
 
+    /** Get variable for which this bound holds
+     * 
+     * @return theory variable bounded by this bound
+     */
+    inline int var() const { return bound_var; }
+
+    /** Other bounds on which this bound depends
+     * 
+     * @return range of bounds necessary for this bound
+     */
+    inline auto const& bounds() const { return deps; }
+
+    /** Check if this bound is strict (<, >)
+     * 
+     * @return true iff this bound is strict (<, >)
+     */
+    inline bool is_strict() const
+    {
+        return reason().is_strict() || std::any_of(deps.begin(), deps.end(), [](auto const& other_bound) {
+            return other_bound.reason().is_strict();
+        });
+    }
+
     /** Check whether this value is obsolete.
      *
      * Value becomes obsolete if `reason()` is no longer on the trail, it is no longer a unit
@@ -108,40 +154,75 @@ public:
      */
     inline bool is_obsolete(Models const& models) const
     {
-        if (reason().empty() || perun::eval(models.boolean(), reason().lit()) != true)
+        // if reason() is assigned to a different value or it is not on the trail
+        if (eval(models.boolean(), reason().lit()) != true || 
+            cons_time > models.boolean().timestamp(reason().lit().var().ord()))
         {
-            return true; // reason() is no longer on the trail
+            return true;
         }
 
-        // find the assigned watched variable
-        auto [var_it, var_end] = cons.vars();
-        assert(var_it != var_end);
-        assert(!models.owned().is_defined(*var_it) ||
-               std::all_of(cons.vars().begin(), cons.vars().end(),
-                           [&](auto var_ord) { return models.owned().is_defined(var_ord); }));
-
-        if (models.owned().is_defined(*var_it))
+        // obsolete if variables assigned at the time when we computed the bound are unassigned or 
+        // assigned to a different value
+        for (auto var : reason().vars())
         {
-            return false;
-        }
-        else // the first variable is unassigned
-        {
-            ++var_it;
+            if (var != bound_var)
+            {
+                // if var is supposed to be assigned
+                auto it = std::find_if(deps.begin(), deps.end(), [var](auto const& bnd) {
+                    return bnd.bound_var == var;
+                });
+                if (it == deps.end() && (!models.owned().is_defined(var) || 
+                                            models.owned().timestamp(var) > var_time))
+                {
+                    return true;
+                }
+            }
         }
 
-        return var_it != var_end && (!models.owned().is_defined(*var_it) ||
-                                     models.owned().timestamp(*var_it) != timestamp);
+        // obsolete if any bound, on which this bound depends, is obsolete
+        for (auto const& bnd : deps)
+        {
+            if (bnd.is_obsolete(models))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 private:
+    // bounded theory variable ordinal number
+    int bound_var;
     // implied bound
     Value val;
     // linear constraint that implied the bound
     Constraint cons;
-    // timestamp of the most recently assigned variable in cons
-    int timestamp;
+    // bounds used to derive this bound
+    std::vector<Implied_value<Value>> deps;
+    // timestamp of the boolean variable of constraint
+    int cons_time = 0;
+    // max timestamp of assigned theory variables on which this bound depends
+    int var_time = 0;
     // decision level of this bound
     int dec_level;
+
+    /** Compute maximal timestamp of a boolean/theory variable used for this bound
+     * 
+     * @param models partial assignment of variables
+     */
+    inline void compute_timestamps(Models const& models)
+    {
+        cons_time = models.boolean().timestamp(reason().lit().var().ord());
+        var_time = 0;
+        for (auto var : reason().vars())
+        {
+            if (var != bound_var && models.owned().is_defined(var))
+            {
+                var_time = std::max<int>(var_time, models.owned().timestamp(var));
+            }
+        }
+    }
 };
 
 /** This class keeps track of implied bounds and inequalities for a variable.
@@ -231,11 +312,12 @@ public:
      *
      * @param models partial assignment variables
      * @param bound new upper bound
+     * @returns true iff @p bound is better than current bound
      */
-    inline void add_upper_bound(Models const& models, Implied_value_type&& bound)
+    inline bool add_upper_bound(Models const& models, Implied_value_type&& bound)
     {
         remove_obsolete(ub, models);
-        insert(ub, std::move(bound), [this](auto bnd, auto other_bnd) { 
+        return insert(ub, std::move(bound), [this](auto bnd, auto other_bnd) { 
             return less(bnd, other_bnd); 
         });
     }
@@ -244,11 +326,12 @@ public:
      *
      * @param models partial assignment of variables
      * @param bound new lower bound
+     * @returns true iff @p bound is better than current bound
      */
-    inline void add_lower_bound(Models const& models, Implied_value_type&& bound)
+    inline bool add_lower_bound(Models const& models, Implied_value_type&& bound)
     {
         remove_obsolete(lb, models);
-        insert(lb, std::move(bound), [this](auto bnd, auto other_bnd) { 
+        return insert(lb, std::move(bound), [this](auto bnd, auto other_bnd) { 
             return greater(bnd, other_bnd); 
         });
     }
@@ -264,7 +347,7 @@ public:
     {
         if (auto lb = lower_bound(models))
         {
-            return lb->value() < value || (lb->value() == value && !lb->reason().is_strict());
+            return lb->value() < value || (lb->value() == value && !lb->is_strict());
         }
         return true;
     }
@@ -280,7 +363,7 @@ public:
     {
         if (auto ub = upper_bound(models))
         {
-            return value < ub->value() || (ub->value() == value && !ub->reason().is_strict());
+            return value < ub->value() || (ub->value() == value && !ub->is_strict());
         }
         return true;
     }
@@ -316,7 +399,7 @@ private:
     inline bool less(Implied_value_type const& lhs, Implied_value_type const& rhs) const
     {
         return lhs.value() < rhs.value() || (lhs.value() == rhs.value() &&
-                                             lhs.reason().is_strict() && !rhs.reason().is_strict());
+                                             lhs.is_strict() && !rhs.is_strict());
     }
 
     /** Check whether @p lhs is strictly greater than @p rhs
@@ -328,7 +411,7 @@ private:
     inline bool greater(Implied_value_type const& lhs, Implied_value_type const& rhs) const
     {
         return lhs.value() > rhs.value() || (lhs.value() == rhs.value() &&
-                                             lhs.reason().is_strict() && !rhs.reason().is_strict());
+                                             lhs.is_strict() && !rhs.is_strict());
     }
 
     /** Remove obsolete bounds from the top of the @p bounds stack
@@ -351,9 +434,10 @@ private:
      * @param bound new bound to insert to @p bounds
      * @param is_better predicate which, given two implied values, returns true iff the first 
      * value is strictly better than the second value
+     * @returns true iff @p bound is inserted
      */
     template<typename Predicate>
-    inline void insert(std::vector<Implied_value_type>& bounds, Implied_value_type&& bound, Predicate&& is_better)
+    inline bool insert(std::vector<Implied_value_type>& bounds, Implied_value_type&& bound, Predicate&& is_better)
     {
         assert(std::is_sorted(bounds.begin(), bounds.end(), [](auto&& lhs, auto&& rhs) {
             return lhs.level() < rhs.level();
@@ -371,8 +455,9 @@ private:
             bounds.erase(it, std::find_if(it, bounds.end(), [&](auto&& other_bnd) {
                 return is_better(other_bnd, bound);
             }));
+            return true;
         }
-
+        return false;
     }
 };
 

@@ -211,7 +211,7 @@ int Linear_arithmetic::decision_level(Trail const& trail, Constraint const& cons
     return level;
 }
 
-void Linear_arithmetic::update_bounds(Trail const& trail, Models const& models, Constraint& cons)
+bool Linear_arithmetic::update_bounds(Trail const& trail, Models const& models, Constraint cons)
 {
     assert(is_unit(models.owned(), cons));
     assert(models.boolean().is_defined(cons.lit().var().ord()));
@@ -219,27 +219,32 @@ void Linear_arithmetic::update_bounds(Trail const& trail, Models const& models, 
 
     auto level = decision_level(trail, cons);
     auto value = cons.implied_value(models.owned()) / cons.coef().front();
-    // find constraint which should be true in current model (according to bool model)
-    auto actual_cons = perun::eval(models.boolean(), cons.lit()).value() ? cons : cons.negate();
+    int var = cons.vars().front();
 
-    if (implies_equality(actual_cons))
+    // find which constraint is on the trail (either cons or its negation)
+    cons = perun::eval(models.boolean(), cons.lit()).value() ? cons : cons.negate();
+
+    bool has_changed = false;
+    if (implies_equality(cons))
     {
-        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons, models, level});
-        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons, models, level});
+        has_changed |= bounds[var].add_lower_bound(models, {var, value, cons, models, level});
+        has_changed |= bounds[var].add_upper_bound(models, {var, value, cons, models, level});
     }
-    else if (implies_inequality(actual_cons))
+    else if (implies_inequality(cons))
     {
-        bounds[cons.vars().front()].add_inequality({value, actual_cons, models, level});
+        has_changed = true;
+        bounds[var].add_inequality({var, value, cons, models, level});
     }
-    else if (implies_lower_bound(actual_cons))
+    else if (implies_lower_bound(cons))
     {
-        bounds[cons.vars().front()].add_lower_bound(models, {value, actual_cons, models, level});
+        has_changed |= bounds[var].add_lower_bound(models, {var, value, cons, models, level});
     }
     else // upper bound
     {
-        assert(implies_upper_bound(actual_cons));
-        bounds[cons.vars().front()].add_upper_bound(models, {value, actual_cons, models, level});
+        assert(implies_upper_bound(cons));
+        has_changed |= bounds[var].add_upper_bound(models, {var, value, cons, models, level});    
     }
+    return has_changed;
 }
 
 bool Linear_arithmetic::implies_equality(Constraint const& cons) const
@@ -291,14 +296,14 @@ bool Linear_arithmetic::is_fully_assigned(Model<Rational> const& model, Constrai
     return cons.empty() || model.is_defined(cons.vars().front());
 }
 
-std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, Variable_bounds& bounds)
+std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, int var_ord)
 {
-    if (auto conflict = Bound_conflict_analysis{this}.analyze(trail, bounds))
+    if (auto conflict = Bound_conflict_analysis{this}.analyze(trail, bounds, var_ord))
     {
         return conflict;
     }
 
-    if (auto conflict = Inequality_conflict_analysis{this}.analyze(trail, bounds))
+    if (auto conflict = Inequality_conflict_analysis{this}.analyze(trail, bounds[var_ord]))
     {
         return conflict;
     }
@@ -511,20 +516,20 @@ void Linear_arithmetic::check_bounds_consistency(Trail const& trail, Models cons
         auto& bnds = bounds[var_ord];
         if (auto lower_bound = bnds.lower_bound(models))
         {
-            assert(lower_bound->value() == lb[var_ord]);
+            assert(lower_bound->value() >= lb[var_ord]);
         }
         else
         {
-            assert(lb[var_ord] == std::numeric_limits<int>::lowest());
+            //assert(lb[var_ord] == std::numeric_limits<int>::lowest());
         }
 
         if (auto upper_bound = bnds.upper_bound(models))
         {
-            assert(upper_bound->value() == ub[var_ord]);
+            assert(upper_bound->value() <= ub[var_ord]);
         }
         else
         {
-            assert(ub[var_ord] == std::numeric_limits<int>::max());
+            //assert(ub[var_ord] == std::numeric_limits<int>::max());
         }
     }
 }

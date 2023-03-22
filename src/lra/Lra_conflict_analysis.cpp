@@ -43,14 +43,23 @@ void Fourier_motzkin_elimination::init(Constraint const& cons, Order_predicate p
     poly.constant = -cons.rhs() * mult;
 }
 
-void Fourier_motzkin_elimination::resolve(Constraint const& cons)
+void Fourier_motzkin_elimination::init(Fourier_motzkin_elimination&& other)
+{
+    pred = other.pred;
+    poly = std::move(other.poly);
+}
+
+void Fourier_motzkin_elimination::resolve(Constraint const& cons, int var_ord)
 {
     assert(!poly.empty());
     assert(!cons.empty());
     assert(cons.pred() != Order_predicate::eq || !cons.lit().is_negation()); // cons is not !=
 
     // find the variable to eliminate in `poly`
-    auto poly_it = poly.begin();
+    auto poly_it = std::find_if(poly.begin(), poly.end(), [var_ord](auto const& pair) {
+        return pair.first == var_ord;
+    });
+    assert(poly_it != poly.end());
 
     // find the variable to eliminate in `cons`
     auto cons_var_it = std::find(cons.vars().begin(), cons.vars().end(), poly_it->first);
@@ -58,10 +67,6 @@ void Fourier_motzkin_elimination::resolve(Constraint const& cons)
     assert(cons_var_it != cons.vars().end());
     assert(cons_coef_it != cons.coef().end());
     assert(*cons_var_it == poly_it->first);
-    assert(
-        (is_lower_bound() &&
-         is_upper_bound(*cons_coef_it, cons.pred(), cons.lit().is_negation())) ||
-        (is_upper_bound() && is_lower_bound(*cons_coef_it, cons.pred(), cons.lit().is_negation())));
 
     // compute constants s.t. `poly + cons_mult * cons` eliminates the first variable in `poly`
     auto cons_mult = -poly_it->second / *cons_coef_it;
@@ -106,6 +111,63 @@ void Fourier_motzkin_elimination::resolve(Constraint const& cons)
     }
 }
 
+void Fourier_motzkin_elimination::resolve(Fourier_motzkin_elimination const& other, int var_ord)
+{
+    assert(!poly.empty());
+    assert(!other.derived().variables.empty());
+
+    // find the variable to eliminate in `poly`
+    auto poly_it = std::find_if(poly.begin(), poly.end(), [var_ord](auto const& pair) {
+        return pair.first == var_ord;
+    });
+    assert(poly_it != poly.end());
+
+    // find the variable to eliminate in `other`
+    auto other_it = std::find_if(other.derived().begin(), other.derived().end(), [var_ord](auto const& pair) {
+        return pair.first == var_ord;
+    });
+    assert(other_it != other.derived().end());
+    assert(other_it->first == poly_it->first);
+
+    auto other_mult = -poly_it->second / other_it->second;
+    if (other_mult < 0)
+    {
+        // predicate of the derived constraint would be > or >= if we used `other_mult`
+        other_mult = -other_mult;
+        // multiply `poly` by -1
+        for (auto& [_, coef] : poly)
+        {
+            coef = -coef;
+        }
+        poly.constant = -poly.constant;
+    }
+
+    // eliminate `var_ord`
+    for (auto [var, coef] : other.derived())
+    {
+        poly.variables.emplace_back(var, coef * other_mult);
+    }
+    poly.constant = poly.constant + other.derived().constant * other_mult;
+    poly.normalize();
+
+    assert(std::find_if(poly.begin(), poly.end(),
+                        [&](auto var) { return var.first == var_ord; }) == poly.end());
+
+    // find predicate of the derivation
+    if (pred == Order_predicate::eq && other.predicate() == Order_predicate::eq)
+    {
+        pred = Order_predicate::eq;
+    }
+    else if (pred != Order_predicate::lt && other.predicate() != Order_predicate::lt)
+    {
+        pred = Order_predicate::leq;
+    }
+    else
+    {
+        pred = Order_predicate::lt;
+    }
+}
+
 Fourier_motzkin_elimination::Constraint Fourier_motzkin_elimination::finish(Trail& trail)
 {
     if (poly.empty())
@@ -130,40 +192,43 @@ Fourier_motzkin_elimination::Constraint Fourier_motzkin_elimination::finish(Trai
     return cons;
 }
 
-bool Bound_conflict_analysis::in_conflict(Models const& models, Variable_bounds& bounds) const
-{
-    auto lb = bounds.lower_bound(models);
-    auto ub = bounds.upper_bound(models);
-    if (!lb || !ub)
-    {
-        return false;
-    }
-
-    auto is_strict = lb->reason().is_strict() || ub->reason().is_strict();
-    return lb->value() > ub->value() || (lb->value() == ub->value() && is_strict);
-}
-
-std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds)
+std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds, int var_ord)
 {
     auto models = lra->relevant_models(trail);
-    auto lb = bounds.lower_bound(models);
-    auto ub = bounds.upper_bound(models);
+    auto lb = bounds[var_ord].lower_bound(models);
+    auto ub = bounds[var_ord].upper_bound(models);
     if (!lb || !ub)
     {
         return {}; // no conflict
     }
 
-    auto is_strict = lb->reason().is_strict() || ub->reason().is_strict();
+    auto is_strict = lb->is_strict() || ub->is_strict();
     if (lb->value() < ub->value() || (lb->value() == ub->value() && !is_strict))
     {
         return {}; // no conflict
     }
-    assert(lb->reason().vars().front() == ub->reason().vars().front());
+    assert(lb->var() == ub->var());
 
-    Clause conflict{lb->reason().lit().negate(), ub->reason().lit().negate()};
-    fm.init(lb->reason());
-    fm.resolve(ub->reason());
-    //minimize(trail, conflict);
+    // Derive a conflict using FM elimination. We implicitly use resolution to resolve intermediate 
+    // results.
+    Clause conflict;
+    auto eliminate = [&](auto& self, Implied_value<Rational> const& bound) -> Fourier_motzkin_elimination
+    {
+        // add assumption to the implication
+        conflict.push_back(bound.reason().lit().negate());
+
+        // eliminate all unassigned variables in the linear constraint except for `bound.var()`
+        Fourier_motzkin_elimination fm{lra};
+        fm.init(bound.reason());
+        for (auto const& other : bound.bounds())
+        {
+            fm.resolve(self(self, other), other.var());
+        }
+        return fm;
+    };
+
+    auto fm = eliminate(eliminate, *lb);
+    fm.resolve(eliminate(eliminate, *ub), ub->var());
     auto derived = fm.finish(trail);
     if (!derived.empty())
     {
@@ -175,67 +240,6 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
     assert(conflict.size() >= 2);
     assert(eval(models.boolean(), conflict) == false);
     return conflict;
-}
-
-void Bound_conflict_analysis::minimize(Trail& trail, Clause& conflict)
-{
-    auto models = lra->relevant_models(trail);
-    while (!fm.derived().empty())
-    {
-        // move the top level variable to the front
-        auto top_it = fm.derived().begin();
-        for (auto it = ++fm.derived().begin(); it != fm.derived().end(); ++it)
-        {
-            if (trail.decision_level(Variable{it->first, Variable::rational}).value() > trail.decision_level(Variable{top_it->first, Variable::rational}))
-            {
-                top_it = it;
-            }
-        }
-        std::iter_swap(top_it, fm.derived().begin());
-
-        // resolve bound conflict with the top level variable
-        if (auto cons = find_conflict(models))
-        {
-            fm.resolve(cons.value());
-            conflict.push_back(cons.value().lit().negate());
-        }
-        else
-        {
-            break;
-        }
-    }
-}
-
-std::optional<Bound_conflict_analysis::Constraint> Bound_conflict_analysis::find_conflict(Models const& models)
-{
-    auto [var_ord, var_coef] = *fm.derived().begin();
-    auto& bounds = lra->find_bounds(var_ord);
-    auto value = fm.derived().implied_value(models);
-    if (var_coef < 0 || fm.predicate() == Order_predicate::eq) // `value` is a lower bound
-    {
-        if (auto ub = bounds.upper_bound(models))
-        {
-            auto is_strict = ub->reason().is_strict() || fm.predicate() == Order_predicate::lt;
-            if (ub->value() < value || (ub->value() == value && is_strict))
-            {
-                return ub->reason();
-            }
-        }
-    }
-
-    if (var_coef > 0 || fm.predicate() == Order_predicate::eq) // `value` is an upper bound
-    {
-        if (auto lb = bounds.lower_bound(models))
-        {
-            auto is_strict = lb->reason().is_strict() || fm.predicate() == Order_predicate::lt;
-            if (lb->value() > value || (lb->value() == value && is_strict))
-            {
-                return lb->reason();
-            }
-        }
-    }
-
-    return {};
 }
 
 bool Inequality_conflict_analysis::in_conflict(Models const& models, Variable_bounds& bounds) const
@@ -296,7 +300,7 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
         assert(!lb->reason().lit().is_negation());
         assert(lb->reason().vars().size() > 1 || neq->reason().vars().size() > 1);
         fm.init(neq->reason(), Order_predicate::eq, 1);
-        fm.resolve(lb->reason());
+        fm.resolve(lb->reason(), neq->reason().vars().front());
         auto cons = fm.finish(trail);
         assert(!cons.empty());
         assert(eval(models.owned(), cons.negate()) == false);
@@ -311,7 +315,7 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
         // create and propagate `L < D` semantically
         auto mult = neq->reason().coef().front() > 0 ? 1 : -1;
         fm.init(neq->reason(), Order_predicate::lt, mult);
-        fm.resolve(lb->reason());
+        fm.resolve(lb->reason(), neq->reason().vars().front());
         auto cons = fm.finish(trail);
         if (!cons.empty()) // `L < D` is non-trivial
         {
@@ -327,7 +331,7 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
         // create and propagate `D < U` semantically
         auto mult = neq->reason().coef().front() > 0 ? -1 : 1;
         fm.init(neq->reason(), Order_predicate::lt, mult);
-        fm.resolve(ub->reason());
+        fm.resolve(ub->reason(), neq->reason().vars().front());
         auto cons = fm.finish(trail);
         if (!cons.empty()) // `D < U` is non-trivial
         {

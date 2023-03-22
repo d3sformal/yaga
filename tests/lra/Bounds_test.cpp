@@ -8,7 +8,8 @@ template<typename Value>
 inline perun::Implied_value<Value> implied(perun::Theory_models<Value> const& models, 
                                            perun::Linear_constraint<Value>& cons, int level)
 {
-    return {cons.implied_value(models.owned()) / cons.coef().front(), cons, models, level};
+    return {cons.vars().front(), cons.implied_value(models.owned()) / cons.coef().front(), 
+            cons, models, level};
 }
 
 TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
@@ -278,6 +279,66 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
         // clear z
         models.owned().clear(z.ord());
         REQUIRE(!bounds.inequality(models, 10));
+    }
+}
+
+TEST_CASE("Add deduced bounds", "[bounds]")
+{
+    using namespace perun;
+    using namespace perun::test;
+
+    using Rational = Fraction<int>;
+
+    constexpr int num_vars = 3;
+
+    Model<bool> bool_model;
+    Model<Rational> lra_model;
+    bool_model.resize(10);
+    lra_model.resize(num_vars);
+    Theory_models<Rational> models{bool_model, lra_model};
+    Linear_constraints<Rational> constraints;
+    std::array<Bounds<Rational>, num_vars> bounds;
+    auto make = factory(constraints);
+    auto [x, y, z] = real_vars<num_vars>();
+
+    SECTION("upper bound")
+    {
+        models.owned().set_value(z.ord(), 0);
+
+        std::array trail{
+            make(y + z > 0),
+            make(x + y <= 0)
+        };
+        for (auto cons : trail)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+        }
+
+        std::vector deps{Implied_value<Rational>{y.ord(), 0, trail[0], models, 1}};
+        bounds[y.ord()].add_lower_bound(models, {y.ord(), 0, trail[0], models, 1});
+        bounds[x.ord()].add_upper_bound(models, {x.ord(), 0, trail[1], models, 1, deps});
+        REQUIRE(!bounds[x.ord()].check_upper_bound(models, 0));
+        REQUIRE(bounds[x.ord()].check_upper_bound(models, -1));
+    }
+
+    SECTION("lower bound")
+    {
+        models.owned().set_value(z.ord(), 0);
+
+        std::array trail{
+            make(y + z < 0),
+            make(x + y >= 0)
+        };
+        for (auto cons : trail)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+        }
+
+        std::vector deps{Implied_value<Rational>{y.ord(), 0, trail[0], models, 1}};
+        bounds[y.ord()].add_upper_bound(models, {y.ord(), 0, trail[0], models, 1});
+        bounds[x.ord()].add_lower_bound(models, {x.ord(), 0, trail[1], models, 1, deps});
+        REQUIRE(!bounds[x.ord()].check_lower_bound(models, 0));
+        REQUIRE(bounds[x.ord()].check_lower_bound(models, 1));
     }
 }
 

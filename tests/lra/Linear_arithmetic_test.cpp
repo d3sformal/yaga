@@ -171,7 +171,7 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
 
     auto& bounds_x = lra.find_bounds(x.ord());
     REQUIRE(!bounds_x.lower_bound(models));
-    REQUIRE(bounds_x.upper_bound(models)->value() == 8);
+    REQUIRE(bounds_x.upper_bound(models)->value() == 4);
 }
 
 TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")

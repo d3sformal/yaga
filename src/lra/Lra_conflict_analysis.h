@@ -134,6 +134,12 @@ public:
      */
     void init(Constraint const& cons);
 
+    /** Set current constraint to the derived constraint from @p other elimination
+     * 
+     * @param other other FM elimination
+     */
+    void init(Fourier_motzkin_elimination&& other);
+
     /** Set current constraint to the polynomial of @p cons multiplied by @p mult with predicate
      * @p pred
      *
@@ -143,14 +149,22 @@ public:
      */
     void init(Constraint const& cons, Order_predicate pred, Rational mult);
 
-    /** Fourier-Motzkin elimination of the first variable in current constraint.
+    /** Fourier-Motzkin elimination of @p var
      *
      * If current constraint is `L <= x` and @p cons is `x <= U` (or vice versa), derive `L <= U`
-     * where `x` is the first variable in current constraint.
+     * where `x` is @p var
      *
      * @param cons linear constraint
+     * @param var rational variable ordinal to resolve
      */
-    void resolve(Constraint const& cons);
+    void resolve(Constraint const& cons, int var);
+
+    /** FM elimination of @p var using constraint derived from @p other FM elimination
+     * 
+     * @param other other FM elimination
+     * @param var rational variable ordinal to resolve
+     */
+    void resolve(Fourier_motzkin_elimination const& other, int var);
 
     /** Create a linear constraint from current derivation and propagate it to the @p trail
      *
@@ -164,6 +178,7 @@ public:
      * @return current linear polynomial
      */
     inline Polynomial& derived() { return poly; }
+    inline Polynomial const& derived() const { return poly; }
 
     /** Get current predicate
      * 
@@ -227,44 +242,20 @@ public:
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
-    using Variable_bounds = Bounds<Rational>;
+    using Variable_bounds = std::vector<Bounds<Rational>>;
 
-    inline Bound_conflict_analysis(Linear_arithmetic* lra) : lra(lra), fm(lra) {}
-
-    /** Check whether there is a bound conflict in @p bounds
-     * 
-     * @param models partial assignment of variables
-     * @param bounds bounds of a real variable
-     * @return true iff @p bounds has a bound conflict
-     */
-    bool in_conflict(Models const& models, Variable_bounds& bounds) const;
+    inline Bound_conflict_analysis(Linear_arithmetic* lra) : lra(lra) {}
 
     /** Check if there is a bound conflict and provide an explanation if there is a conflict.
      *
      * @param trail current solver trail
-     * @param bounds implied bounds for a variable
+     * @param bounds map rational variable -> implied bounds for that variable
+     * @param var_ord checked rational variable
      * @return conflict clause if there is a bound conflict. None, otherwise.
      */
-    std::optional<Clause> analyze(Trail& trail, Variable_bounds& bounds);
-
+    std::optional<Clause> analyze(Trail& trail, Variable_bounds& bounds, int var_ord);
 private:
     Linear_arithmetic* lra;
-    Fourier_motzkin_elimination fm;
-
-    /** Apply the Fourier-Motzkin elimination as long as the derived constraint is in a bound 
-     * conflict.
-     * 
-     * @param trail solver trail
-     * @param conflict conflict clause (this method adds new assumptions to the implication)
-     */
-    void minimize(Trail& trail, Clause& conflict);
-
-    /** Check whether the first variable in currently derived constraint is in a bound conflict.
-     * 
-     * @param models 
-     * @return std::optional<Constraint> 
-     */
-    std::optional<Constraint> find_conflict(Models const& models);
 };
 
 /** Analysis of inequality conflicts.

@@ -110,14 +110,14 @@ public:
      * @param lra_var_ord ordinal number of a real variable
      * @return implied bounds for @p lra_var_ord
      */
-    inline Variable_bounds& find_bounds(int lra_var_ord) { return bounds[lra_var_ord]; }
+    [[nodiscard]] inline Variable_bounds& find_bounds(int lra_var_ord) { return bounds[lra_var_ord]; }
 
     /** Get models relevant to this theory
      *
      * @param trail current solver trail
      * @return models from @p trail relevant to this theory
      */
-    inline Models relevant_models(Trail& trail) const
+    [[nodiscard]] inline Models relevant_models(Trail& trail) const
     {
         return {trail.model<bool>(Variable::boolean), trail.model<Rational>(Variable::rational)};
     }
@@ -209,16 +209,17 @@ private:
      * @param trail current solver trail
      * @param models partial assignment of variables
      * @param cons unit constraint
+     * @returns true iff a bound has changed
      */
-    void update_bounds(Trail const& trail, Models const& models, Constraint& cons);
+    bool update_bounds(Trail const& trail, Models const& models, Constraint cons);
 
-    /** Check if @p bounds is empty (i.e., no value can be assigned to a variable)
+    /** Check if some value can be assigned to @p var_ord
      *
      * @param trail current solver trail
-     * @param bounds bounds object to check
-     * @return conflict clause if @p bounds is empty. None, otherwise.
+     * @param var_ord variable to check
+     * @return conflict clause if @p var_ord cannot be assigned any value. None, otherwise.
      */
-    std::optional<Clause> check_bounds(Trail& trail, Variable_bounds& bounds);
+    [[nodiscard]] std::optional<Clause> check_bounds(Trail& trail, int var_ord);
 
     /** Report a new unit constraint @p cons and check for conflicts.
      *
@@ -229,7 +230,7 @@ private:
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    void unit(Trail& trail, Models& models, Constraint& cons);
+    void unit(Trail& trail, Models& models, Constraint cons);
 
     /** Check whether the unit constraint @p cons implies an equality for the only unassigned
      * variable (e.g., `x == 5`)
@@ -237,7 +238,7 @@ private:
      * @param cons linear constraint with exactly one unassigned variable
      * @return true iff @p cons implies an equality
      */
-    bool implies_equality(Constraint const& cons) const;
+    [[nodiscard]] bool implies_equality(Constraint const& cons) const;
 
     /** Check whether the unit constraint @p cons implies an inequality for the only unassigned
      * variable (e.g., `x != 4`)
@@ -245,7 +246,7 @@ private:
      * @param cons linear constraint with exactly one unassigned variable
      * @return true iff @p cons implies an inequality
      */
-    bool implies_inequality(Constraint const& cons) const;
+    [[nodiscard]] bool implies_inequality(Constraint const& cons) const;
 
     /** Check whether the unit constraint @p cons implies a lower bound for the only unassigned
      * variable (e.g., `x > 0`, or `x >= 0`)
@@ -253,7 +254,7 @@ private:
      * @param cons linear constraint with exactly one unassigned variable
      * @return true iff @p cons implies a lower bound
      */
-    bool implies_lower_bound(Constraint const& cons) const;
+    [[nodiscard]] bool implies_lower_bound(Constraint const& cons) const;
 
     /** Check whether the unit constraint @p cons implies an upper bound for the only unassigned
      * variable (e.g., `x < 0`, or `x <= 0`)
@@ -261,7 +262,7 @@ private:
      * @param cons linear constraint with exactly one unassigned variable
      * @return true iff @p cons implies an upper bound
      */
-    bool implies_upper_bound(Constraint const& cons) const;
+    [[nodiscard]] bool implies_upper_bound(Constraint const& cons) const;
 
     /** Check if @p cons is unit (i.e., exactly one variable is unassigned)
      * 
@@ -269,7 +270,7 @@ private:
      * @param cons queried linear constraint
      * @return true iff @p cons is unit constraint
      */
-    bool is_unit(Model<Rational> const& model, Constraint const& cons) const;
+    [[nodiscard]] bool is_unit(Model<Rational> const& model, Constraint const& cons) const;
 
     /** Check if all variables in @p cons are assigned.
      * 
@@ -277,7 +278,7 @@ private:
      * @param cons queries linear constraint
      * @return true iff all variables in @p cons are assigned.
      */
-    bool is_fully_assigned(Model<Rational> const& model, Constraint const& cons) const;
+    [[nodiscard]] bool is_fully_assigned(Model<Rational> const& model, Constraint const& cons) const;
 
     /** Find the highest decision level of any assigned variable in @p cons including the boolean
      * variable which represents @p cons (i.e., `cons.lit().var()`)
@@ -287,7 +288,7 @@ private:
      * @return the highest decision level of any variable in @p cons including the boolean variable
      * which represents @p cons or 0 if no variable is assigned in @p cons
      */
-    int decision_level(Trail const& trail, Constraint const& cons) const;
+    [[nodiscard]] int decision_level(Trail const& trail, Constraint const& cons) const;
 
     /** Check if @p var is in @p models
      *
@@ -295,7 +296,7 @@ private:
      * @param var checked variables
      * @return true iff @p var is in @p models
      */
-    bool is_new(Models const& models, Variable var) const;
+    [[nodiscard]] bool is_new(Models const& models, Variable var) const;
 
     /** Allocate space for a new variable @p var in @p trail if it is necessary.
      *
@@ -311,7 +312,7 @@ private:
      * @param bounds implied bounds of a variable
      * @return integer value allowed by @p bounds or none if there is no such value
      */
-    std::optional<Rational> find_integer(Models const& models, Variable_bounds& bounds);
+    [[nodiscard]] std::optional<Rational> find_integer(Models const& models, Variable_bounds& bounds, Implied_bounds<Rational>& implied_bounds);
 
     /** Check that bounds is consistent with all unit constraints on the trail
      * 
