@@ -64,7 +64,9 @@ inline constexpr uint32_t polarity_of(term_t t) { return ((uint32_t)t.x) & 1; }
 inline constexpr term_t opposite_term(term_t t) { return term_t{t.x ^ 1}; }
 
 inline constexpr term_t positive_term(int32_t i) { return term_t{i << 1}; }
+inline constexpr term_t positive_term(term_t t) { return positive_term(index_of(t)); }
 inline constexpr term_t negative_term(int32_t i) { return term_t{(i << 1) | 1}; }
+inline constexpr term_t negative_term(term_t t) { return negative_term(index_of(t)); }
 
 
 class Term_table {
