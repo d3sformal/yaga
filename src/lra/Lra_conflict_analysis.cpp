@@ -130,7 +130,7 @@ void Fourier_motzkin_elimination::resolve(Fourier_motzkin_elimination const& oth
     assert(other_it->first == poly_it->first);
 
     auto other_mult = -poly_it->second / other_it->second;
-    if (other_mult < 0)
+    if (other_mult < 0 && other.predicate() != Order_predicate::eq)
     {
         // predicate of the derived constraint would be > or >= if we used `other_mult`
         other_mult = -other_mult;
@@ -218,14 +218,17 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
         conflict.push_back(bound.reason().lit().negate());
 
         // eliminate all unassigned variables in the linear constraint except for `bound.var()`
-        Fourier_motzkin_elimination fm{lra};
-        fm.init(bound.reason());
+        Fourier_motzkin_elimination fm{lra, bound.reason()};
         for (auto const& other : bound.bounds())
         {
             fm.resolve(self(self, other), other.var());
         }
         return fm;
     };
+
+    // remove duplicate literals from the conflict clause
+    std::sort(conflict.begin(), conflict.end(), Literal_comparer{});
+    conflict.erase(std::unique(conflict.begin(), conflict.end()), conflict.end());
 
     auto fm = eliminate(eliminate, *lb);
     fm.resolve(eliminate(eliminate, *ub), ub->var());

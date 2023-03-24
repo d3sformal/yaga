@@ -128,6 +128,19 @@ public:
 
     inline explicit Fourier_motzkin_elimination(Linear_arithmetic* lra) : lra(lra) {}
 
+    inline Fourier_motzkin_elimination(Linear_arithmetic* lra, Constraint cons) : lra(lra) 
+    {
+        init(cons);
+    }
+
+    // non-copyable
+    Fourier_motzkin_elimination(Fourier_motzkin_elimination const&) = delete;
+    Fourier_motzkin_elimination& operator=(Fourier_motzkin_elimination const&) = delete;
+
+    // movable
+    Fourier_motzkin_elimination(Fourier_motzkin_elimination&& other) = default;
+    Fourier_motzkin_elimination& operator=(Fourier_motzkin_elimination&& other) = default;
+
     /** Set current constraint to @p cons
      *
      * @param cons linear constraint
