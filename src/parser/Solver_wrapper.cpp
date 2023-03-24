@@ -297,6 +297,10 @@ void Internalizer_config::visit(term_t t)
         database.assert_clause(std::move(arg_literals));
         return;
     }
+    case terms::Kind::ARITH_CONSTANT:
+    case terms::Kind::ARITH_PRODUCT:
+    case terms::Kind::ARITH_POLY:
+        return;
     default:
         throw std::logic_error("Unhandled internalize case!");
     }
