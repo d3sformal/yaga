@@ -109,11 +109,16 @@ private:
     term_t mk_eq(std::vector<term_t>&& args);
     term_t mk_geq(std::vector<term_t>&& args);
     term_t mk_leq(std::vector<term_t>&& args);
+    term_t mk_gt(std::vector<term_t>&& args);
+    term_t mk_lt(std::vector<term_t>&& args);
     term_t mk_or(std::vector<term_t>&& args);
 
     term_t mk_binary_eq(term_t t1, term_t t2);
     term_t mk_binary_geq(term_t t1, term_t t2);
     term_t mk_binary_leq(term_t t1, term_t t2);
+
+    term_t mk_unary_minus(term_t t);
+    term_t mk_binary_minus(term_t t1, term_t t2);
 };
 
 }

@@ -2,6 +2,7 @@
 
 #include "Solver_wrapper.h"
 #include "Term_manager.h"
+#include "Terms.h"
 
 #define UNIMPLEMENTED throw std::logic_error("Not implemented yet!")
 
@@ -68,6 +69,14 @@ term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>
     {
         return mk_leq(std::move(args));
     }
+    else if (name == "<")
+    {
+        return mk_lt(std::move(args));
+    }
+    else if (name == ">")
+    {
+        return mk_gt(std::move(args));
+    }
     else if (name == "=")
     {
         return mk_eq(std::move(args));
@@ -75,6 +84,23 @@ term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>
     else if (name == "or")
     {
         return mk_or(std::move(args));
+    }
+    else if (name == "not")
+    {
+        assert(args.size() == 1);
+        return terms::opposite_term(args[0]);
+    }
+    else if (name == "-")
+    {
+        if (args.size() == 1)
+        {
+            return mk_unary_minus(args[0]);
+        }
+        else
+        {
+            assert(args.size() == 2);
+            return mk_binary_minus(args[0], args[1]);
+        }
     }
     UNIMPLEMENTED;
 }
@@ -95,6 +121,16 @@ term_t Parser_context::mk_geq(std::vector<term_t>&& args)
         return mk_binary_geq(args[0], args[1]);
     }
     UNIMPLEMENTED;
+}
+
+term_t Parser_context::mk_lt(std::vector<term_t>&& args)
+{
+    return terms::opposite_term(mk_geq(std::move(args)));
+}
+
+term_t Parser_context::mk_gt(std::vector<term_t>&& args)
+{
+    return terms::opposite_term(mk_leq(std::move(args)));
 }
 
 term_t Parser_context::mk_eq(std::vector<term_t>&& args)
@@ -136,6 +172,16 @@ term_t Parser_context::mk_binary_leq(term_t t1, term_t t2)
 term_t Parser_context::mk_or(std::vector<term_t>&& args)
 {
     return term_manager.mk_or(args);
+}
+
+term_t Parser_context::mk_unary_minus(term_t t)
+{
+    return term_manager.mk_unary_minus(t);
+}
+
+term_t Parser_context::mk_binary_minus(term_t t1, term_t t2)
+{
+    return term_manager.mk_arithmetic_minus(t1, t2);
 }
 
 } // namespace perun::parser

@@ -189,6 +189,13 @@ term_t Term_manager::mk_arithmetic_minus(term_t t1, term_t t2)
     return poly_to_term(p1);
 }
 
+term_t Term_manager::mk_unary_minus(term_t t)
+{
+    poly_t p = term_to_poly(t);
+    p.negate();
+    return poly_to_term(p);
+}
+
 poly_t Term_manager::term_to_poly(term_t term)
 {
     poly_t poly;

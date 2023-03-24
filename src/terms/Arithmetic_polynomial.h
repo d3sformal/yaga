@@ -212,7 +212,7 @@ template <typename TVar> void Polynomial<TVar>::negate()
 {
     for (auto& term : poly)
     {
-        term.coeff.negate();
+        term.coeff = -term.coeff;
     }
 }
 

@@ -47,6 +47,8 @@ public:
 
     term_t mk_arithmetic_minus(term_t t1, term_t t2);
 
+    term_t mk_unary_minus(term_t t);
+
     // names
     void set_term_name(term_t t, std::string const& name);
     term_t get_term_by_name(std::string const& name);
