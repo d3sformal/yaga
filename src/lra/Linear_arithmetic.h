@@ -16,6 +16,7 @@
 #include "Linear_constraints.h"
 #include "Model.h"
 #include "Theory.h"
+#include "Variable_bounds.h"
 
 namespace perun {
 
@@ -24,7 +25,7 @@ public:
     // types of variable values
     using Rational = Fraction<int>;
     // bounds object which keeps implied bounds of variables
-    using Variable_bounds = Bounds<Rational>;
+    using Bounds_type = Bounds<Rational>;
     // models relevant to this theory
     using Models = Theory_models<Rational>;
     // type of linear constraints
@@ -99,6 +100,10 @@ public:
         auto models = relevant_models(trail);
         if (is_new(models, cons.lit().var()))
         {
+            for (auto var : cons.vars())
+            {
+                occur[var].push_back(cons.lit().is_negation() ? cons.negate() : cons);
+            }
             add_variable(trail, models, cons.lit().var());
             watch(cons, models.owned());
         }
@@ -110,7 +115,7 @@ public:
      * @param lra_var_ord ordinal number of a real variable
      * @return implied bounds for @p lra_var_ord
      */
-    [[nodiscard]] inline Variable_bounds& find_bounds(int lra_var_ord) { return bounds[lra_var_ord]; }
+    [[nodiscard]] inline Bounds_type& find_bounds(int lra_var_ord) { return bounds[lra_var_ord]; }
 
     /** Get models relevant to this theory
      *
@@ -135,7 +140,7 @@ public:
      * @return constraint represented by @p lit or an empty constraint if @p lit does not 
      * represent a linear constraint. 
      */
-    inline Constraint constraint(Literal lit) 
+    inline Constraint constraint(Literal lit)
     {
         auto cons = constraint(lit.var().ord());
         if (cons.empty())
@@ -163,11 +168,13 @@ private:
     // map real variable -> list of constraints in which it is watched
     std::vector<std::vector<Watched_constraint>> watched;
     // map real variable -> set of allowed values
-    std::vector<Bounds<Rational>> bounds;
+    Variable_bounds bounds;
     // cached assignment of LRA variables
     Model<Rational> cached_values;
-    // list of conflicts at this level
-    std::vector<Clause> conflicts;
+    // list of rational variables whose bound has changed at this level
+    std::vector<int> to_check;
+    // map real variable -> list of constraints in which it occurs
+    std::vector<std::vector<Constraint>> occur;
 
     /** Start watching LRA variables in @p cons
      *
@@ -204,15 +211,6 @@ private:
      */
     void replace_watch(Trail& trail, Models& models, int lra_var_ord);
 
-    /** Update bounds using unit constraint @p cons
-     *
-     * @param trail current solver trail
-     * @param models partial assignment of variables
-     * @param cons unit constraint
-     * @returns true iff a bound has changed
-     */
-    bool update_bounds(Trail const& trail, Models const& models, Constraint cons);
-
     /** Check if some value can be assigned to @p var_ord
      *
      * @param trail current solver trail
@@ -221,48 +219,25 @@ private:
      */
     [[nodiscard]] std::optional<Clause> check_bounds(Trail& trail, int var_ord);
 
-    /** Report a new unit constraint @p cons and check for conflicts.
+    /** Update bounds implied by a new unit constraint @p cons 
      *
-     * If the unassigned variable in @p cons cannot be assigned any value, this method adds 
-     * a new conflict clause.
-     *
-     * @param trail current solver trail
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    void unit(Trail& trail, Models& models, Constraint cons);
+    void unit(Models& models, Constraint cons);
 
-    /** Check whether the unit constraint @p cons implies an equality for the only unassigned
-     * variable (e.g., `x == 5`)
-     *
-     * @param cons linear constraint with exactly one unassigned variable
-     * @return true iff @p cons implies an equality
+    /** Deduce new bounds using bounds added at this decision level
+     * 
+     * @param models partial assignment of variables
      */
-    [[nodiscard]] bool implies_equality(Constraint const& cons) const;
+    void propagate_bounds(Models& models);
 
-    /** Check whether the unit constraint @p cons implies an inequality for the only unassigned
-     * variable (e.g., `x != 4`)
-     *
-     * @param cons linear constraint with exactly one unassigned variable
-     * @return true iff @p cons implies an inequality
+    /** Finish propagation by checking if there are any conflicts.
+     * 
+     * @param trail current solver trail
+     * @return conflict clauses or an empty list if there are no conflicts.
      */
-    [[nodiscard]] bool implies_inequality(Constraint const& cons) const;
-
-    /** Check whether the unit constraint @p cons implies a lower bound for the only unassigned
-     * variable (e.g., `x > 0`, or `x >= 0`)
-     *
-     * @param cons linear constraint with exactly one unassigned variable
-     * @return true iff @p cons implies a lower bound
-     */
-    [[nodiscard]] bool implies_lower_bound(Constraint const& cons) const;
-
-    /** Check whether the unit constraint @p cons implies an upper bound for the only unassigned
-     * variable (e.g., `x < 0`, or `x <= 0`)
-     *
-     * @param cons linear constraint with exactly one unassigned variable
-     * @return true iff @p cons implies an upper bound
-     */
-    [[nodiscard]] bool implies_upper_bound(Constraint const& cons) const;
+    std::vector<Clause> finish(Trail& trail);
 
     /** Check if @p cons is unit (i.e., exactly one variable is unassigned)
      * 
@@ -312,7 +287,7 @@ private:
      * @param bounds implied bounds of a variable
      * @return integer value allowed by @p bounds or none if there is no such value
      */
-    [[nodiscard]] std::optional<Rational> find_integer(Models const& models, Variable_bounds& bounds, Implied_bounds<Rational>& implied_bounds);
+    [[nodiscard]] std::optional<Rational> find_integer(Models const& models, Bounds_type& bounds);
 
     /** Check that bounds is consistent with all unit constraints on the trail
      * 
