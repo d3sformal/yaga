@@ -8,4 +8,5 @@ target_sources(test PRIVATE
     Lra_test.cpp
     Lra_conflict_analysis_test.cpp
     Smtlib_parser_test.cpp
+    Variable_bounds_test.cpp
 )
