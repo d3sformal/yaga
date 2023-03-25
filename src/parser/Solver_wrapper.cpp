@@ -93,14 +93,6 @@ public:
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
-    Solver solver;
-    auto& theories = solver.set_theory<Theory_combination>();
-    theories.add_theory<Bool_theory>();
-    auto& lra = theories.add_theory<Linear_arithmetic>();
-
-    solver.set_restart_policy<Glucose_restart>();
-    solver.set_variable_order<Generalized_vsids>(lra);
-
     auto const& term_table = term_manager.get_term_table();
     Collect_vars_config config(term_table);
     terms::Visitor<Collect_vars_config> visitor(term_table, config);
@@ -113,8 +105,15 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     auto bool_vars_count = get_var_count(terms::types::bool_type);
     auto real_vars_count = get_var_count(terms::types::real_type);
 
+    Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, bool_vars_count);
     solver.trail().set_model<Rational>(Variable::rational, real_vars_count);
+    auto& theories = solver.set_theory<Theory_combination>();
+    theories.add_theory<Bool_theory>();
+    auto& lra = theories.add_theory<Linear_arithmetic>();
+
+    solver.set_restart_policy<Glucose_restart>();
+    solver.set_variable_order<Generalized_vsids>(lra);
 
     // Cnfize and assert clauses to the solver
     auto vars_map = [&config](terms::type_t type){
