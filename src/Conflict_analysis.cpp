@@ -55,7 +55,8 @@ std::pair<Clause, int> Conflict_analysis::finish(Trail const& trail) const
         return lhs_level > rhs_level ||
                (lhs_level == rhs_level && lhs.var().ord() < rhs.var().ord());
     });
-    assert(eval(trail.model<bool>(Variable::boolean), clause) == false);
+    auto const& model = trail.model<bool>(Variable::boolean);
+    assert(eval(model, clause) == false);
 
     if (num_top_level >= 2) // if clause is a semantic split
     {

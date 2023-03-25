@@ -13,6 +13,7 @@
 #include "Fraction.h"
 #include "Linear_constraint.h"
 #include "Trail.h"
+#include "Variable_bounds.h"
 
 namespace perun {
 
@@ -128,9 +129,27 @@ public:
 
     inline explicit Fourier_motzkin_elimination(Linear_arithmetic* lra) : lra(lra) {}
 
+    /** Create FM elimination starting with the constraint @p cons
+     *
+     * @param lra LRA plugin
+     * @param cons linear constraint
+     */
     inline Fourier_motzkin_elimination(Linear_arithmetic* lra, Constraint cons) : lra(lra) 
     {
         init(cons);
+    }
+
+    /** Create FM elimination starting with the polynomial of @p cons multiplied by @p mult with 
+     * predicate @p pred
+     *
+     * @param lra LRA plugin
+     * @param cons linear constraint
+     * @param pred predicate of the constraint (actual predicate of @p cons is ignored)
+     * @param mult constant by which we multiply linear polynomial from @p cons
+     */
+    inline Fourier_motzkin_elimination(Linear_arithmetic* lra, Constraint cons, Order_predicate pred, Rational mult) : lra(lra) 
+    {
+        init(cons, pred, mult);
     }
 
     // non-copyable
@@ -238,16 +257,16 @@ private:
 /** Analysis of bound conflicts.
  * 
  * Variable `x` is in a bound conflict if:
- * -# `L {<=,<,=} x` is on the trail; and
- * -# `x {<=,<,=} U` is on the trail; and
+ * -# L is a linear polynomial s.t. `L {<,<=,=} x` is implied by constraints on the trail; and
+ * -# U is a linear polynomial s.t. `x {<,<=,=} U` is implied by constraints on the trail; and
  * -# `value(L) > value(U)` or `value(L) = value(U)` and at least one of 
  * `L {<=,<,=} x`, `x {<=,<,=} U` is strict (i.e., `<`)
  * 
  * The `value` mapping maps linear polynomials to rational values according to current assignment 
  * of rational variables.
  * 
- * We explain bound conflicts using an implication (Fourier-Motzkin elimination of `x`): 
- * `L {<=,<,=} x && x {<=,<,=} U -> L {<=,<,=} U`
+ * We explain bound conflicts by eliminating all unassigned variables including `x` using FM 
+ * elimination.
  */
 class Bound_conflict_analysis {
 public:
@@ -255,7 +274,6 @@ public:
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
-    using Variable_bounds = std::vector<Bounds<Rational>>;
 
     inline Bound_conflict_analysis(Linear_arithmetic* lra) : lra(lra) {}
 
@@ -290,26 +308,18 @@ public:
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
-    using Variable_bounds = Bounds<Rational>;
 
     inline Inequality_conflict_analysis(Linear_arithmetic* lra) : lra(lra), fm(lra) {}
-
-    /** Check if there is an inequality conflict.
-     * 
-     * @param models partial assignment of variables
-     * @param bounds bounds of a variable
-     * @return true iff there is an inequality conflict
-     */
-    bool in_conflict(Models const& models, Variable_bounds& bounds) const;
 
     /** Check if there is an inequality conflict - i.e., `L <= x` and `x <= U` and `x != D`
      * where L, U, D evaluate to the same value in @p trail
      *
      * @param trail current solver trail
-     * @param bounds implied bounds for a variable
+     * @param bounds map rational variable -> implied bounds for that variable
+     * @param var_ord checked rational variable
      * @return conflict clause if there is an inequality conflict. None, otherwise.
      */
-    std::optional<Clause> analyze(Trail& trail, Variable_bounds& bounds);
+    std::optional<Clause> analyze(Trail& trail, Variable_bounds& bounds, int var_ord);
 
 private:
     Linear_arithmetic* lra;

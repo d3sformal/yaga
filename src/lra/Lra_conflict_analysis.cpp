@@ -226,12 +226,13 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
         return fm;
     };
 
+    auto fm = eliminate(eliminate, *lb);
+    fm.resolve(eliminate(eliminate, *ub), ub->var());
+
     // remove duplicate literals from the conflict clause
     std::sort(conflict.begin(), conflict.end(), Literal_comparer{});
     conflict.erase(std::unique(conflict.begin(), conflict.end()), conflict.end());
 
-    auto fm = eliminate(eliminate, *lb);
-    fm.resolve(eliminate(eliminate, *ub), ub->var());
     auto derived = fm.finish(trail);
     if (!derived.empty())
     {
@@ -245,104 +246,65 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
     return conflict;
 }
 
-bool Inequality_conflict_analysis::in_conflict(Models const& models, Variable_bounds& bounds) const
-{
-    auto lb = bounds.lower_bound(models);
-    auto ub = bounds.upper_bound(models);
-    if (!lb || !ub)
-    {
-        return false;
-    }
-
-    if (lb->value() != ub->value() || lb->reason().is_strict() || ub->reason().is_strict())
-    {
-        return false;
-    }
-
-    // check if `x != D` where D, L, U evaluate to the same value
-    return !!bounds.inequality(models, lb->value());
-}
-
-std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds)
+std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds, int var_ord)
 {
     auto models = lra->relevant_models(trail);
-    auto lb = bounds.lower_bound(models);
-    auto ub = bounds.upper_bound(models);
+    auto lb = bounds[var_ord].lower_bound(models);
+    auto ub = bounds[var_ord].upper_bound(models);
     if (!lb || !ub)
     {
         return {}; // no conflict
     }
 
     // check if `L <= x` and `x <= U` and L, U evaluate to the same value where `x` is the
-    // unassigned variable
+    // check, unassigned variable
     if (lb->value() != ub->value() || lb->reason().is_strict() || ub->reason().is_strict())
     {
         return {};
     }
 
     // check if `x != D` where D, L, U evaluate to the same value
-    auto neq = bounds.inequality(models, lb->value());
+    auto neq = bounds[var_ord].inequality(models, lb->value());
     if (!neq)
     {
         return {};
     }
-    assert(neq->reason().vars().front() == lb->reason().vars().front());
-    assert(neq->reason().vars().front() == ub->reason().vars().front());
+    assert(lb->var() == ub->var());
+    assert(neq->var() == lb->var());
 
-    Clause conflict{lb->reason().lit().negate(), ub->reason().lit().negate(),
-                    neq->reason().lit().negate()};
-
-    // special case where `x = E` and `x != D` where E, D evaluate to the same value
-    if (lb->reason().lit() == ub->reason().lit())
+    Clause conflict{neq->reason().lit().negate()};
+    auto eliminate = [&](auto& self, Implied_value<Rational> const& bound) -> Fourier_motzkin_elimination
     {
-        // see: http://leodemoura.github.io/files/fmcad2013.pdf
-        // We use `x = E && x != D -> E != D` as an explanation which is equivalent to 
-        // the disequality lemma (Fig. 2) in this special case (we apply one final normalization
-        // rule in the derivation in Fig. 2).
-        assert(lb->reason().pred() == Order_predicate::eq);
-        assert(!lb->reason().lit().is_negation());
-        assert(lb->reason().vars().size() > 1 || neq->reason().vars().size() > 1);
-        fm.init(neq->reason(), Order_predicate::eq, 1);
-        fm.resolve(lb->reason(), neq->reason().vars().front());
-        auto cons = fm.finish(trail);
-        assert(!cons.empty());
-        assert(eval(models.owned(), cons.negate()) == false);
-        assert(eval(models.boolean(), cons.lit().negate()) == false);
-        return Clause{lb->reason().lit().negate(), neq->reason().lit().negate(), 
-                      cons.lit().negate()};
-    }
+        // add assumption to the implication
+        conflict.push_back(bound.reason().lit().negate());
 
-    // if `L < D` may be non-trivial (i.e., it may contain at least one variable)
-    if (lb->reason().vars().size() > 1 || neq->reason().vars().size() > 1)
-    {
-        // create and propagate `L < D` semantically
-        auto mult = neq->reason().coef().front() > 0 ? 1 : -1;
-        fm.init(neq->reason(), Order_predicate::lt, mult);
-        fm.resolve(lb->reason(), neq->reason().vars().front());
-        auto cons = fm.finish(trail);
-        if (!cons.empty()) // `L < D` is non-trivial
+        // eliminate all unassigned variables in the linear constraint except for `bound.var()`
+        Fourier_motzkin_elimination fm{lra, bound.reason()};
+        for (auto const& other : bound.bounds())
         {
-            assert(eval(models.owned(), cons) == false);
-            assert(eval(models.boolean(), cons.lit()) == false);
-            conflict.push_back(cons.lit());
+            fm.resolve(self(self, other), other.var());
         }
+        return fm;
+    };
+
+    auto mult = neq->reason().coef().front() > 0 ? 1 : -1;
+    for (auto bound_ptr : {lb, ub})
+    {
+        auto fm = eliminate(eliminate, *bound_ptr);
+        fm.resolve(Fourier_motzkin_elimination{lra, neq->reason(), Order_predicate::lt, mult}, neq->var());
+        auto derived = fm.finish(trail);
+        if (!derived.empty())
+        {
+            assert(eval(models.owned(), derived) == false);
+            assert(eval(models.boolean(), derived.lit()) == false);
+            conflict.push_back(derived.lit());
+        }
+        mult = -mult;
     }
 
-    // if `D < U` may be non-trivial (i.e., it may contain at least one variable)
-    if (ub->reason().vars().size() > 1 || neq->reason().vars().size() > 1)
-    {
-        // create and propagate `D < U` semantically
-        auto mult = neq->reason().coef().front() > 0 ? -1 : 1;
-        fm.init(neq->reason(), Order_predicate::lt, mult);
-        fm.resolve(ub->reason(), neq->reason().vars().front());
-        auto cons = fm.finish(trail);
-        if (!cons.empty()) // `D < U` is non-trivial
-        {
-            assert(eval(models.owned(), cons) == false);
-            assert(eval(models.boolean(), cons.lit()) == false);
-            conflict.push_back(cons.lit());
-        }
-    }
+    // remove duplicate literals from the conflict clause
+    std::sort(conflict.begin(), conflict.end(), Literal_comparer{});
+    conflict.erase(std::unique(conflict.begin(), conflict.end()), conflict.end());
 
     return conflict;
 }
