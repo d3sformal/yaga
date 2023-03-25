@@ -71,10 +71,9 @@ public:
      * @param val computed value implied by @p cons for the only unassigned variable in @p cons
      * @param cons unit constraint in @p models
      * @param models partial assignment of variables
-     * @param level decision level at which @p val is implied
      */
-    inline Implied_value(int var, Value val, Constraint cons, Models const& models, int level)
-        : bound_var(var), val(val), cons(cons), dec_level(level)
+    Implied_value(int var, Value val, Constraint cons, Models const& models)
+        : bound_var(var), val(val), cons(cons)
     {
         assert(!cons.empty());
         assert(!models.owned().is_defined(cons.vars().front()));
@@ -95,8 +94,8 @@ public:
      * @param deps other bounds this bound depends on
      */
     template<std::ranges::range Bound_range>
-    inline Implied_value(int var, Value val, Constraint cons, Models const& models, int level, Bound_range&& deps)
-        : bound_var(var), val(val), cons(cons), deps(deps), dec_level(level)
+    Implied_value(int var, Value val, Constraint cons, Models const& models, Bound_range&& deps)
+        : bound_var(var), val(val), cons(cons), deps(deps.begin(), deps.end())
     {
         assert(!cons.empty());
         compute_timestamps(models);
@@ -113,12 +112,6 @@ public:
      * @return linear constraint that implied this bound
      */
     inline Constraint reason() const { return cons; }
-
-    /** Get decision level when this bound was added.
-     * 
-     * @return decision level of this bound
-     */
-    inline int level() const { return dec_level; }
 
     /** Get variable for which this bound holds
      * 
@@ -145,8 +138,8 @@ public:
 
     /** Check whether this value is obsolete.
      *
-     * Value becomes obsolete if `reason()` is no longer on the trail, it is no longer a unit
-     * constraint, or variables in `reason()` are assigned to different values than when this
+     * Value becomes obsolete if `reason()` is no longer on the trail, any dependency in `bounds()`
+     * is obsolete, or variables in `reason()` are assigned to different values than when this
      * object was created.
      *
      * @param models partial assignment of variables
@@ -156,7 +149,7 @@ public:
     {
         // if reason() is assigned to a different value or it is not on the trail
         if (eval(models.boolean(), reason().lit()) != true || 
-            cons_time > models.boolean().timestamp(reason().lit().var().ord()))
+            models.boolean().timestamp(reason().lit().var().ord()) > cons_time)
         {
             return true;
         }
@@ -204,8 +197,6 @@ private:
     int cons_time = 0;
     // max timestamp of assigned theory variables on which this bound depends
     int var_time = 0;
-    // decision level of this bound
-    int dec_level;
 
     /** Compute maximal timestamp of a boolean/theory variable used for this bound
      * 
@@ -308,32 +299,38 @@ public:
         disallowed.push_back(value);
     }
 
-    /** Add a new upper @p bound
+    /** Add a new upper @p new_bound
      *
      * @param models partial assignment variables
-     * @param bound new upper bound
-     * @returns true iff @p bound is better than current bound
+     * @param new_bound new upper bound
+     * @returns true iff @p new_bound is better than current bound
      */
-    inline bool add_upper_bound(Models const& models, Implied_value_type&& bound)
+    inline bool add_upper_bound(Models const& models, Implied_value_type&& new_bound)
     {
-        remove_obsolete(ub, models);
-        return insert(ub, std::move(bound), [this](auto bnd, auto other_bnd) { 
-            return less(bnd, other_bnd); 
-        });
+        auto bound = upper_bound(models);
+        if (!bound || less(new_bound, *bound))
+        {
+            ub.push_back(std::move(new_bound));
+            return true;
+        }
+        return false;
     }
 
-    /** Add a new lower @p bound
+    /** Add a new lower @p new_bound
      *
      * @param models partial assignment of variables
-     * @param bound new lower bound
-     * @returns true iff @p bound is better than current bound
+     * @param new_bound new lower bound
+     * @returns true iff @p new_bound is better than current bound
      */
-    inline bool add_lower_bound(Models const& models, Implied_value_type&& bound)
+    inline bool add_lower_bound(Models const& models, Implied_value_type&& new_bound)
     {
-        remove_obsolete(lb, models);
-        return insert(lb, std::move(bound), [this](auto bnd, auto other_bnd) { 
-            return greater(bnd, other_bnd); 
-        });
+        auto bound = lower_bound(models);
+        if (!bound || greater(new_bound, *bound))
+        {
+            lb.push_back(std::move(new_bound));
+            return true;
+        }
+        return false;
     }
 
     /** Check whether @p value satisfies currently implied lower bound
@@ -425,39 +422,6 @@ private:
         {
             bounds.pop_back();
         }
-    }
-
-    /** Insert @p bound to @p bounds if it @p is_better than the best bound at the decision level 
-     * of @p bound 
-     *
-     * @param bounds list of bounds sorted by decision level
-     * @param bound new bound to insert to @p bounds
-     * @param is_better predicate which, given two implied values, returns true iff the first 
-     * value is strictly better than the second value
-     * @returns true iff @p bound is inserted
-     */
-    template<typename Predicate>
-    inline bool insert(std::vector<Implied_value_type>& bounds, Implied_value_type&& bound, Predicate&& is_better)
-    {
-        assert(std::is_sorted(bounds.begin(), bounds.end(), [](auto&& lhs, auto&& rhs) {
-            return lhs.level() < rhs.level();
-        }));
-
-        // find position of the new element
-        auto rev_it = std::find_if(bounds.rbegin(), bounds.rend(), [&](auto&& other_bnd) {
-            return other_bnd.level() <= bound.level();
-        });
-
-        // insert the new bound if it is better
-        if (rev_it == bounds.rend() || is_better(bound, *rev_it))
-        {
-            auto it = ++bounds.insert(rev_it.base(), std::move(bound));
-            bounds.erase(it, std::find_if(it, bounds.end(), [&](auto&& other_bnd) {
-                return is_better(other_bnd, bound);
-            }));
-            return true;
-        }
-        return false;
     }
 };
 
