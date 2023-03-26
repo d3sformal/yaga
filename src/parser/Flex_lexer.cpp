@@ -39,7 +39,8 @@ char const* Flex_lexer::token_string()
 
 void Flex_lexer::unexpected_token_error(Token)
 {
-    throw std::logic_error("Unexpected token encountered");
+    std::string val = token_string();
+    throw std::logic_error("Unexpected token encountered: " + val);
 }
 
 } // namespace perun::parser
