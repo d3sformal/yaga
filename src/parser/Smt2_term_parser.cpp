@@ -264,4 +264,20 @@ type_t Smt2_term_parser::parse_sort()
     return parser_context.get_type_for_symbol(sort_name);
 }
 
+std::string Smt2_term_parser::parse_keyword()
+{
+    lexer.eat_token(Token::KEYWORD);
+    std::string value = lexer.token_string();
+    assert(!value.empty() && value[0] == ':');
+    return value.erase(0,1);
+}
+
+std::string Smt2_term_parser::parse_sexpr()
+{
+    // TODO: Check the token?
+    Token tok = lexer.next_token();
+    (void)tok;
+    return lexer.token_string();
+}
+
 } // namespace perun::parser

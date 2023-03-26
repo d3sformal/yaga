@@ -37,6 +37,9 @@ public:
     std::string parse_symbol();
 
     type_t parse_sort();
+
+    std::string parse_keyword();
+    std::string parse_sexpr();
 };
 
 } // namespace perun::parser

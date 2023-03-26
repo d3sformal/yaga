@@ -195,9 +195,13 @@ bool Smt2_command_context::parse_command()
     // (set-info <attribute>)
     case Token::SET_INFO_TOK:
     {
-        UNIMPLEMENTED;
+        std::string keyword = term_parser.parse_keyword();
+        std::string value = term_parser.parse_sexpr();
+        // TODO: Do something with the values
+        (void)keyword;
+        (void)value;
+        break;
     }
-    break;
     // (set-logic <symbol>)
     case Token::SET_LOGIC_TOK:
     {
@@ -207,8 +211,8 @@ bool Smt2_command_context::parse_command()
             std::cerr << "Unsupported logic " << name << std::endl;
             return false;
         }
+        break;
     }
-    break;
     // (set-option <option>)
     case Token::SET_OPTION_TOK:
     {
