@@ -85,6 +85,10 @@ term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>
     {
         return mk_or(std::move(args));
     }
+    else if (name == "and")
+    {
+        return mk_and(std::move(args));
+    }
     else if (name == "not")
     {
         assert(args.size() == 1);
@@ -101,6 +105,23 @@ term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>
             assert(args.size() == 2);
             return mk_binary_minus(args[0], args[1]);
         }
+    }
+    else if (name == "+")
+    {
+        return term_manager.mk_arithmetic_plus(args);
+    }
+    else if (name == "*")
+    {
+        return mk_times(args);
+    }
+    else if (name == "/")
+    {
+        assert(args.size() == 2);
+        return mk_binary_divides(args[0], args[1]);
+    }
+    else if (name == "ite")
+    {
+        return mk_ite(args);
     }
     UNIMPLEMENTED;
 }
@@ -174,6 +195,11 @@ term_t Parser_context::mk_or(std::vector<term_t>&& args)
     return term_manager.mk_or(args);
 }
 
+term_t Parser_context::mk_and(std::vector<term_t>&& args)
+{
+    return term_manager.mk_and(args);
+}
+
 term_t Parser_context::mk_unary_minus(term_t t)
 {
     return term_manager.mk_unary_minus(t);
@@ -182,6 +208,22 @@ term_t Parser_context::mk_unary_minus(term_t t)
 term_t Parser_context::mk_binary_minus(term_t t1, term_t t2)
 {
     return term_manager.mk_arithmetic_minus(t1, t2);
+}
+
+term_t Parser_context::mk_times(std::span<term_t> args)
+{
+    return term_manager.mk_arithmetic_times(args);
+}
+
+term_t Parser_context::mk_binary_divides(term_t t1, term_t t2)
+{
+    return term_manager.mk_divides(t1, t2);
+}
+
+term_t Parser_context::mk_ite(std::span<term_t> args)
+{
+    assert(args.size() == 3);
+    return term_manager.mk_ite(args[0], args[1], args[2]);
 }
 
 } // namespace perun::parser

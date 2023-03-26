@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <optional>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -112,6 +113,7 @@ private:
     term_t mk_gt(std::vector<term_t>&& args);
     term_t mk_lt(std::vector<term_t>&& args);
     term_t mk_or(std::vector<term_t>&& args);
+    term_t mk_and(std::vector<term_t>&& args);
 
     term_t mk_binary_eq(term_t t1, term_t t2);
     term_t mk_binary_geq(term_t t1, term_t t2);
@@ -119,6 +121,10 @@ private:
 
     term_t mk_unary_minus(term_t t);
     term_t mk_binary_minus(term_t t1, term_t t2);
+    term_t mk_times(std::span<term_t> args);
+    term_t mk_binary_divides(term_t t1, term_t t2);
+
+    term_t mk_ite(std::span<term_t> args);
 };
 
 }

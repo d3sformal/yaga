@@ -49,6 +49,14 @@ public:
 
     term_t mk_unary_minus(term_t t);
 
+    term_t mk_arithmetic_plus(std::span<term_t> args);
+
+    term_t mk_arithmetic_times(std::span<term_t> args);
+
+    term_t mk_divides(term_t t1, term_t t2);
+
+    term_t mk_ite(term_t i, term_t t, term_t e);
+
     // names
     void set_term_name(term_t t, std::string const& name);
     term_t get_term_by_name(std::string const& name);
@@ -61,6 +69,9 @@ public:
 private:
     term_t poly_to_term(poly_t const& poly);
     poly_t term_to_poly(term_t term);
+
+    term_t mk_bool_ite(term_t i, term_t t, term_t e);
+    term_t mk_arithmetic_ite(term_t i, term_t t, term_t e);
 
 
 };

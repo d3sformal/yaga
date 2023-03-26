@@ -92,7 +92,8 @@ term_t Term_manager::mk_implies(term_t x, term_t y) {
 
 term_t Term_manager::mk_iff(term_t t1, term_t t2)
 {
-    throw std::logic_error("UNIMPLEMENTED!");
+    // TODO: handle better?
+    return mk_binary_and(mk_implies(t1, t2), mk_implies(t2, t1));
 }
 
 term_t Term_manager::mk_arithmetic_constant(std::string const& str)
@@ -261,6 +262,122 @@ term_t Term_manager::poly_to_term(poly_t const& poly)
         mono_terms.push_back(monomial_to_term(mono));
     }
     return term_table->arithmetic_polynomial(mono_terms);
+}
+
+term_t Term_manager::mk_arithmetic_plus(std::span<term_t> args)
+{
+    // TODO: Can we do something more efficient?
+    poly_t res;
+    for (term_t arg : args) {
+        res.merge(term_to_poly(arg), 1);
+    }
+    return poly_to_term(res);
+}
+
+term_t Term_manager::mk_arithmetic_times(std::span<term_t> args)
+{
+    if (args.empty())
+    {
+        return term_table->arithmetic_constant(1);
+    }
+    if (args.size() == 1)
+    {
+        return args[0];
+    }
+    assert(args.size() == 2);
+    // TODO: Make this more efficient?
+    poly_t poly;
+    for (term_t arg : args)
+    {
+        poly.merge(term_to_poly(arg), 1);
+    }
+    return poly_to_term(poly);
+}
+
+term_t Term_manager::mk_divides(term_t t1, term_t t2)
+{
+    assert(term_table->is_arithmetic_constant(t2));
+    Rational const& value = term_table->arithmetic_constant_value(t2);
+    if (term_table->is_arithmetic_constant(t1))
+    {
+        return term_table->arithmetic_constant(term_table->arithmetic_constant_value(t1) / value);
+    }
+    auto mult = value.inv();
+    std::array<term_t,2> args {t1, term_table->arithmetic_constant(mult)};
+    return mk_arithmetic_times(args);
+}
+
+term_t Term_manager::mk_ite(term_t i, term_t t, term_t e)
+{
+    assert(get_term_type(i) == types::bool_type);
+    type_t type1 = get_term_type(t);
+    if (get_term_type(e) != type1)
+    {
+        throw std::invalid_argument("Types in ITE do not match!");
+    }
+    if (type1 == types::bool_type)
+    {
+        return mk_bool_ite(i, t, e);
+    }
+    else if (type1 == types::real_type)
+    {
+        return mk_arithmetic_ite(i, t, e);
+    }
+    throw std::logic_error("UNREACHABLE!");
+}
+
+/*
+ * Simplifications:
+ *  ite c t t        --> t
+ *  ite true t e     --> t
+ *  ite false t e    --> e
+ *
+ *  ite c t (not t)  --> (c == t)
+ *
+ *  ite c c e        --> c or e
+ *  ite c t c        --> c and t
+ *  ite c (not c) e  --> (not c) and e
+ *  ite c t (not c)  --> (not c) or t
+ *
+ *  ite c true e     --> c or e
+ *  ite c false e    --> (not c) and e
+ *  ite c t false    --> c and t
+ *  ite c t true     --> (not c) or t
+ *
+ * Otherwise:
+ *  ite (not c) t e  --> ite c e t
+ */
+term_t Term_manager::mk_bool_ite(term_t c, term_t t, term_t e)
+{
+    if (t == e) return t;
+    if (c == true_term) return t;
+    if (c == false_term) return e;
+
+    if (t == opposite_term(e)) return mk_iff(c, t);
+
+    if (c == t) return mk_binary_or(t, e);
+    if (c == e) return mk_binary_and(e, t);
+    if (c == opposite_term(t)) return mk_binary_and(t, e);
+    if (c == opposite_term(e)) return mk_binary_or(e, t);
+
+    if (t == true_term) return mk_binary_or(c, e);
+    if (t == false_term) return mk_binary_and(opposite_term(c), e);
+    if (e == false_term) return mk_binary_and(c, t);
+    if (e == true_term) return mk_binary_or(opposite_term(c), t);
+
+    if (polarity_of(c))
+    {
+        c = opposite_term(c);
+        std::swap(t,e);
+    }
+    // TODO: Implement handling in term_table
+    return mk_binary_and(mk_implies(c, t), mk_implies(opposite_term(c), e));
+    //return term_table->ite_term(c,t,e);
+}
+
+term_t Term_manager::mk_arithmetic_ite(term_t i, term_t t, term_t e)
+{
+    throw std::logic_error("Not implemented yet!");
 }
 
 } // namespace perun::terms
