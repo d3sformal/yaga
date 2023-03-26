@@ -134,13 +134,14 @@ term_t Term_table::arithmetic_product(Rational const& coeff, term_t var)
 {
     assert(is_uninterpreted_constant(var));
     term_t coeff_term = arithmetic_constant(coeff);
-    std::array<term_t, 2> args{var, coeff_term};
+    std::array<term_t, 2> args{coeff_term, var};
     Composite_term_proxy proxy{Kind::ARITH_PRODUCT, types::real_type, hash_composite_term(Kind::ARITH_PRODUCT, args), *this, args};
     return known_terms.get_composite_term(proxy);
 }
 
 term_t Term_table::arithmetic_polynomial(std::span<term_t> args)
 {
+    assert(args.size() >= 2);
     Composite_term_proxy proxy{Kind::ARITH_POLY, types::real_type, hash_composite_term(Kind::ARITH_POLY, args), *this, args};
     return known_terms.get_composite_term(proxy);
 }
@@ -169,7 +170,7 @@ term_t Term_table::arithmetic_binary_eq(term_t t1, term_t t2)
     assert(get_kind(t2) != Kind::ARITH_PRODUCT and get_kind(t2) != Kind::ARITH_POLY);
     assert(t1 < t2);
     std::array<term_t, 2> args{t1, t2};
-    Composite_term_proxy proxy{Kind::ARITH_BINEQ_ATOM, types::real_type, hash_composite_term(Kind::ARITH_BINEQ_ATOM, args), *this, args};
+    Composite_term_proxy proxy{Kind::ARITH_BINEQ_ATOM, types::bool_type, hash_composite_term(Kind::ARITH_BINEQ_ATOM, args), *this, args};
     return known_terms.get_composite_term(proxy);
 }
 
