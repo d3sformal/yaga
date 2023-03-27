@@ -249,6 +249,30 @@ void Internalizer_config::visit(term_t t)
         internal_bool_vars.insert({positive_term, lit});
         return;
     }
+    case terms::Kind::ARITH_BINEQ_ATOM: {
+        auto args = term_table.get_args(t);
+        term_t lhs = args[0];
+        term_t rhs = args[1];
+        assert(term_table.is_uninterpreted_constant(lhs));
+        assert(term_table.is_uninterpreted_constant(rhs) || term_table.is_arithmetic_constant(rhs));
+        auto poly = [&]() -> Linear_polynomial {
+            if (term_table.is_arithmetic_constant(rhs))
+            {
+                return {{internal_rational_var(lhs)}, {1}, -term_table.arithmetic_constant_value(rhs)};
+            }
+            else
+            {
+                return {{internal_rational_var(lhs), internal_rational_var(rhs)}, {1, -1}, 0};
+            }
+        }();
+        auto constraint = plugin.constraint(trail, poly.vars, poly.coef, Order_predicate::Type::eq, -poly.constant);
+        Literal lit = constraint.lit();
+        assert(!lit.is_negation());
+        term_t positive_term = terms::positive_term(t);
+        assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
+        internal_bool_vars.insert({positive_term, lit});
+        return;
+    }
     case terms::Kind::UNINTERPRETED_TERM:
         if (term_table.get_type(t) == terms::types::bool_type)
         {
