@@ -25,7 +25,7 @@ public:
         if (term_table.get_kind(t) == terms::Kind::UNINTERPRETED_TERM)
         {
             terms::type_t type = term_table.get_type(t);
-            vars[type].push_back(t);
+            vars[type].push_back(terms::positive_term(t));
         }
     }
 };
@@ -276,7 +276,7 @@ void Internalizer_config::visit(term_t t)
     case terms::Kind::UNINTERPRETED_TERM:
         if (term_table.get_type(t) == terms::types::bool_type)
         {
-            assert(internal_bool_vars.find(t) != internal_bool_vars.end());
+            assert(internal_bool_vars.find(terms::positive_term(t)) != internal_bool_vars.end());
         }
         else if (term_table.get_type(t) == terms::types::real_type)
         {
