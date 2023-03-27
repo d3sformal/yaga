@@ -12,7 +12,7 @@ template<typename TConfig> class Visitor
 {
     Term_table const& term_table;
     TConfig& config;
-    std::unordered_set<term_t> processed;
+    std::unordered_set<int32_t> processed;
 
 public:
     Visitor(Term_table const& term_table, TConfig& config) : term_table(term_table), config(config) {}
@@ -27,7 +27,10 @@ public:
     {
         for (term_t root : roots)
         {
-            visit(root);
+            if (processed.count(index_of(root)) == 0)
+            {
+                visit(root);
+            }
         }
     }
 
@@ -50,15 +53,15 @@ public:
             if (current_entry.next_child < children.size()) {
                 term_t next_child = children[current_entry.next_child];
                 ++current_entry.next_child;
-                if (processed.find(next_child) == processed.end()) {
+                if (processed.find(terms::index_of(next_child)) == processed.end()) {
                     worklist.emplace_back(next_child);
                 }
                 continue;
             }
             // If we are here, we have already processed all children
-            assert(processed.count(current) == 0);
+            assert(processed.count(index_of(current)) == 0);
             config.visit(current);
-            processed.insert(current);
+            processed.insert(index_of(current));
             worklist.pop_back();
         }
     }
