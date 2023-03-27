@@ -208,7 +208,7 @@ poly_t Term_manager::term_to_poly(term_t term)
         }
         return poly;
     }
-    if (term_table->is_uninterpreted_constant(term))
+    if (term_table->is_uninterpreted_constant(term) || term_table->is_ite(term))
     {
         poly.add_term(term, Rational(1));
         return poly;
@@ -375,9 +375,19 @@ term_t Term_manager::mk_bool_ite(term_t c, term_t t, term_t e)
     //return term_table->ite_term(c,t,e);
 }
 
-term_t Term_manager::mk_arithmetic_ite(term_t i, term_t t, term_t e)
+term_t Term_manager::mk_arithmetic_ite(term_t c, term_t t, term_t e)
 {
-    throw std::logic_error("Not implemented yet!");
+    if (c == true_term) return t;
+    if (c == false_term) return e;
+    if (t == e) return t;
+
+    if (polarity_of(c))
+    {
+        c = opposite_term(c);
+        std::swap(t, e);
+    }
+
+    return term_table->arithmetic_ite(c, t, e);
 }
 
 } // namespace perun::terms

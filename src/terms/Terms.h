@@ -141,6 +141,8 @@ public:
      */
     term_t arithmetic_binary_eq(term_t t1, term_t t2);
 
+    term_t arithmetic_ite(term_t c, term_t t, term_t e);
+
     /*
      * Queries on terms
      */
@@ -152,6 +154,8 @@ public:
     bool is_arithmetic_product(term_t) const;
 
     bool is_arithmetic_polynomial(term_t) const;
+
+    bool is_ite(term_t) const;
 
     Rational const& arithmetic_constant_value(term_t) const;
 

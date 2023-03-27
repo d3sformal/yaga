@@ -174,6 +174,16 @@ term_t Term_table::arithmetic_binary_eq(term_t t1, term_t t2)
     return known_terms.get_composite_term(proxy);
 }
 
+term_t Term_table::arithmetic_ite(term_t c, term_t t, term_t e)
+{
+    assert(get_type(c) == types::bool_type);
+    assert(get_type(t) == types::real_type);
+    assert(get_type(e) == types::real_type);
+    std::array<term_t, 3> args{c,t,e};
+    Composite_term_proxy proxy{Kind::ITE_TERM, types::real_type, hash_composite_term(Kind::ITE_TERM, args), *this, args};
+    return known_terms.get_composite_term(proxy);
+}
+
 /*
  * Declare a new uninterpreted constant of the given type.
  * Always creates a fresh term!
@@ -223,17 +233,22 @@ Rational const& Term_table::arithmetic_constant_value(term_t t) const
 
 bool Term_table::is_uninterpreted_constant(term_t t) const
 {
-    return this->inner_table[index_of(t)].kind == Kind::UNINTERPRETED_TERM;
+    return get_kind(t) == Kind::UNINTERPRETED_TERM;
 }
 
 bool Term_table::is_arithmetic_product(term_t t) const
 {
-    return this->inner_table[index_of(t)].kind == Kind::ARITH_PRODUCT;
+    return get_kind(t) == Kind::ARITH_PRODUCT;
 }
 
 bool Term_table::is_arithmetic_polynomial(term_t t) const
 {
-    return this->inner_table[index_of(t)].kind == Kind::ARITH_POLY;
+    return get_kind(t) == Kind::ARITH_POLY;
+}
+
+bool Term_table::is_ite(term_t t) const
+{
+    return get_kind(t) == Kind::ITE_TERM;
 }
 
 term_t Term_table::var_of_product(term_t t) const
