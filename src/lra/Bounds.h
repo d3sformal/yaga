@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <concepts>
+#include <functional>
 #include <limits>
 #include <optional>
 #include <type_traits>
@@ -216,7 +218,75 @@ private:
     }
 };
 
-/** This class keeps track of implied bounds and inequalities for a variable.
+/** Compare computed bounds.
+ * 
+ * @tparam Value value type of theory variables (e.g., a fraction for LRA)
+ * @tparam Less operator which compares two `Value` types and returns true iff the first value is 
+ * strictly better than the second value.
+ */
+template<typename Value, std::predicate<Value, Value> Less>
+struct Bound_comparer {
+    using Models = Theory_models<Value>;
+    using Implied_value_type = Implied_value<Value>;
+
+    /** Check whether @p bound uses FM elimination to eliminate a variable which has been assigned 
+     * already.
+     * 
+     * For example: `x + y <= 0` which uses `y >= 0` to eliminate `y` implies that `x <= 0`, but
+     * if `y` is assigned to 0, the constraint `x + y <= 0` itself implies that `x <= 0` and we 
+     * should prefer the latter bound.
+     * 
+     * @param models partial assignment of 
+     * @param bound checked bound
+     * @return true iff @p bound uses FM elimination to eliminate an assigned variable in @p models
+     */
+    bool eliminates_assigned_var(Models const& models, Implied_value_type const& bound) const
+    {
+        for (auto const& other : bound.bounds())
+        {
+            if (models.owned().is_defined(other.var()) || eliminates_assigned_var(models, other))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Check whether @p lhs is a strictly better bound than @p rhs
+     * 
+     * @param models partial assignment of variables
+     * @param lhs first bound
+     * @param rhs second bound
+     * @return true iff @p lhs is strictly better than @p rhs
+     */
+    bool operator()(Models const& models, Implied_value_type const& lhs, 
+                    Implied_value_type const& rhs) const
+    {
+        // if lhs is strictly better than rhs
+        if (Less{}(lhs.value(), rhs.value()))
+        {
+            return true;
+        }
+
+        // if the bound values are the same
+        if (lhs.value() == rhs.value())
+        {
+            auto lhs_strict = lhs.is_strict();
+            auto rhs_strict = rhs.is_strict();
+            if (lhs_strict && !rhs_strict)
+            {
+                return true;
+            }
+            else if (lhs_strict == rhs_strict)
+            {
+                return !eliminates_assigned_var(models, lhs) && eliminates_assigned_var(models, rhs);
+            }
+        }
+        return false;
+    }
+};
+
+/** This class keeps track of implied bounds and inequalities for a single variable.
  *
  * Obsolete bounds are removed lazily when a bound is requested.
  *
@@ -227,6 +297,8 @@ public:
     using Implied_value_type = Implied_value<Value>;
     using Constraint = Linear_constraint<Value>;
     using Models = Theory_models<Value>;
+    using Lower_bound_comparer = Bound_comparer<Value, std::greater<Value>>;
+    using Upper_bound_comparer = Bound_comparer<Value, std::less<Value>>;
 
     /** Get current tightest implied upper bound
      *
@@ -307,8 +379,9 @@ public:
      */
     inline bool add_upper_bound(Models const& models, Implied_value_type&& new_bound)
     {
+        Upper_bound_comparer is_better;
         auto bound = upper_bound(models);
-        if (!bound || less(new_bound, *bound))
+        if (!bound || is_better(models, new_bound, *bound))
         {
             ub.push_back(std::move(new_bound));
             return true;
@@ -324,8 +397,9 @@ public:
      */
     inline bool add_lower_bound(Models const& models, Implied_value_type&& new_bound)
     {
+        Lower_bound_comparer is_better;
         auto bound = lower_bound(models);
-        if (!bound || greater(new_bound, *bound))
+        if (!bound || is_better(models, new_bound, *bound))
         {
             lb.push_back(std::move(new_bound));
             return true;
@@ -386,30 +460,6 @@ private:
     std::vector<Implied_value_type> lb;
     // list of values it should not be assigned to
     std::vector<Implied_value_type> disallowed;
-
-    /** Check whether @p lhs is strictly less than @p rhs
-     *
-     * @param lhs first value
-     * @param rhs second value
-     * @return true iff @p lhs < @p rhs
-     */
-    inline bool less(Implied_value_type const& lhs, Implied_value_type const& rhs) const
-    {
-        return lhs.value() < rhs.value() || (lhs.value() == rhs.value() &&
-                                             lhs.is_strict() && !rhs.is_strict());
-    }
-
-    /** Check whether @p lhs is strictly greater than @p rhs
-     *
-     * @param lhs first value
-     * @param rhs second value
-     * @return true iff @p lhs > @p rhs
-     */
-    inline bool greater(Implied_value_type const& lhs, Implied_value_type const& rhs) const
-    {
-        return lhs.value() > rhs.value() || (lhs.value() == rhs.value() &&
-                                             lhs.is_strict() && !rhs.is_strict());
-    }
 
     /** Remove obsolete bounds from the top of the @p bounds stack
      *

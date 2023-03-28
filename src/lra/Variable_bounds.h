@@ -91,6 +91,15 @@ private:
     // variables with updated bounds
     std::vector<int> updated_read;
     std::vector<int> updated_write;
+
+    /** Check whether @p bound depends on a linear constraint whose boolean variable is @p bool_var
+     * 
+     * @param bound checked bound
+     * @param bool_var ordinal number of a boolean variable
+     * @return true iff @p bound depends on @p bool_var
+     */
+    bool depends_on(Implied_value<Rational> const& bound, int bool_var) const;
+
 };
 
 }

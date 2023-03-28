@@ -7,6 +7,13 @@ void Variable_bounds::resize(int num_vars)
     bounds.resize(num_vars);
 }
 
+bool Variable_bounds::depends_on(Implied_value<Rational> const& bound, int bool_var) const
+{
+    return std::any_of(bound.bounds().begin(), bound.bounds().end(), [&](auto const& other) {
+        return other.reason().lit().var().ord() == bool_var || depends_on(other, bool_var);
+    });
+}
+
 void Variable_bounds::deduce(Models const& models, Constraint cons)
 {
     assert(eval(models.boolean(), cons.lit()) == true);
@@ -14,13 +21,6 @@ void Variable_bounds::deduce(Models const& models, Constraint cons)
     {
         return;
     }
-
-    // check whether `bound` depends on a boolean variable `var`
-    auto depends_on = [&](auto& self, Implied_value<Rational> const& bound, Variable var) -> bool {
-        return std::any_of(bound.bounds().begin(), bound.bounds().end(), [&](auto const& other) {
-            return other.reason().lit().var() == var || self(self, other, var);
-        });
-    };
 
     auto bound = cons.rhs();
     int num_unbounded = 0;
@@ -50,7 +50,7 @@ void Variable_bounds::deduce(Models const& models, Constraint cons)
                 var_bound = bounds[*var_it].upper_bound(models);
             }
 
-            if (var_bound && depends_on(depends_on, *var_bound, cons.lit().var()))
+            if (var_bound && depends_on(*var_bound, cons.lit().var().ord()))
             {
                 return;
             }

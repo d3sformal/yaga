@@ -249,7 +249,7 @@ void Linear_arithmetic::unit(Models& models, Constraint cons)
     bounds.update(models, cons);
 }
 
-void Linear_arithmetic::propagate_bounds(Models& models)
+void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& models)
 {
     for (;;)
     {

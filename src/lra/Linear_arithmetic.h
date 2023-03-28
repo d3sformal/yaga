@@ -228,9 +228,11 @@ private:
 
     /** Deduce new bounds using bounds added at this decision level
      * 
+     * @param trail current solver trail
      * @param models partial assignment of variables
      */
-    void propagate_bounds(Models& models);
+    void propagate_bounds(Trail const& trail, Models const& models);
+
 
     /** Finish propagation by checking if there are any conflicts.
      * 

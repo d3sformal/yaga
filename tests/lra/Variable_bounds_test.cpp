@@ -90,3 +90,43 @@ TEST_CASE("Deduce a bound", "[variable_bounds]")
         REQUIRE(bounds[x.ord()].upper_bound(models)->bounds()[1].reason().lit() == constraints[0].lit());
     }
 }
+
+TEST_CASE("Check if an unassigned constraint is implied by bounds", "[variable_bounds]")
+{
+    using namespace perun;
+    using namespace perun::test;
+    using namespace perun::literals;
+
+    using Rational = Fraction<int>;
+
+    constexpr int num_vars = 5;
+
+    Model<bool> bool_model;
+    Model<Rational> lra_model;
+    bool_model.resize(10);
+    lra_model.resize(num_vars);
+    Theory_models<Rational> models{bool_model, lra_model};
+    Linear_constraints<Rational> repository;
+    Variable_bounds bounds;
+    bounds.resize(num_vars);
+    auto make = factory(repository);
+    auto [x, y, z, w, a] = real_vars<num_vars>();
+
+    SECTION("Detect implied constraints")
+    {
+        std::array constraints{
+            make(x <= 3),
+            make(y >= 1),
+            make(z <= 2),
+        };
+        for (auto cons : constraints)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+            bounds.update(models, cons);
+        }
+
+        REQUIRE(!bounds.is_implied(models, make(2 * x - 3 * y + 5 * z < 13)));
+        REQUIRE(bounds.is_implied(models, make(2 * x - 3 * y + 5 * z <= 13)));
+        REQUIRE(bounds.is_implied(models, make(2 * x - 3 * y + 5 * z <= 14)));
+    }
+}

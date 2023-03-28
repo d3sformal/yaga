@@ -214,14 +214,20 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
     Clause conflict;
     auto eliminate = [&](auto& self, Implied_value<Rational> const& bound) -> Fourier_motzkin_elimination
     {
-        // add assumption to the implication
-        conflict.push_back(bound.reason().lit().negate());
-
-        // eliminate all unassigned variables in the linear constraint except for `bound.var()`
         Fourier_motzkin_elimination fm{lra, bound.reason()};
-        for (auto const& other : bound.bounds())
+        if (!models.owned().is_defined(bound.var()))
         {
-            fm.resolve(self(self, other), other.var());
+            // add assumption to the implication
+            conflict.push_back(bound.reason().lit().negate());
+
+            // eliminate all unassigned variables in the linear constraint except for `bound.var()`
+            for (auto const& other : bound.bounds())
+            {
+                if (!models.owned().is_defined(other.var()))
+                {
+                    fm.resolve(self(self, other), other.var());
+                }
+            }
         }
         return fm;
     };
@@ -275,14 +281,20 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
     Clause conflict{neq->reason().lit().negate()};
     auto eliminate = [&](auto& self, Implied_value<Rational> const& bound) -> Fourier_motzkin_elimination
     {
-        // add assumption to the implication
-        conflict.push_back(bound.reason().lit().negate());
-
-        // eliminate all unassigned variables in the linear constraint except for `bound.var()`
         Fourier_motzkin_elimination fm{lra, bound.reason()};
-        for (auto const& other : bound.bounds())
+        if (!models.owned().is_defined(bound.var()))
         {
-            fm.resolve(self(self, other), other.var());
+            // add assumption to the implication
+            conflict.push_back(bound.reason().lit().negate());
+
+            // eliminate all unassigned variables in the linear constraint except for `bound.var()`
+            for (auto const& other : bound.bounds())
+            {
+                if (!models.owned().is_defined(other.var()))
+                {
+                    fm.resolve(self(self, other), other.var());
+                }
+            }
         }
         return fm;
     };
