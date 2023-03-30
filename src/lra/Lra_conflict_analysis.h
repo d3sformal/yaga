@@ -119,7 +119,7 @@ template <typename T> std::ostream& operator<<(std::ostream& out, Linear_polynom
 
 class Linear_arithmetic;
 
-class Fourier_motzkin_elimination {
+class Fm_elimination {
 public:
     using Rational = Fraction<int>;
     using Models = Theory_models<Rational>;
@@ -127,14 +127,14 @@ public:
     using Polynomial = detail::Linear_polynomial<Rational>;
     using Variable_coefficient = std::pair<int, Rational>;
 
-    inline explicit Fourier_motzkin_elimination(Linear_arithmetic* lra) : lra(lra) {}
+    inline explicit Fm_elimination(Linear_arithmetic* lra) : lra(lra) {}
 
     /** Create FM elimination starting with the constraint @p cons
      *
      * @param lra LRA plugin
      * @param cons linear constraint
      */
-    inline Fourier_motzkin_elimination(Linear_arithmetic* lra, Constraint cons) : lra(lra) 
+    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons) : lra(lra) 
     {
         init(cons);
     }
@@ -147,25 +147,25 @@ public:
      * @param pred predicate of the constraint (actual predicate of @p cons is ignored)
      * @param mult constant by which we multiply linear polynomial from @p cons
      */
-    inline Fourier_motzkin_elimination(Linear_arithmetic* lra, Constraint cons, Order_predicate pred, Rational mult) : lra(lra) 
+    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons, Order_predicate pred, Rational mult) : lra(lra) 
     {
         init(cons, pred, mult);
     }
 
     // non-copyable
-    Fourier_motzkin_elimination(Fourier_motzkin_elimination const&) = delete;
-    Fourier_motzkin_elimination& operator=(Fourier_motzkin_elimination const&) = delete;
+    Fm_elimination(Fm_elimination const&) = delete;
+    Fm_elimination& operator=(Fm_elimination const&) = delete;
 
     // movable
-    Fourier_motzkin_elimination(Fourier_motzkin_elimination&& other) = default;
-    Fourier_motzkin_elimination& operator=(Fourier_motzkin_elimination&& other) = default;
+    Fm_elimination(Fm_elimination&& other) = default;
+    Fm_elimination& operator=(Fm_elimination&& other) = default;
 
     /** FM elimination of @p var using constraint derived from @p other FM elimination
      * 
      * @param other other FM elimination
      * @param var rational variable ordinal to resolve
      */
-    void resolve(Fourier_motzkin_elimination const& other, int var);
+    void resolve(Fm_elimination const& other, int var);
 
     /** Create a linear constraint from current derivation and propagate it to the @p trail
      *
@@ -212,7 +212,7 @@ private:
      * 
      * @param other other FM elimination
      */
-    void init(Fourier_motzkin_elimination&& other);
+    void init(Fm_elimination&& other);
 
     /** Set current constraint to the polynomial of @p cons multiplied by @p mult with predicate
      * @p pred
@@ -259,7 +259,7 @@ public:
      * @param bound bound of a variable to eliminate
      * @return derived linear constraint of @p bound after eliminating all unassigned variables
      */
-    Fourier_motzkin_elimination eliminate(Models const& models, Variable_bounds& bounds, 
+    Fm_elimination eliminate(Models const& models, Variable_bounds& bounds, 
                                           Implied_value<Rational> const& bound);
 
     /** Remove duplicates from the conflict clause
@@ -323,7 +323,7 @@ public:
 
 private:
     Linear_arithmetic* lra;
-    Fourier_motzkin_elimination fm;
+    Fm_elimination fm;
 };
 
 } // namespace perun

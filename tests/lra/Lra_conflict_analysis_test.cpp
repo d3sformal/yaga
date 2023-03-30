@@ -34,8 +34,8 @@ TEST_CASE("FM elimination", "[fm]")
 
         for (int i = 0; i < 2; ++i)
         {
-            Fourier_motzkin_elimination fm{&lra, lb};
-            Fourier_motzkin_elimination fm_ub{&lra, ub};
+            Fm_elimination fm{&lra, lb};
+            Fm_elimination fm_ub{&lra, ub};
             fm.resolve(fm_ub, x.ord());
 
             auto derived = fm.finish(trail);
@@ -56,8 +56,8 @@ TEST_CASE("FM elimination", "[fm]")
 
         for (int i = 0; i < 2; ++i)
         {
-            Fourier_motzkin_elimination fm{&lra, lb};
-            Fourier_motzkin_elimination fm_ub{&lra, ub};
+            Fm_elimination fm{&lra, lb};
+            Fm_elimination fm_ub{&lra, ub};
             fm.resolve(fm_ub, x.ord());
 
             auto derived = fm.finish(trail);
@@ -78,8 +78,8 @@ TEST_CASE("FM elimination", "[fm]")
 
         for (int i = 0; i < 2; ++i)
         {
-            Fourier_motzkin_elimination fm{&lra, lb};
-            Fourier_motzkin_elimination fm_ub{&lra, ub};
+            Fm_elimination fm{&lra, lb};
+            Fm_elimination fm_ub{&lra, ub};
             fm.resolve(fm_ub, x.ord());
 
             auto derived = fm.finish(trail);
@@ -100,8 +100,8 @@ TEST_CASE("FM elimination", "[fm]")
 
         for (int i = 0; i < 2; ++i)
         {
-            Fourier_motzkin_elimination fm{&lra, lb};
-            Fourier_motzkin_elimination fm_ub{&lra, ub};
+            Fm_elimination fm{&lra, lb};
+            Fm_elimination fm_ub{&lra, ub};
             fm.resolve(fm_ub, x.ord());
 
             auto derived = fm.finish(trail);
@@ -122,8 +122,8 @@ TEST_CASE("FM elimination", "[fm]")
 
         for (int i = 0; i < 2; ++i)
         {
-            Fourier_motzkin_elimination fm{&lra, lb};
-            Fourier_motzkin_elimination fm_ub{&lra, ub};
+            Fm_elimination fm{&lra, lb};
+            Fm_elimination fm_ub{&lra, ub};
             fm.resolve(fm_ub, x.ord());
 
             auto derived = fm.finish(trail);

@@ -3,7 +3,7 @@
 
 namespace perun {
 
-void Fourier_motzkin_elimination::init(Constraint const& cons)
+void Fm_elimination::init(Constraint const& cons)
 {
     assert(cons.pred() != Order_predicate::eq || !cons.lit().is_negation()); // cons is not !=
 
@@ -26,7 +26,7 @@ void Fourier_motzkin_elimination::init(Constraint const& cons)
     init(cons, new_pred, new_pred != cons.pred() ? -1 : 1);
 }
 
-void Fourier_motzkin_elimination::init(Constraint const& cons, Order_predicate p, Rational mult)
+void Fm_elimination::init(Constraint const& cons, Order_predicate p, Rational mult)
 {
     assert(!cons.empty());
 
@@ -43,13 +43,13 @@ void Fourier_motzkin_elimination::init(Constraint const& cons, Order_predicate p
     poly.constant = -cons.rhs() * mult;
 }
 
-void Fourier_motzkin_elimination::init(Fourier_motzkin_elimination&& other)
+void Fm_elimination::init(Fm_elimination&& other)
 {
     pred = other.pred;
     poly = std::move(other.poly);
 }
 
-void Fourier_motzkin_elimination::resolve(Fourier_motzkin_elimination const& other, int var_ord)
+void Fm_elimination::resolve(Fm_elimination const& other, int var_ord)
 {
     assert(!poly.empty());
     assert(!other.derived().variables.empty());
@@ -95,7 +95,7 @@ void Fourier_motzkin_elimination::resolve(Fourier_motzkin_elimination const& oth
     pred = combine(pred, other.predicate());
 }
 
-Order_predicate Fourier_motzkin_elimination::combine(Order_predicate first, Order_predicate second) const
+Order_predicate Fm_elimination::combine(Order_predicate first, Order_predicate second) const
 {
     if (first == Order_predicate::eq && second == Order_predicate::eq)
     {
@@ -111,7 +111,7 @@ Order_predicate Fourier_motzkin_elimination::combine(Order_predicate first, Orde
     }
 }
 
-Fourier_motzkin_elimination::Constraint Fourier_motzkin_elimination::finish(Trail& trail)
+Fm_elimination::Constraint Fm_elimination::finish(Trail& trail)
 {
     if (poly.empty())
     {
@@ -135,13 +135,13 @@ Fourier_motzkin_elimination::Constraint Fourier_motzkin_elimination::finish(Trai
     return cons;
 }
 
-Fourier_motzkin_elimination Lra_conflict_analysis::eliminate(Models const& models, Variable_bounds& bounds, Implied_value<Rational> const& bound)
+Fm_elimination Lra_conflict_analysis::eliminate(Models const& models, Variable_bounds& bounds, Implied_value<Rational> const& bound)
 {
     // add assumption to the implication
     clause.push_back(bound.reason().lit().negate());
 
     // eliminate all unassigned variables in the linear constraint except for `bound.var()`
-    Fourier_motzkin_elimination fm{lra, bound.reason()};
+    Fm_elimination fm{lra, bound.reason()};
     for (auto const& other : bound.bounds())
     {
         if (!models.owned().is_defined(other.var()))
@@ -231,7 +231,7 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
     for (auto bound_ptr : {lb, ub})
     {
         auto fm = analysis.eliminate(models, bounds, *bound_ptr);
-        fm.resolve(Fourier_motzkin_elimination{lra, neq->reason(), Order_predicate::lt, mult}, neq->var());
+        fm.resolve(Fm_elimination{lra, neq->reason(), Order_predicate::lt, mult}, neq->var());
         auto derived = fm.finish(trail);
         if (!derived.empty())
         {
