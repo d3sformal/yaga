@@ -301,7 +301,7 @@ void Internalizer_config::visit(term_t t)
             auto arg_lit = internal_bool_vars.at(pos_arg);
             if (terms::polarity_of(arg))
             {
-                arg_lit.negate();
+                arg_lit = arg_lit.negate();
             }
             arg_literals.push_back(arg_lit);
         }
