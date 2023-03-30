@@ -229,29 +229,6 @@ struct Bound_comparer {
     using Models = Theory_models<Value>;
     using Implied_value_type = Implied_value<Value>;
 
-    /** Check whether @p bound uses FM elimination to eliminate a variable which has been assigned 
-     * already.
-     * 
-     * For example: `x + y <= 0` which uses `y >= 0` to eliminate `y` implies that `x <= 0`, but
-     * if `y` is assigned to 0, the constraint `x + y <= 0` itself implies that `x <= 0` and we 
-     * should prefer the latter bound.
-     * 
-     * @param models partial assignment of 
-     * @param bound checked bound
-     * @return true iff @p bound uses FM elimination to eliminate an assigned variable in @p models
-     */
-    bool eliminates_assigned_var(Models const& models, Implied_value_type const& bound) const
-    {
-        for (auto const& other : bound.bounds())
-        {
-            if (models.owned().is_defined(other.var()) || eliminates_assigned_var(models, other))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /** Check whether @p lhs is a strictly better bound than @p rhs
      * 
      * @param models partial assignment of variables
@@ -259,8 +236,7 @@ struct Bound_comparer {
      * @param rhs second bound
      * @return true iff @p lhs is strictly better than @p rhs
      */
-    bool operator()(Models const& models, Implied_value_type const& lhs, 
-                    Implied_value_type const& rhs) const
+    bool operator()(Implied_value_type const& lhs, Implied_value_type const& rhs) const
     {
         // if lhs is strictly better than rhs
         if (Less{}(lhs.value(), rhs.value()))
@@ -279,7 +255,7 @@ struct Bound_comparer {
             }
             else if (lhs_strict == rhs_strict)
             {
-                return !eliminates_assigned_var(models, lhs) && eliminates_assigned_var(models, rhs);
+                return false; 
             }
         }
         return false;
@@ -381,7 +357,7 @@ public:
     {
         Upper_bound_comparer is_better;
         auto bound = upper_bound(models);
-        if (!bound || is_better(models, new_bound, *bound))
+        if (!bound || is_better(new_bound, *bound))
         {
             ub.push_back(std::move(new_bound));
             return true;
@@ -399,7 +375,7 @@ public:
     {
         Lower_bound_comparer is_better;
         auto bound = lower_bound(models);
-        if (!bound || is_better(models, new_bound, *bound))
+        if (!bound || is_better(new_bound, *bound))
         {
             lb.push_back(std::move(new_bound));
             return true;
