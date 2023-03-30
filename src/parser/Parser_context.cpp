@@ -21,6 +21,14 @@ void Parser_context::pop_let_bindings() { let_records.pop_frame(); }
 
 term_t Parser_context::get_term_for_symbol(std::string const& symbol)
 {
+    if (symbol == "true")
+    {
+        return terms::true_term;
+    }
+    if (symbol == "false")
+    {
+        return terms::false_term;
+    }
     auto maybe_term = let_records.get(symbol);
     if (maybe_term.has_value())
     {
