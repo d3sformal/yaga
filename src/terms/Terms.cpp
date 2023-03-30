@@ -132,7 +132,7 @@ term_t Term_table::or_term(std::span<term_t> args)
 
 term_t Term_table::arithmetic_product(Rational const& coeff, term_t var)
 {
-    assert(is_uninterpreted_constant(var));
+    assert(is_uninterpreted_constant(var) or (is_ite(var) and get_type(var) == types::real_type));
     term_t coeff_term = arithmetic_constant(coeff);
     std::array<term_t, 2> args{coeff_term, var};
     Composite_term_proxy proxy{Kind::ARITH_PRODUCT, types::real_type, hash_composite_term(Kind::ARITH_PRODUCT, args), *this, args};
