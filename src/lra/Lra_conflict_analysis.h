@@ -160,37 +160,6 @@ public:
     Fourier_motzkin_elimination(Fourier_motzkin_elimination&& other) = default;
     Fourier_motzkin_elimination& operator=(Fourier_motzkin_elimination&& other) = default;
 
-    /** Set current constraint to @p cons
-     *
-     * @param cons linear constraint
-     */
-    void init(Constraint const& cons);
-
-    /** Set current constraint to the derived constraint from @p other elimination
-     * 
-     * @param other other FM elimination
-     */
-    void init(Fourier_motzkin_elimination&& other);
-
-    /** Set current constraint to the polynomial of @p cons multiplied by @p mult with predicate
-     * @p pred
-     *
-     * @param cons linear constraint
-     * @param pred predicate of the current constraint (predicate of @p cons is ignored)
-     * @param mult constant by which we multiply linear polynomial from @p cons
-     */
-    void init(Constraint const& cons, Order_predicate pred, Rational mult);
-
-    /** Fourier-Motzkin elimination of @p var
-     *
-     * If current constraint is `L <= x` and @p cons is `x <= U` (or vice versa), derive `L <= U`
-     * where `x` is @p var
-     *
-     * @param cons linear constraint
-     * @param var rational variable ordinal to resolve
-     */
-    void resolve(Constraint const& cons, int var);
-
     /** FM elimination of @p var using constraint derived from @p other FM elimination
      * 
      * @param other other FM elimination
@@ -217,6 +186,14 @@ public:
      * @return derived predicate
      */
     inline Order_predicate predicate() const { return pred; }
+
+    /** Find predicate of the constraint after FM elimination
+     * 
+     * @param first predicate of one constraint
+     * @param second predicate of the other constraint
+     * @return predicate of the combination (constraint after FM elimination)
+     */
+    Order_predicate combine(Order_predicate first, Order_predicate second) const;
 private:
     // polynomial of the currently derived constraint
     Polynomial poly;
@@ -224,6 +201,27 @@ private:
     Order_predicate pred = Order_predicate::eq;
     // LRA plugin
     Linear_arithmetic* lra;
+
+    /** Set current constraint to @p cons
+     *
+     * @param cons linear constraint
+     */
+    void init(Constraint const& cons);
+
+    /** Set current constraint to the derived constraint from @p other elimination
+     * 
+     * @param other other FM elimination
+     */
+    void init(Fourier_motzkin_elimination&& other);
+
+    /** Set current constraint to the polynomial of @p cons multiplied by @p mult with predicate
+     * @p pred
+     *
+     * @param cons linear constraint
+     * @param pred predicate of the current constraint (predicate of @p cons is ignored)
+     * @param mult constant by which we multiply linear polynomial from @p cons
+     */
+    void init(Constraint const& cons, Order_predicate pred, Rational mult);
 
     // check if a linear constraint implies a lower bound for a variable with coefficient `coef`
     inline bool is_lower_bound(Rational coef, Order_predicate pred, bool is_negation) const

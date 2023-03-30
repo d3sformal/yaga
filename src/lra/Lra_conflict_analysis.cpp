@@ -49,68 +49,6 @@ void Fourier_motzkin_elimination::init(Fourier_motzkin_elimination&& other)
     poly = std::move(other.poly);
 }
 
-void Fourier_motzkin_elimination::resolve(Constraint const& cons, int var_ord)
-{
-    assert(!poly.empty());
-    assert(!cons.empty());
-    assert(cons.pred() != Order_predicate::eq || !cons.lit().is_negation()); // cons is not !=
-
-    // find the variable to eliminate in `poly`
-    auto poly_it = std::find_if(poly.begin(), poly.end(), [var_ord](auto const& pair) {
-        return pair.first == var_ord;
-    });
-    assert(poly_it != poly.end());
-
-    // find the variable to eliminate in `cons`
-    auto cons_var_it = std::find(cons.vars().begin(), cons.vars().end(), poly_it->first);
-    auto cons_coef_it = cons.coef().begin() + std::distance(cons.vars().begin(), cons_var_it);
-    assert(cons_var_it != cons.vars().end());
-    assert(cons_coef_it != cons.coef().end());
-    assert(*cons_var_it == poly_it->first);
-
-    // compute constants s.t. `poly + cons_mult * cons` eliminates the first variable in `poly`
-    auto cons_mult = -poly_it->second / *cons_coef_it;
-    auto cons_mult_signbit = cons_mult < 0;
-    if (cons.pred() != Order_predicate::eq && cons_mult_signbit != cons.lit().is_negation())
-    {
-        // predicate of the derived constraint would be > or >= if we used `cons_mult`
-        cons_mult = -cons_mult;
-        // multiply `poly` by -1
-        for (auto& [_, coef] : poly)
-        {
-            coef = -coef;
-        }
-        poly.constant = -poly.constant;
-    }
-
-    // multiply-add the polynomial of constraint `cons`
-    auto var_it = cons.vars().begin();
-    auto coef_it = cons.coef().begin();
-    for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
-    {
-        poly.variables.emplace_back(*var_it, *coef_it * cons_mult);
-    }
-    poly.constant = poly.constant - cons.rhs() * cons_mult;
-    poly.normalize();
-
-    assert(std::find_if(poly.begin(), poly.end(),
-                        [&](auto var) { return var.first == *cons_var_it; }) == poly.end());
-
-    // find predicate of the derivation
-    if (pred == Order_predicate::eq && cons.pred() == Order_predicate::eq)
-    {
-        pred = Order_predicate::eq;
-    }
-    else if (pred != Order_predicate::lt && !cons.is_strict())
-    {
-        pred = Order_predicate::leq;
-    }
-    else
-    {
-        pred = Order_predicate::lt;
-    }
-}
-
 void Fourier_motzkin_elimination::resolve(Fourier_motzkin_elimination const& other, int var_ord)
 {
     assert(!poly.empty());
@@ -154,17 +92,22 @@ void Fourier_motzkin_elimination::resolve(Fourier_motzkin_elimination const& oth
                         [&](auto var) { return var.first == var_ord; }) == poly.end());
 
     // find predicate of the derivation
-    if (pred == Order_predicate::eq && other.predicate() == Order_predicate::eq)
+    pred = combine(pred, other.predicate());
+}
+
+Order_predicate Fourier_motzkin_elimination::combine(Order_predicate first, Order_predicate second) const
+{
+    if (first == Order_predicate::eq && second == Order_predicate::eq)
     {
-        pred = Order_predicate::eq;
+        return Order_predicate::eq;
     }
-    else if (pred != Order_predicate::lt && other.predicate() != Order_predicate::lt)
+    else if (first != Order_predicate::lt && second != Order_predicate::lt)
     {
-        pred = Order_predicate::leq;
+        return Order_predicate::leq;
     }
     else
     {
-        pred = Order_predicate::lt;
+        return Order_predicate::lt;
     }
 }
 
