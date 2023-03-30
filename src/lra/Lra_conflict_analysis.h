@@ -236,35 +236,48 @@ private:
         return pred == Order_predicate::eq || (coef > 0 && !is_negation) ||
                (coef < 0 && is_negation);
     }
+};
 
-    // check if current constraint implies a lower bound
-    inline bool is_lower_bound() const
-    {
-        assert(!poly.empty());
-        return is_lower_bound(poly.variables.front().second, pred, false);
-    }
+/** Derive a conflict clause by eliminating all unassigned variables.
+ */
+class Lra_conflict_analysis {
+public:
+    using Rational = Fraction<int>;
+    using Models = Theory_models<Rational>;
+    using Constraint = Linear_constraint<Rational>;
+    using Polynomial = detail::Linear_polynomial<Rational>;
 
-    // check if current constraint implies an upper bound
-    inline bool is_upper_bound() const
-    {
-        assert(!poly.empty());
-        return is_upper_bound(poly.variables.front().second, pred, false);
-    }
+    inline Lra_conflict_analysis(Linear_arithmetic* lra) : lra(lra) {}
+
+    /** Eliminate a variable using @p bound
+     * 
+     * All unassigned variables in @p bound are eliminated using FM elimination and the old 
+     * constraints used for the elimination are added as assumptions to current conflict clause.
+     * 
+     * @param models partial assignment of variables
+     * @param bounds variable bounds
+     * @param bound bound of a variable to eliminate
+     * @return derived linear constraint of @p bound after eliminating all unassigned variables
+     */
+    Fourier_motzkin_elimination eliminate(Models const& models, Variable_bounds& bounds, 
+                                          Implied_value<Rational> const& bound);
+
+    /** Remove duplicates from the conflict clause
+     * 
+     * @return current conflict clause
+     */
+    Clause& finish();
+
+    // get current unfinished conflict clause
+    inline Clause& conflict() { return clause; }
+    // get current unfinished conflict clause
+    inline Clause const& conflict() const { return clause; }
+private:
+    Linear_arithmetic* lra;
+    Clause clause;
 };
 
 /** Analysis of bound conflicts.
- * 
- * Variable `x` is in a bound conflict if:
- * -# L is a linear polynomial s.t. `L {<,<=,=} x` is implied by constraints on the trail; and
- * -# U is a linear polynomial s.t. `x {<,<=,=} U` is implied by constraints on the trail; and
- * -# `value(L) > value(U)` or `value(L) = value(U)` and at least one of 
- * `L {<=,<,=} x`, `x {<=,<,=} U` is strict (i.e., `<`)
- * 
- * The `value` mapping maps linear polynomials to rational values according to current assignment 
- * of rational variables.
- * 
- * We explain bound conflicts by eliminating all unassigned variables including `x` using FM 
- * elimination.
  */
 class Bound_conflict_analysis {
 public:
@@ -288,17 +301,6 @@ private:
 };
 
 /** Analysis of inequality conflicts.
- * 
- * Variable `x` is in an inequality conflict if:
- * -# `L <= x`, `x <= U`, `x != D` are on the trail; and
- * -# L, U, D evaluate to the same value 
- * 
- * We explain inequality conflicts using the disequality lemma in Fig. 2 [1]:
- * `x < L || U < x || x = D || L < D || D < U`
- * 
- * [1] Jovanovic, Dejan, Clark Barrett, and Leonardo De Moura. "The design and implementation of 
- * the model constructing satisfiability calculus." 2013 Formal Methods in Computer-Aided Design.
- * IEEE, 2013.
  */
 class Inequality_conflict_analysis {
 public:

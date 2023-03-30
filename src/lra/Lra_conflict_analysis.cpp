@@ -135,6 +135,31 @@ Fourier_motzkin_elimination::Constraint Fourier_motzkin_elimination::finish(Trai
     return cons;
 }
 
+Fourier_motzkin_elimination Lra_conflict_analysis::eliminate(Models const& models, Variable_bounds& bounds, Implied_value<Rational> const& bound)
+{
+    // add assumption to the implication
+    clause.push_back(bound.reason().lit().negate());
+
+    // eliminate all unassigned variables in the linear constraint except for `bound.var()`
+    Fourier_motzkin_elimination fm{lra, bound.reason()};
+    for (auto const& other : bound.bounds())
+    {
+        if (!models.owned().is_defined(other.var()))
+        {
+            fm.resolve(eliminate(models, bounds, other), other.var());
+        }
+    }
+    return fm;
+}
+
+Clause& Lra_conflict_analysis::finish()
+{
+    // remove duplicate literals from the conflict clause
+    std::sort(conflict().begin(), conflict().end(), Literal_comparer{});
+    conflict().erase(std::unique(conflict().begin(), conflict().end()), conflict().end());
+    return clause;
+}
+
 std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds, int var_ord)
 {
     auto models = lra->relevant_models(trail);
@@ -154,34 +179,12 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
 
     // Derive a conflict using FM elimination. We implicitly use resolution to resolve intermediate 
     // results.
-    Clause conflict;
-    auto eliminate = [&](auto& self, Implied_value<Rational> const& bound) -> Fourier_motzkin_elimination
-    {
-        Fourier_motzkin_elimination fm{lra, bound.reason()};
-        if (!models.owned().is_defined(bound.var()))
-        {
-            // add assumption to the implication
-            conflict.push_back(bound.reason().lit().negate());
+    Lra_conflict_analysis analysis{lra};
+    auto fm = analysis.eliminate(models, bounds, *lb);
+    fm.resolve(analysis.eliminate(models, bounds, *ub), ub->var());
+    //fm = analysis.minimize(trail, models, bounds, std::move(fm));
 
-            // eliminate all unassigned variables in the linear constraint except for `bound.var()`
-            for (auto const& other : bound.bounds())
-            {
-                if (!models.owned().is_defined(other.var()))
-                {
-                    fm.resolve(self(self, other), other.var());
-                }
-            }
-        }
-        return fm;
-    };
-
-    auto fm = eliminate(eliminate, *lb);
-    fm.resolve(eliminate(eliminate, *ub), ub->var());
-
-    // remove duplicate literals from the conflict clause
-    std::sort(conflict.begin(), conflict.end(), Literal_comparer{});
-    conflict.erase(std::unique(conflict.begin(), conflict.end()), conflict.end());
-
+    auto& conflict = analysis.finish();
     auto derived = fm.finish(trail);
     if (!derived.empty())
     {
@@ -221,47 +224,26 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variab
     assert(lb->var() == ub->var());
     assert(neq->var() == lb->var());
 
-    Clause conflict{neq->reason().lit().negate()};
-    auto eliminate = [&](auto& self, Implied_value<Rational> const& bound) -> Fourier_motzkin_elimination
-    {
-        Fourier_motzkin_elimination fm{lra, bound.reason()};
-        if (!models.owned().is_defined(bound.var()))
-        {
-            // add assumption to the implication
-            conflict.push_back(bound.reason().lit().negate());
-
-            // eliminate all unassigned variables in the linear constraint except for `bound.var()`
-            for (auto const& other : bound.bounds())
-            {
-                if (!models.owned().is_defined(other.var()))
-                {
-                    fm.resolve(self(self, other), other.var());
-                }
-            }
-        }
-        return fm;
-    };
+    Lra_conflict_analysis analysis{lra};
+    analysis.conflict().push_back(neq->reason().lit().negate());
 
     auto mult = neq->reason().coef().front() > 0 ? 1 : -1;
     for (auto bound_ptr : {lb, ub})
     {
-        auto fm = eliminate(eliminate, *bound_ptr);
+        auto fm = analysis.eliminate(models, bounds, *bound_ptr);
         fm.resolve(Fourier_motzkin_elimination{lra, neq->reason(), Order_predicate::lt, mult}, neq->var());
         auto derived = fm.finish(trail);
         if (!derived.empty())
         {
             assert(eval(models.owned(), derived) == false);
             assert(eval(models.boolean(), derived.lit()) == false);
-            conflict.push_back(derived.lit());
+            analysis.conflict().push_back(derived.lit());
         }
         mult = -mult;
     }
 
-    // remove duplicate literals from the conflict clause
-    std::sort(conflict.begin(), conflict.end(), Literal_comparer{});
-    conflict.erase(std::unique(conflict.begin(), conflict.end()), conflict.end());
-
-    return conflict;
+    assert(eval(models.boolean(), analysis.conflict()) == false);
+    return analysis.finish();
 }
 
 } // namespace perun
