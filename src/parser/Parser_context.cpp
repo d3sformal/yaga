@@ -97,6 +97,11 @@ term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>
     {
         return mk_and(std::move(args));
     }
+    else if (name == "=>")
+    {
+        assert(args.size() == 2);
+        return mk_implies(args[0], args[1]);
+    }
     else if (name == "not")
     {
         assert(args.size() == 1);
@@ -206,6 +211,11 @@ term_t Parser_context::mk_or(std::vector<term_t>&& args)
 term_t Parser_context::mk_and(std::vector<term_t>&& args)
 {
     return term_manager.mk_and(args);
+}
+
+term_t Parser_context::mk_implies(term_t t1, term_t t2)
+{
+    return term_manager.mk_implies(t1, t2);
 }
 
 term_t Parser_context::mk_unary_minus(term_t t)
