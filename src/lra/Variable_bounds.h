@@ -47,6 +47,14 @@ public:
      */
     std::vector<int> const& changed();
 
+    /** Check whether an unassigned constraint can be deduced to be true in current trail
+     * 
+     * @param models partial assignment of variables
+     * @param cons checked constraint
+     * @return true iff @p cons is true in current trail
+     */
+    bool is_implied(Models const& models, Constraint cons);
+
     /** Check whether the unit constraint @p cons implies an equality for the only unassigned
      * variable (e.g., `x == 5`)
      *

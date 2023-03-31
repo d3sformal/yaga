@@ -92,6 +92,51 @@ void Variable_bounds::deduce(Models const& models, Constraint cons)
     }
 }
 
+bool Variable_bounds::is_implied(Models const& models, Constraint cons)
+{
+    auto val = eval(models.boolean(), cons.lit());
+    if (val == true)
+    {
+        return true;
+    }
+    else if (val == false)
+    {
+        return false;
+    }
+
+    auto bound = cons.rhs();
+    auto [var_it, var_end] = cons.vars();
+    auto coef_it = cons.coef().begin();
+    for (; var_it != var_end; ++var_it, ++coef_it)
+    {
+        if (models.owned().is_defined(*var_it))
+        {
+            bound -= *coef_it * models.owned().value(*var_it);
+        }
+        else
+        {
+            Implied_value<Rational> const* bound_ptr = nullptr;
+            if ((!cons.lit().is_negation() && *coef_it > 0) ||
+                (cons.lit().is_negation() && *coef_it < 0))
+            {
+                bound_ptr = bounds[*var_it].upper_bound(models);
+            }
+            else
+            {
+                bound_ptr = bounds[*var_it].lower_bound(models);
+            }
+
+            if (!bound_ptr)
+            {
+                return false;
+            }
+            bound -= *coef_it * bound_ptr->value();
+        }
+    }
+    return cons.lit().is_negation() ? !cons.pred()(Rational{0}, bound) 
+                                    : cons.pred()(Rational{0}, bound);
+}
+
 bool Variable_bounds::implies_equality(Constraint const& cons) const
 {
     return cons.pred() == Order_predicate::eq && !cons.lit().is_negation();
