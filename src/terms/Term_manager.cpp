@@ -285,13 +285,24 @@ term_t Term_manager::mk_arithmetic_times(std::span<term_t> args)
         return args[0];
     }
     assert(args.size() == 2);
-    // TODO: Make this more efficient?
-    poly_t poly;
-    for (term_t arg : args)
-    {
-        poly.merge(term_to_poly(arg), 1);
+    auto pit = std::partition(args.begin(), args.end(),[this](term_t arg) { return this->term_table->is_arithmetic_constant(arg); });
+    // constants are from begin to it, non-constants are from it (included) until end
+    auto nonconstants_count = args.end() - pit;
+    assert(nonconstants_count <= 1);
+    // fold all constants into a single value
+    Rational val = 1;
+    for (auto it = args.begin(); it != pit; ++it) {
+        assert(term_table->is_arithmetic_constant(*it));
+        val *= term_table->arithmetic_constant_value(*it);
     }
-    return poly_to_term(poly);
+    if (pit == args.end())
+    {
+        return term_table->arithmetic_constant(val);
+    }
+    else
+    {
+        return term_table->arithmetic_product(val, *pit);
+    }
 }
 
 term_t Term_manager::mk_divides(term_t t1, term_t t2)
