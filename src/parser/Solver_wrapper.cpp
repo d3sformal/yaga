@@ -182,6 +182,7 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
         Linear_polynomial poly;
         poly.vars.reserve(args.size());
         poly.coef.reserve(args.size());
+        poly.constant = 0;
         for (term_t arg : args)
         {
             auto arg_kind = term_table.get_kind(arg);
