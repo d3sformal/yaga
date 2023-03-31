@@ -238,16 +238,12 @@ Bool_theory::falsified(Trail const& trail, Model<bool> const& model, Literal fal
         }
         else // `clause` is unit or false
         {
-            // watch the highest level variable instead of `falsified_lit`
-            if (fix_second_watch(trail, model, watch))
-            {
-                std::swap(watch, watchlist.back());
-                watchlist.pop_back();
-            }
-            else // we are still watching `falsified_lit`
-            {
-                ++i;
-            }
+            ++i;
+
+            // the second watch has the highest decision level
+            assert(std::max_element(clause.begin() + 1, clause.end(), [&](auto lhs, auto rhs) {
+                return *trail.decision_level(lhs.var()) < *trail.decision_level(rhs.var());
+            }) == clause.begin() + 1);
 
             if (eval(model, clause[0]) == false) // if the clause is false
             {
