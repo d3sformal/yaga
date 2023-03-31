@@ -14,20 +14,101 @@ bool Variable_bounds::depends_on(Implied_value<Rational> const& bound, int bool_
     });
 }
 
-void Variable_bounds::deduce(Models const& models, Constraint cons)
+void Variable_bounds::deduce_from_equality(Models const& models, Constraint cons)
 {
+    assert(!cons.lit().is_negation());
+    assert(cons.pred() == Order_predicate::eq);
     assert(eval(models.boolean(), cons.lit()) == true);
-    if (cons.pred() == Order_predicate::eq)
+
+    std::array<Deduced_properties, 2> props;
+    props[0].bound = props[1].bound = cons.rhs();
+    props[0].num_vars = props[1].num_vars = 0;
+
+    auto [var_it, var_end] = cons.vars();
+    auto coef_it = cons.coef().begin();
+    for (; var_it != var_end; ++var_it, ++coef_it)
     {
-        return;
+        if (models.owned().is_defined(*var_it))
+        {
+            for (auto& prop : props)
+            {
+                prop.bound -= *coef_it * models.owned().value(*var_it);
+            }
+        }
+        else // `*var_it` is unassigned
+        {
+            // bounds used to derive a lower/upper bound from this equality using FM elimination
+            std::array<Bound const*, 2> var_bounds{
+                bounds[*var_it].upper_bound(models),
+                bounds[*var_it].lower_bound(models)
+            };
+            if (*coef_it < 0)
+            {
+                std::swap(var_bounds[0], var_bounds[1]);
+            }
+
+            // stop the computation if there is a circular dependency
+            if ((var_bounds[0] && depends_on(*var_bounds[0], cons.lit().var().ord())) ||
+                (var_bounds[1] && depends_on(*var_bounds[1], cons.lit().var().ord())))
+            {
+                return;
+            }
+
+            for (int i = 0; i < 2; ++i)
+            {
+                if (var_bounds[i])
+                {
+                    props[i].bound -= *coef_it * var_bounds[i]->value();
+                    props[i].deps.push_back(*var_bounds[i]);
+                }
+                else
+                {
+                    ++props[i].num_vars;
+                    props[i].unbounded_var = *var_it;
+                    props[i].unbounded_coef = *coef_it;
+                }
+            }
+        }
     }
 
+    float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
+    int i = 0;
+    for (auto& prop : props)
+    {
+        if (count_distinct_bounds(prop.deps) <= max_deps && prop.num_vars == 1)
+        {
+            prop.bound /= prop.unbounded_coef;
+
+            bool has_changed = false;
+            Bound value{prop.unbounded_var, prop.bound, cons, models, prop.deps};
+            if ((i == 0 && prop.unbounded_coef > 0) || (i == 1 && prop.unbounded_coef < 0))
+            {
+                has_changed |= bounds[prop.unbounded_var].add_lower_bound(models, std::move(value));
+            }
+            else
+            {
+                has_changed |= bounds[prop.unbounded_var].add_upper_bound(models, std::move(value));
+            }
+
+            if (has_changed)
+            {
+                updated_write.push_back(prop.unbounded_var);
+            }
+        }
+        ++i;
+    }
+}
+
+void Variable_bounds::deduce_from_inequality(Models const& models, Constraint cons)
+{
+    assert(eval(models.boolean(), cons.lit()) == true);
+    assert(cons.pred() != Order_predicate::eq);
+
+    std::vector<Bound> deps;
     auto bound = cons.rhs();
     int num_unbounded = 0;
     int unbounded_var = 0;
-    Rational unbounded_coef{0};
-    std::vector<Implied_value<Rational>> deps;
-
+    Rational unbounded_coef;
     auto [var_it, var_end] = cons.vars();
     auto coef_it = cons.coef().begin();
     for (; var_it != var_end; ++var_it, ++coef_it)
@@ -38,8 +119,7 @@ void Variable_bounds::deduce(Models const& models, Constraint cons)
         }
         else // `*var_it` is unassigned
         {
-            // find appropriate bound for the variable
-            Implied_value<Rational> const* var_bound = nullptr;
+            Bound const* var_bound = nullptr;
             if ((!cons.lit().is_negation() && *coef_it > 0) || 
                 (cons.lit().is_negation() && *coef_it < 0))
             {
@@ -60,7 +140,7 @@ void Variable_bounds::deduce(Models const& models, Constraint cons)
                 bound -= *coef_it * var_bound->value();
                 deps.push_back(*var_bound);
             }
-            else // `*var_it` is not bounded
+            else
             {
                 ++num_unbounded;
                 unbounded_var = *var_it;
@@ -69,12 +149,13 @@ void Variable_bounds::deduce(Models const& models, Constraint cons)
         }
     }
 
-    if (num_unbounded == 1)
+    float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
+    if (count_distinct_bounds(deps) <= max_deps && num_unbounded == 1)
     {
         bound /= unbounded_coef;
 
         bool has_changed = false;
-        Implied_value<Rational> value{unbounded_var, bound, cons, models, deps};
+        Bound value{unbounded_var, bound, cons, models, deps};
         if ((!cons.lit().is_negation() && unbounded_coef > 0) ||
             (cons.lit().is_negation() && unbounded_coef < 0))
         {
@@ -89,6 +170,28 @@ void Variable_bounds::deduce(Models const& models, Constraint cons)
         {
             updated_write.push_back(unbounded_var);
         }
+    }
+}
+
+void Variable_bounds::deduce(Models const& models, Constraint cons)
+{
+    assert(eval(models.boolean(), cons.lit()) == true);
+    if (cons.size() <= 1)
+    {
+        return;
+    }
+
+    if (cons.pred() == Order_predicate::eq)
+    {
+        if (!cons.lit().is_negation())
+        {
+            deduce_from_equality(models, cons);
+        }
+        return;
+    }
+    else // inequality (<, <=, >, >=)
+    {
+        deduce_from_inequality(models, cons);
     }
 }
 

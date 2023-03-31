@@ -99,6 +99,64 @@ private:
     // variables with updated bounds
     std::vector<int> updated_read;
     std::vector<int> updated_write;
+    // maximum number of dependencies (as a percentage of the number of variables) of a bound
+    float threshold = 1.0;
+
+    // properties deduced from a linear constraint
+    struct Deduced_properties {
+        // upper or lower bound deduced from the constraint by evaluating assigned variables and 
+        // eliminating bounded variables using FM elimination
+        Rational bound;
+        // bounds used for FM elimination to derive `bound`
+        std::vector<Bound> deps;
+        // number of unassigned variables which have not been eliminated
+        int num_vars;
+        // the last unbounded variable and its coefficient
+        int unbounded_var;
+        Rational unbounded_coef;
+    };
+
+    /** Count distinct bounds in @p bounds and all their dependencies
+     * 
+     * @tparam Bound_range range of bounds
+     * @param bounds range of bounds
+     * @return number of distinct bounds in @p bounds and their dependencies
+     */
+    template<std::ranges::range Bound_range>
+    int count_distinct_bounds(Bound_range&& bounds)
+    {
+        std::vector<int> vars;
+        vars.reserve(bounds.size());
+        auto add = [&](auto& self, Bound const& bound) -> void {
+            vars.push_back(bound.reason().lit().var().ord());
+            for (auto const& other : bound.bounds())
+            {
+                self(self, other);
+            }
+        };
+        for (auto const& bound : bounds)
+        {
+            add(add, bound);
+        }
+
+        // count distinct bounds
+        std::sort(vars.begin(), vars.end());
+        return std::distance(vars.begin(), std::unique(vars.begin(), vars.end()));
+    }
+
+    /** Deduce bounds from an equality @p cons
+     * 
+     * @param models partial assignment of variables
+     * @param cons an equality linear constraint
+     */
+    void deduce_from_equality(Models const& models, Constraint cons);
+
+    /** Deduce bounds from an inequality @p cons (<, <=, >, >=)
+     * 
+     * @param models partial assignment of variables
+     * @param cons an equality linear constraint
+     */
+    void deduce_from_inequality(Models const& models, Constraint cons);
 
     /** Check whether @p bound depends on a linear constraint whose boolean variable is @p bool_var
      * 
@@ -107,7 +165,6 @@ private:
      * @return true iff @p bound depends on @p bool_var
      */
     bool depends_on(Implied_value<Rational> const& bound, int bool_var) const;
-
 };
 
 }

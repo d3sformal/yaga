@@ -89,6 +89,40 @@ TEST_CASE("Deduce a bound", "[variable_bounds]")
         REQUIRE(bounds[x.ord()].upper_bound(models)->bounds()[0].reason().lit() == constraints[1].lit());
         REQUIRE(bounds[x.ord()].upper_bound(models)->bounds()[1].reason().lit() == constraints[0].lit());
     }
+
+    SECTION("from an equality")
+    {
+        std::array constraints{
+            make(y <= 2),
+            make(y >= 1),
+            make(z <= 3),
+            make(z >= 1),
+            make(2 * x - 3 * y + 5 * z == 1),
+        };
+        for (auto cons : constraints)
+        {
+            models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
+        }
+        bounds.update(models, constraints[0]);
+        bounds.update(models, constraints[1]);
+        bounds.update(models, constraints[2]);
+        bounds.update(models, constraints[3]);
+
+        bounds.deduce(models, constraints[4]);
+        REQUIRE(bounds[x.ord()].upper_bound(models));
+        REQUIRE(bounds[x.ord()].upper_bound(models)->value() == 1);
+        REQUIRE(bounds[x.ord()].upper_bound(models)->reason().lit() == constraints[4].lit());
+        REQUIRE(bounds[x.ord()].upper_bound(models)->bounds().size() == 2);
+        REQUIRE(bounds[x.ord()].upper_bound(models)->bounds()[0].reason().lit() == constraints[0].lit());
+        REQUIRE(bounds[x.ord()].upper_bound(models)->bounds()[1].reason().lit() == constraints[3].lit());
+
+        REQUIRE(bounds[x.ord()].lower_bound(models));
+        REQUIRE(bounds[x.ord()].lower_bound(models)->value() == -11_r / 2);
+        REQUIRE(bounds[x.ord()].lower_bound(models)->reason().lit() == constraints[4].lit());
+        REQUIRE(bounds[x.ord()].lower_bound(models)->bounds().size() == 2);
+        REQUIRE(bounds[x.ord()].lower_bound(models)->bounds()[0].reason().lit() == constraints[1].lit());
+        REQUIRE(bounds[x.ord()].lower_bound(models)->bounds()[1].reason().lit() == constraints[2].lit());
+    }
 }
 
 TEST_CASE("Check if an unassigned constraint is implied by bounds", "[variable_bounds]")
