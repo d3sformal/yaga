@@ -285,7 +285,6 @@ void Internalizer_config::visit(term_t t)
         return;
     case terms::Kind::OR_TERM:
     {
-        bool is_negated = terms::polarity_of(t);
         auto args = term_table.get_args(t);
         assert(args.size() >= 2);
         term_t positive_term = terms::positive_term(t);
@@ -294,6 +293,7 @@ void Internalizer_config::visit(term_t t)
         Literal lit = Literal(var.ord());
         internal_bool_vars.insert({positive_term, lit});
         std::vector<Literal> arg_literals;
+        arg_literals.reserve(args.size());
         for (term_t arg : args)
         {
             term_t pos_arg = terms::positive_term(arg);
@@ -304,11 +304,6 @@ void Internalizer_config::visit(term_t t)
                 arg_lit = arg_lit.negate();
             }
             arg_literals.push_back(arg_lit);
-        }
-        if (is_negated)
-        {
-            lit = lit.negate();
-            std::ranges::for_each(arg_literals, [](Literal& lit) { lit = lit.negate(); });
         }
         // binary clauses
         for (auto arg_lit : arg_literals)
