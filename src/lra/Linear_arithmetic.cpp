@@ -63,7 +63,7 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
         }
     }
 
-    propagate_bounds(models);
+    propagate_bounds(trail, models);
     return finish(trail);
 }
 
@@ -251,6 +251,19 @@ void Linear_arithmetic::unit(Models& models, Constraint cons)
 
 void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& models)
 {
+    if (!trail.empty() && trail.assigned(trail.decision_level()).front().var.type() == Variable::rational)
+    {
+        auto decided_var = trail.assigned(trail.decision_level()).front().var;
+        to_check.push_back(decided_var.ord());
+        for (auto cons : occur[decided_var.ord()])
+        {
+            if (auto val = eval(models.boolean(), cons.lit()))
+            {
+                bounds.deduce(models, val == true ? cons : cons.negate());
+            }
+        }
+    }
+
     for (;;)
     {
         auto old_size = to_check.size();
