@@ -33,7 +33,8 @@ public:
 
 
     // Arithmetic terms
-    term_t mk_arithmetic_constant(std::string const& str);
+    term_t mk_integer_constant(std::string const& str);
+    term_t mk_real_constant(std::string const& str);
 
     term_t mk_arithmetic_eq(term_t t1, term_t t2);
 

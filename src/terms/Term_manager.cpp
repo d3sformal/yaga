@@ -96,11 +96,37 @@ term_t Term_manager::mk_iff(term_t t1, term_t t2)
     return mk_binary_and(mk_implies(t1, t2), mk_implies(t2, t1));
 }
 
-term_t Term_manager::mk_arithmetic_constant(std::string const& str)
+term_t Term_manager::mk_integer_constant(std::string const& str)
 {
     // TODO: This is very prototypish
     auto num = std::stoi(str);
     Rational rat(num);
+    return term_table->arithmetic_constant(rat);
+}
+
+term_t Term_manager::mk_real_constant(std::string const& str)
+{
+    // TODO: Implement properly
+    auto separator_position = str.find('.');
+    if (separator_position == std::string::npos)
+    {
+        return mk_integer_constant(str);
+    }
+    auto integral_part = std::stoi(str.substr(0, separator_position));
+    std::string fractional_str = str.substr(separator_position + 1);
+    if (fractional_str.size() > 9) { throw std::logic_error("Unsupported yet!"); }
+    auto precision = 1;
+    for (auto i = 0u; i < fractional_str.size(); ++i)
+    {
+        precision *= 10;
+    }
+
+    auto fractional_part = std::stoi(fractional_str);
+    auto gcd = std::gcd(precision, fractional_part);
+    auto num = fractional_part / gcd;
+    auto den = precision / gcd;
+    num = integral_part * den + num;
+    Rational rat(num, den);
     return term_table->arithmetic_constant(rat);
 }
 

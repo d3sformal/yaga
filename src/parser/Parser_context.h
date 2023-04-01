@@ -101,6 +101,7 @@ public:
     term_t declare_uninterpreted_constant(terms::type_t sort, std::string const& name);
 
     term_t mk_numeral(std::string const& numeric_string);
+    term_t mk_decimal(std::string const& decimal_string);
 
 private:
     Let_records let_records;

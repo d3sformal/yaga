@@ -64,7 +64,12 @@ term_t Parser_context::declare_uninterpreted_constant(terms::type_t sort, std::s
 
 term_t Parser_context::mk_numeral(std::string const& numeric_string)
 {
-    return term_manager.mk_arithmetic_constant(numeric_string);
+    return term_manager.mk_integer_constant(numeric_string);
+}
+
+term_t Parser_context::mk_decimal(std::string const& decimal_string)
+{
+    return term_manager.mk_real_constant(decimal_string);
 }
 
 term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>&& args)
