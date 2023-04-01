@@ -222,6 +222,7 @@ void Internalizer_config::visit(term_t t)
     switch (kind) {
     case terms::Kind::ARITH_GE_ATOM: {
         auto poly_term = term_table.get_args(t)[0];
+        assert(poly_term != terms::zero_term);
         auto internal_poly = internalize_poly(poly_term);
         bool negated = terms::polarity_of(t);
         if (!negated) // We need to change "p >= 0" to "-p <= 0"
