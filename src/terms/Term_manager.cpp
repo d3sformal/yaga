@@ -143,17 +143,27 @@ term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
         if (mono1.var == term_t::Undef)
         {
             term_t coeff = term_table->arithmetic_constant(-mono1.coeff / mono2.coeff);
-            return term_table->arithmetic_binary_eq(mono2.var, coeff);
+            return direct_arithemetic_binary_equality(mono2.var, coeff);
         }
         assert(mono2.var != term_t::Undef);
         if (mono1.coeff + mono2.coeff == 0)
         {
-            return term_table->arithmetic_binary_eq(mono1.var, mono2.var);
+            return direct_arithemetic_binary_equality(mono1.var, mono2.var);
         }
     }
     // TODO: Normalize the polynomial!
     term_t t = poly_to_term(p);
     return term_table->arithmetic_eq_zero(t);
+}
+
+term_t Term_manager::direct_arithemetic_binary_equality(term_t t1, term_t t2)
+{
+    assert(t1 != t2);
+    if (t2 < t1)
+    {
+        std::swap(t1, t2);
+    }
+    return term_table->arithmetic_binary_eq(t1, t2);
 }
 
 term_t Term_manager::mk_arithmetic_leq(term_t t1, term_t t2)

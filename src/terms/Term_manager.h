@@ -73,6 +73,8 @@ private:
     term_t mk_bool_ite(term_t i, term_t t, term_t e);
     term_t mk_arithmetic_ite(term_t i, term_t t, term_t e);
 
+    term_t direct_arithemetic_binary_equality(term_t t1, term_t t2);
+
 
 };
 } // namespace perun::terms
