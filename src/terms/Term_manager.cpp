@@ -347,8 +347,30 @@ term_t Term_manager::mk_arithmetic_times(std::span<term_t> args)
     {
         return *pit;
     }
-    // General term c * x
-    return term_table->arithmetic_product(val, *pit);
+    // General term c * p
+    term_t poly_term = *pit;
+    switch(term_table->get_kind(poly_term))
+    {
+    case Kind::UNINTERPRETED_TERM:
+    case Kind::ITE_TERM:
+        assert(term_table->get_type(poly_term) == types::real_type);
+        return term_table->arithmetic_product(val, *pit);
+    case Kind::ARITH_PRODUCT: {
+        term_t var = term_table->var_of_product(poly_term);
+        auto const& coeff = term_table->coeff_of_product(poly_term);
+        return term_table->arithmetic_product(coeff * val, var);
+    }
+    case Kind::ARITH_POLY:
+    {
+        auto poly = term_to_poly(poly_term);
+        poly.multiply_by(val);
+        return poly_to_term(poly);
+    }
+    default:
+        assert(false);
+        throw std::logic_error("UNREACHABLE");
+    }
+
 }
 
 term_t Term_manager::mk_divides(term_t t1, term_t t2)

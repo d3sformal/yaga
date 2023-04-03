@@ -49,7 +49,8 @@ public:
     Rational & get_coeff(TVar var) const;
     Rational remove_var(TVar var);
     void negate();
-    void divide_by(Rational& r);
+    void divide_by(Rational const& r);
+    void multiply_by(Rational const& r);
 
     template <typename ADD = mergeFunctionInformerType, typename REM = mergeFunctionInformerType>
     void merge(
@@ -216,13 +217,22 @@ template <typename TVar> void Polynomial<TVar>::negate()
     }
 }
 
-template <typename TVar> void Polynomial<TVar>::divide_by(Rational &r)
+template <typename TVar> void Polynomial<TVar>::divide_by(Rational const& r)
 {
     for (auto& term : poly)
     {
         term.coeff /= r;
     }
 }
+
+template <typename TVar> void Polynomial<TVar>::multiply_by(Rational const& r)
+{
+    for (auto& term : poly)
+    {
+        term.coeff *= r;
+    }
+}
+
 template <typename TVar> void Polynomial<TVar>::print() const
 {
     for (auto& term : poly)
