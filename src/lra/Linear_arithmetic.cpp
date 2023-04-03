@@ -17,11 +17,6 @@ void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
     }
 }
 
-void Linear_arithmetic::on_learned_clause(Database&, Trail& trail, Clause const&)
-{
-    cached_values = relevant_models(trail).owned();
-}
-
 std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 {
     auto models = relevant_models(trail);
@@ -440,6 +435,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     }
 
     // decide the value
+    cached_values.set_value(var.ord(), value);
     assert(bnds.is_allowed(models, value));
     models.owned().set_value(var.ord(), value);
     trail.decide(var);

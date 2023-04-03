@@ -42,14 +42,6 @@ public:
      */
     void on_variable_resize(Variable::Type type, int num_vars) override;
 
-    /** Cache current values of LRA variables on conflict
-     *
-     * @param db clause database
-     * @param trail current solver trail
-     * @param learned newly learned clause
-     */
-    void on_learned_clause(Database& db, Trail& trail, Clause const& learned) override;
-
     /** Add all semantic propagations to the @p trail and update variable bounds
      *
      * @param db clause database
