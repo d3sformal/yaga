@@ -226,13 +226,13 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
 
         // y = 0
         models.owned().set_value(y.ord(), 0);
-        bounds.add_inequality(implied(models, trail[0]));
+        bounds.add_inequality(models, implied(models, trail[0]));
         REQUIRE(bounds.inequality(models, 10));
         REQUIRE(!bounds.inequality(models, 5));
 
         // z = 0
         models.owned().set_value(z.ord(), 0);
-        bounds.add_inequality(implied(models, trail[1]));
+        bounds.add_inequality(models, implied(models, trail[1]));
         REQUIRE(bounds.inequality(models, 10));
         REQUIRE(bounds.inequality(models, 5));
 
@@ -262,17 +262,20 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
 
         // y = 0
         models.owned().set_value(y.ord(), 0);
-        bounds.add_inequality(implied(models, trail[0]));
+        bounds.add_inequality(models, implied(models, trail[0]));
+        REQUIRE(bounds.inequality(models, 10));
         REQUIRE(bounds.inequality(models, 10)->reason().lit() == trail[0].lit());
         REQUIRE(bounds.inequality(models, 10)->value() == 10);
 
         // z = 0
         models.owned().set_value(z.ord(), 0);
-        bounds.add_inequality(implied(models, trail[1]));
+        bounds.add_inequality(models, implied(models, trail[1]));
+        REQUIRE(bounds.inequality(models, 10));
         REQUIRE(bounds.inequality(models, 10)->reason().lit() == trail[0].lit());
 
         // clear y
         models.owned().clear(y.ord());
+        REQUIRE(bounds.inequality(models, 10));
         REQUIRE(bounds.inequality(models, 10)->reason().lit() == trail[1].lit());
 
         // clear z

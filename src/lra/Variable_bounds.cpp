@@ -292,7 +292,7 @@ void Variable_bounds::update(Models const& models, Constraint cons)
     else if (implies_inequality(cons))
     {
         has_changed = true;
-        bounds[var].add_inequality({var, value, cons, models});
+        bounds[var].add_inequality(models, {var, value, cons, models});
     }
     else if (implies_lower_bound(cons))
     {

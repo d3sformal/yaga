@@ -320,16 +320,14 @@ public:
      * @param value checked value
      * @return implied inequality or none, if there is none.
      */
-    Implied_value_type const* inequality(Models const& models, Value value)
+    Implied_value_type const* inequality(Models const& models, Value const& value)
     {
         // remove obsolete values
-        disallowed.erase(std::remove_if(disallowed.begin(), disallowed.end(),
-                                        [&](auto v) { return v.is_obsolete(models); }),
-                         disallowed.end());
+        remove_all_obsolete(disallowed, models);
 
         // check if value is in the list
         auto it = std::find_if(disallowed.begin(), disallowed.end(),
-                               [value](auto v) { return v.value() == value; });
+                               [&](auto const& other) { return other.value() == value; });
         if (it == disallowed.end())
         {
             return nullptr;
@@ -339,12 +337,21 @@ public:
 
     /** Add a new value to the list of disallowed values
      *
+     * @param models partial assignment of variables
      * @param value value that cannot be assigned to the variable
+     * @returns true iff @p value has been added to the list of disallowed values
      */
-    inline void add_inequality(Implied_value_type value)
+    inline bool add_inequality(Models const& models, Implied_value_type&& value)
     {
         assert(value.reason().pred() == Order_predicate::eq && value.reason().lit().is_negation());
-        disallowed.push_back(value);
+
+        auto neq = inequality(models, value.value());
+        if (!neq || neq->reason().lit() != value.reason().lit())
+        {
+            disallowed.push_back(value);
+            return true;
+        }
+        return false;
     }
 
     /** Add a new upper @p new_bound
@@ -448,6 +455,18 @@ private:
         {
             bounds.pop_back();
         }
+    }
+
+    /** Remove all obsolete implied values from the list @p values
+     * 
+     * @param values list of implied values
+     * @param models partial assignment of variables
+     */
+    inline void remove_all_obsolete(std::vector<Implied_value_type>& values, Models const& models)
+    {
+        values.erase(std::remove_if(values.begin(), values.end(), [&](auto const& other) {
+            return other.is_obsolete(models);
+        }), values.end());
     }
 };
 

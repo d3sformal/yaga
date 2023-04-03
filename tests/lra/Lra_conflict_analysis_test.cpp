@@ -253,7 +253,7 @@ TEST_CASE("Derive inequality conflict when some variables are not assigned", "[i
         std::vector{*bounds[z.ord()].lower_bound(models)}});
     REQUIRE(bounds[x.ord()].upper_bound(models));
 
-    bounds[x.ord()].add_inequality({x.ord(), 0, constraints[4], models});
+    bounds[x.ord()].add_inequality(models, {x.ord(), 0, constraints[4], models});
     REQUIRE(bounds[x.ord()].inequality(models, 0));
 
     Inequality_conflict_analysis analysis{&lra};
