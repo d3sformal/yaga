@@ -37,6 +37,8 @@ struct Linear_polynomial {
     Rational constant;
 
     void negate();
+
+    void subtract_var(Variable v);
 };
 }
 
@@ -62,10 +64,17 @@ class Internalizer_config : public terms::Default_visitor_config
     inline Variable new_bool_var()
     {
         auto num_bool = static_cast<int>(trail.model<bool>(Variable::boolean).num_vars());
-
         trail.resize(Variable::boolean, num_bool + 1);
         plugin.on_variable_resize(Variable::boolean, num_bool + 1);
         return Variable{num_bool, Variable::boolean};
+    }
+
+    inline Variable new_real_var()
+    {
+        auto num_real = static_cast<int>(trail.model<Fraction<int>>(Variable::rational).num_vars());
+        trail.resize(Variable::rational, num_real + 1);
+        plugin.on_variable_resize(Variable::rational, num_real + 1);
+        return Variable{num_real, Variable::rational};
     }
 
 public:
@@ -167,7 +176,7 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
     {
         return {{},{},term_table.arithmetic_constant_value(t)};
     }
-    if (kind == terms::Kind::UNINTERPRETED_TERM)
+    if (kind == terms::Kind::UNINTERPRETED_TERM || kind == terms::Kind::ITE_TERM)
     {
         return {{internal_rational_var(t)}, {1}, 0};
     }
@@ -216,6 +225,13 @@ void Linear_polynomial::negate()
     constant = -constant;
 }
 
+void Linear_polynomial::subtract_var(Variable v)
+{
+    assert(std::ranges::find(vars, v.ord()) == vars.end());
+    this->vars.push_back(v.ord());
+    this->coef.emplace_back(-1);
+}
+
 void Internalizer_config::visit(term_t t)
 {
     auto kind = term_table.get_kind(t);
@@ -256,7 +272,7 @@ void Internalizer_config::visit(term_t t)
         term_t lhs = args[0];
         term_t rhs = args[1];
         assert(term_table.is_uninterpreted_constant(lhs));
-        assert(term_table.is_uninterpreted_constant(rhs) || term_table.is_arithmetic_constant(rhs));
+        assert(term_table.is_uninterpreted_constant(rhs) || term_table.is_ite(rhs) || term_table.is_arithmetic_constant(rhs));
         auto poly = [&]() -> Linear_polynomial {
             if (term_table.is_arithmetic_constant(rhs))
             {
@@ -317,6 +333,36 @@ void Internalizer_config::visit(term_t t)
         database.assert_clause(std::move(arg_literals));
         return;
     }
+    case terms::Kind::ITE_TERM:
+    {
+        // Extend if we decide to enable boolean ITEs as well
+        assert(term_table.get_type(t) == terms::types::real_type);
+        if (term_table.get_type(t) == terms::types::real_type)
+        {
+            auto args = term_table.get_args(t);
+            term_t cond_term = args[0];
+            term_t true_branch = args[1];
+            term_t false_branch = args[2];
+            auto var = new_real_var();
+            assert(internal_rational_vars.find(t) == internal_rational_vars.end());
+            internal_rational_vars.insert({t, var.ord()});
+            auto true_poly = internalize_poly(true_branch);
+            auto false_poly = internalize_poly(false_branch);
+            // Let v = ite(c, t, f). Then we assert that c => (t = v) and ~c => (f = v)
+            true_poly.subtract_var(var);
+            false_poly.subtract_var(var);
+            // TODO: Must the variables be sorted?
+            auto true_constraint = plugin.constraint(trail, true_poly.vars, true_poly.coef, Order_predicate::Type::eq, -true_poly.constant);;
+            auto false_constraint = plugin.constraint(trail, false_poly.vars, false_poly.coef, Order_predicate::Type::eq, -false_poly.constant);
+            assert(!terms::polarity_of(cond_term)); // MB: ITE are normalized to have positive condition
+            assert(internal_bool_vars.find(cond_term) != internal_bool_vars.end());
+            Literal l = internal_bool_vars.at(cond_term);
+            database.assert_clause(l, false_constraint.lit());
+            database.assert_clause(l.negate(), true_constraint.lit());
+        }
+        return;
+    }
+
     case terms::Kind::ARITH_CONSTANT:
     case terms::Kind::ARITH_PRODUCT:
     case terms::Kind::ARITH_POLY:
