@@ -149,7 +149,7 @@ TEST_CASE("Derive bound conflict when some variables are not assigned", "[bound_
     trail.set_model<Rational>(Variable::rational, num_reals);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, num_reals);
-    Variable_bounds bounds;
+    Bounds bounds;
     bounds.resize(num_reals);
     auto [x, y, z, a, b] = real_vars<num_reals>();
     auto make = factory(lra, trail);
@@ -213,7 +213,7 @@ TEST_CASE("Derive inequality conflict when some variables are not assigned", "[i
     trail.set_model<Rational>(Variable::rational, num_reals);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, num_reals);
-    Variable_bounds bounds;
+    Bounds bounds;
     bounds.resize(num_reals);
     auto [x, y, z, w, a, b, c] = real_vars<num_reals>();
     auto make = factory(lra, trail);

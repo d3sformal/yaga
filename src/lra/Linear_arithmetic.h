@@ -160,7 +160,7 @@ private:
     // map real variable -> list of constraints in which it is watched
     std::vector<std::vector<Watched_constraint>> watched;
     // map real variable -> set of allowed values
-    Variable_bounds bounds;
+    Bounds bounds;
     // cached assignment of LRA variables
     Model<Rational> cached_values;
     // list of rational variables whose bound has changed at this level

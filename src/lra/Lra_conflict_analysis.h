@@ -259,8 +259,8 @@ public:
      * @param bound bound of a variable to eliminate
      * @return derived linear constraint of @p bound after eliminating all unassigned variables
      */
-    Fm_elimination eliminate(Models const& models, Variable_bounds& bounds, 
-                                          Implied_value<Rational> const& bound);
+    Fm_elimination eliminate(Models const& models, Bounds& bounds, 
+                             Implied_value<Rational> const& bound);
 
     /** Remove duplicates from the conflict clause
      * 
@@ -295,7 +295,7 @@ public:
      * @param var_ord checked rational variable
      * @return conflict clause if there is a bound conflict. None, otherwise.
      */
-    std::optional<Clause> analyze(Trail& trail, Variable_bounds& bounds, int var_ord);
+    std::optional<Clause> analyze(Trail& trail, Bounds& bounds, int var_ord);
 private:
     Linear_arithmetic* lra;
 };
@@ -319,7 +319,7 @@ public:
      * @param var_ord checked rational variable
      * @return conflict clause if there is an inequality conflict. None, otherwise.
      */
-    std::optional<Clause> analyze(Trail& trail, Variable_bounds& bounds, int var_ord);
+    std::optional<Clause> analyze(Trail& trail, Bounds& bounds, int var_ord);
 
 private:
     Linear_arithmetic* lra;

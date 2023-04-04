@@ -135,7 +135,7 @@ Fm_elimination::Constraint Fm_elimination::finish(Trail& trail)
     return cons;
 }
 
-Fm_elimination Lra_conflict_analysis::eliminate(Models const& models, Variable_bounds& bounds, Implied_value<Rational> const& bound)
+Fm_elimination Lra_conflict_analysis::eliminate(Models const& models, Bounds& bounds, Implied_value<Rational> const& bound)
 {
     // add assumption to the implication
     clause.push_back(bound.reason().lit().negate());
@@ -160,7 +160,7 @@ Clause& Lra_conflict_analysis::finish()
     return clause;
 }
 
-std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds, int var_ord)
+std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bounds, int var_ord)
 {
     auto models = lra->relevant_models(trail);
     auto lb = bounds[var_ord].lower_bound(models);
@@ -198,7 +198,7 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Variable_bo
     return conflict;
 }
 
-std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Variable_bounds& bounds, int var_ord)
+std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds& bounds, int var_ord)
 {
     auto models = lra->relevant_models(trail);
     auto lb = bounds[var_ord].lower_bound(models);

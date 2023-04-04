@@ -1,20 +1,28 @@
-#include "Variable_bounds.h"
+#include "Bounds.h"
 
 namespace perun {
 
-void Variable_bounds::resize(int num_vars)
+void Bounds::resize(int num_vars)
 {
     bounds.resize(num_vars);
 }
 
-bool Variable_bounds::depends_on(Implied_value<Rational> const& bound, int bool_var) const
+bool Bounds::depends_on(Bound const& bound, int bool_var) const
 {
     return std::any_of(bound.bounds().begin(), bound.bounds().end(), [&](auto const& other) {
         return other.reason().lit().var().ord() == bool_var || depends_on(other, bool_var);
     });
 }
 
-void Variable_bounds::deduce_from_equality(Models const& models, Constraint cons)
+bool Bounds::is_equality(Bound const& bound) const
+{
+    return bound.reason().pred() == Order_predicate::eq && !bound.reason().lit().is_negation() &&
+        std::all_of(bound.bounds().begin(), bound.bounds().end(), [this](auto const& other) {
+            return is_equality(other);
+        });
+}
+
+void Bounds::deduce_from_equality(Models const& models, Constraint cons)
 {
     assert(!cons.lit().is_negation());
     assert(cons.pred() == Order_predicate::eq);
@@ -99,7 +107,7 @@ void Variable_bounds::deduce_from_equality(Models const& models, Constraint cons
     }
 }
 
-void Variable_bounds::deduce_from_inequality(Models const& models, Constraint cons)
+void Bounds::deduce_from_inequality(Models const& models, Constraint cons)
 {
     assert(eval(models.boolean(), cons.lit()) == true);
     assert(cons.pred() != Order_predicate::eq);
@@ -173,7 +181,7 @@ void Variable_bounds::deduce_from_inequality(Models const& models, Constraint co
     }
 }
 
-void Variable_bounds::deduce(Models const& models, Constraint cons)
+void Bounds::deduce(Models const& models, Constraint cons)
 {
     assert(eval(models.boolean(), cons.lit()) == true);
     if (cons.size() <= 1)
@@ -187,7 +195,6 @@ void Variable_bounds::deduce(Models const& models, Constraint cons)
         {
             deduce_from_equality(models, cons);
         }
-        return;
     }
     else // inequality (<, <=, >, >=)
     {
@@ -195,7 +202,7 @@ void Variable_bounds::deduce(Models const& models, Constraint cons)
     }
 }
 
-bool Variable_bounds::is_implied(Models const& models, Constraint cons)
+bool Bounds::is_implied(Models const& models, Constraint cons)
 {
     auto val = eval(models.boolean(), cons.lit());
     if (val == true)
@@ -240,17 +247,17 @@ bool Variable_bounds::is_implied(Models const& models, Constraint cons)
                                     : cons.pred()(Rational{0}, bound);
 }
 
-bool Variable_bounds::implies_equality(Constraint const& cons) const
+bool Bounds::implies_equality(Constraint const& cons) const
 {
     return cons.pred() == Order_predicate::eq && !cons.lit().is_negation();
 }
 
-bool Variable_bounds::implies_inequality(Constraint const& cons) const
+bool Bounds::implies_inequality(Constraint const& cons) const
 {
     return cons.pred() == Order_predicate::eq && cons.lit().is_negation();
 }
 
-bool Variable_bounds::implies_lower_bound(Constraint const& cons) const
+bool Bounds::implies_lower_bound(Constraint const& cons) const
 {
     if (cons.pred() == Order_predicate::eq)
     {
@@ -261,7 +268,7 @@ bool Variable_bounds::implies_lower_bound(Constraint const& cons) const
            (cons.coef().front() < 0 && !cons.lit().is_negation());
 }
 
-bool Variable_bounds::implies_upper_bound(Constraint const& cons) const
+bool Bounds::implies_upper_bound(Constraint const& cons) const
 {
     if (cons.pred() == Order_predicate::eq)
     {
@@ -272,7 +279,7 @@ bool Variable_bounds::implies_upper_bound(Constraint const& cons) const
            (cons.coef().front() > 0 && !cons.lit().is_negation());
 }
 
-void Variable_bounds::update(Models const& models, Constraint cons)
+void Bounds::update(Models const& models, Constraint cons)
 {
     assert(models.boolean().is_defined(cons.lit().var().ord()));
     assert(cons.coef().front() != 0);
@@ -310,7 +317,7 @@ void Variable_bounds::update(Models const& models, Constraint cons)
     }
 }
 
-std::vector<int> const& Variable_bounds::changed()
+std::vector<int> const& Bounds::changed()
 {
     std::swap(updated_read, updated_write);
     // remove duplicated in the read buffer
