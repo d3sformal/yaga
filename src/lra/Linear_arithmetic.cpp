@@ -441,7 +441,8 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     trail.decide(var);
 }
 
-void Linear_arithmetic::check_bounds_consistency(Trail const& trail, Models const& models)
+void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& trail, 
+                                                 Models const& models)
 {
     std::vector<Rational> ub;
     std::vector<Rational> lb;
@@ -498,27 +499,19 @@ void Linear_arithmetic::check_bounds_consistency(Trail const& trail, Models cons
         }
 
         auto& bnds = bounds[var_ord];
-        if (auto lower_bound = bnds.lower_bound(models))
+        if ([[maybe_unused]] auto lower_bound = bnds.lower_bound(models))
         {
             assert(lower_bound->value() >= lb[var_ord]);
         }
-        else
-        {
-            //assert(lb[var_ord] == std::numeric_limits<int>::lowest());
-        }
 
-        if (auto upper_bound = bnds.upper_bound(models))
+        if ([[maybe_unused]] auto upper_bound = bnds.upper_bound(models))
         {
             assert(upper_bound->value() <= ub[var_ord]);
-        }
-        else
-        {
-            //assert(ub[var_ord] == std::numeric_limits<int>::max());
         }
     }
 }
 
-void Linear_arithmetic::check_watch_consistency(Models const& models)
+void Linear_arithmetic::check_watch_consistency([[maybe_unused]] Models const& models)
 {
     for (auto cons : constraints)
     {
@@ -541,7 +534,7 @@ void Linear_arithmetic::check_watch_consistency(Models const& models)
                     }));
         }
 
-        for (auto var : cons.vars() | std::views::take(2))
+        for ([[maybe_unused]] auto var : cons.vars() | std::views::take(2))
         {
             assert(std::find_if(watched[var].begin(), watched[var].end(), [cons](auto& watch) {
                 return watch.constraint.lit().var() == cons.lit().var();

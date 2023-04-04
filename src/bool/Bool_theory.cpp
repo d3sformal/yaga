@@ -102,6 +102,7 @@ std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
         // propagate the literal if necessary
         if (reason != nullptr && !model.is_defined(lit.var().ord()))
         {
+            assert(level == trail.decision_level());
             model.set_value(lit.var().ord(), !lit.is_negation());
             trail.propagate(lit.var(), reason, level);
         }
