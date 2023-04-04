@@ -68,7 +68,7 @@ public:
     using Models = Theory_models<Value>;
 
     /** Create new value implied by a unit linear constraint
-     * 
+     *
      * @param var bounded variable
      * @param val computed value implied by @p cons for the only unassigned variable in @p cons
      * @param cons unit constraint in @p models
@@ -79,23 +79,22 @@ public:
     {
         assert(!cons.empty());
         assert(!models.owned().is_defined(cons.vars().front()));
-        assert(std::all_of(cons.vars().begin() + 1, cons.vars().end(), [&](auto var) {
-            return models.owned().is_defined(var);
-        }));
+        assert(std::all_of(cons.vars().begin() + 1, cons.vars().end(),
+                           [&](auto var) { return models.owned().is_defined(var); }));
         compute_timestamps(models);
     }
 
     /** Create a bound deduced from other bounds
-     * 
+     *
      * @tparam Bound_range range with bounds
      * @param var bounded variable
-     * @param val computed value implied by @p cons for @p var given @p deps 
+     * @param val computed value implied by @p cons for @p var given @p deps
      * @param cons linear constraint where all variables are either assigned or bounded by @p deps
      * @param models partial assignment of variables
      * @param level decision level at which @p val is implied
      * @param deps other bounds this bound depends on
      */
-    template<std::ranges::range Bound_range>
+    template <std::ranges::range Bound_range>
     Implied_value(int var, Value val, Constraint cons, Models const& models, Bound_range&& deps)
         : bound_var(var), val(val), cons(cons), deps(deps.begin(), deps.end())
     {
@@ -116,26 +115,27 @@ public:
     inline Constraint reason() const { return cons; }
 
     /** Get variable for which this bound holds
-     * 
+     *
      * @return theory variable bounded by this bound
      */
     inline int var() const { return bound_var; }
 
     /** Other bounds on which this bound depends
-     * 
+     *
      * @return range of bounds necessary for this bound
      */
     inline auto const& bounds() const { return deps; }
 
     /** Check if this bound is strict (<, >)
-     * 
+     *
      * @return true iff this bound is strict (<, >)
      */
     inline bool is_strict() const
     {
-        return reason().is_strict() || std::any_of(deps.begin(), deps.end(), [](auto const& other_bound) {
-            return other_bound.reason().is_strict();
-        });
+        return reason().is_strict() ||
+               std::any_of(deps.begin(), deps.end(), [](auto const& other_bound) {
+                   return other_bound.reason().is_strict();
+               });
     }
 
     /** Check whether this value is obsolete.
@@ -150,24 +150,23 @@ public:
     inline bool is_obsolete(Models const& models) const
     {
         // if reason() is assigned to a different value or it is not on the trail
-        if (eval(models.boolean(), reason().lit()) != true || 
+        if (eval(models.boolean(), reason().lit()) != true ||
             models.boolean().timestamp(reason().lit().var().ord()) > cons_time)
         {
             return true;
         }
 
-        // obsolete if variables assigned at the time when we computed the bound are unassigned or 
+        // obsolete if variables assigned at the time when we computed the bound are unassigned or
         // assigned to a different value
         for (auto var : reason().vars())
         {
             if (var != bound_var)
             {
                 // if var is supposed to be assigned
-                auto it = std::find_if(deps.begin(), deps.end(), [var](auto const& bnd) {
-                    return bnd.bound_var == var;
-                });
-                if (it == deps.end() && (!models.owned().is_defined(var) || 
-                                            models.owned().timestamp(var) > var_time))
+                auto it = std::find_if(deps.begin(), deps.end(),
+                                       [var](auto const& bnd) { return bnd.bound_var == var; });
+                if (it == deps.end() &&
+                    (!models.owned().is_defined(var) || models.owned().timestamp(var) > var_time))
                 {
                     return true;
                 }
@@ -201,7 +200,7 @@ private:
     int var_time = 0;
 
     /** Compute maximal timestamp of a boolean/theory variable used for this bound
-     * 
+     *
      * @param models partial assignment of variables
      */
     inline void compute_timestamps(Models const& models)
@@ -219,18 +218,17 @@ private:
 };
 
 /** Compare computed bounds.
- * 
+ *
  * @tparam Value value type of theory variables (e.g., a fraction for LRA)
- * @tparam Less operator which compares two `Value` types and returns true iff the first value is 
+ * @tparam Less operator which compares two `Value` types and returns true iff the first value is
  * strictly better than the second value.
  */
-template<typename Value, std::predicate<Value, Value> Less>
-struct Bound_comparer {
+template <typename Value, std::predicate<Value, Value> Less> struct Bound_comparer {
     using Models = Theory_models<Value>;
     using Implied_value_type = Implied_value<Value>;
 
     /** Check whether @p lhs is a strictly better bound than @p rhs
-     * 
+     *
      * @param models partial assignment of variables
      * @param lhs first bound
      * @param rhs second bound
@@ -255,7 +253,7 @@ struct Bound_comparer {
             }
             else if (lhs_strict == rhs_strict)
             {
-                return false; 
+                return false;
             }
         }
         return false;
@@ -458,15 +456,15 @@ private:
     }
 
     /** Remove all obsolete implied values from the list @p values
-     * 
+     *
      * @param values list of implied values
      * @param models partial assignment of variables
      */
     inline void remove_all_obsolete(std::vector<Implied_value_type>& values, Models const& models)
     {
-        values.erase(std::remove_if(values.begin(), values.end(), [&](auto const& other) {
-            return other.is_obsolete(models);
-        }), values.end());
+        values.erase(std::remove_if(values.begin(), values.end(),
+                                    [&](auto const& other) { return other.is_obsolete(models); }),
+                     values.end());
     }
 };
 

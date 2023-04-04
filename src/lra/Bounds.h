@@ -5,10 +5,10 @@
 #include <cassert>
 #include <vector>
 
-#include "Variable_bounds.h"
 #include "Fraction.h"
-#include "Trail.h"
 #include "Linear_constraint.h"
+#include "Trail.h"
+#include "Variable_bounds.h"
 
 namespace perun {
 
@@ -22,33 +22,33 @@ public:
     using Constraint = Linear_constraint<Rational>;
 
     /** Change the number of rational variables
-     * 
+     *
      * @param num_vars new number of rational variables
      */
     void resize(int num_vars);
 
     /** Deduce a new bounds from @p cons
-     * 
+     *
      * @param models partial assignment of variables
      * @param cons constraint used to deduce new bounds
      */
     void deduce(Models const& models, Constraint cons);
 
     /** Update bounds using the unit constraint @p cons
-     * 
+     *
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
     void update(Models const& models, Constraint cons);
 
     /** Get range of rational variables whose bound has changed since the last call to `changed()`
-     * 
+     *
      * @return range of variables with updated bounds
      */
     std::vector<int> const& changed();
 
     /** Check whether an unassigned constraint can be deduced to be true in current trail
-     * 
+     *
      * @param models partial assignment of variables
      * @param cons checked constraint
      * @return true iff @p cons is true in current trail
@@ -88,11 +88,12 @@ public:
     [[nodiscard]] bool implies_upper_bound(Constraint const& cons) const;
 
     /** Get bounds for a variable @p var
-     * 
+     *
      * @param var rational variable number
      * @return bounds for @p var
      */
     inline Variable_bounds<Rational>& operator[](int var) { return bounds[var]; }
+
 private:
     // map lra variable ordinal -> bounds for that variable
     std::vector<Variable_bounds<Rational>> bounds;
@@ -104,7 +105,7 @@ private:
 
     // properties deduced from a linear constraint
     struct Deduced_properties {
-        // upper or lower bound deduced from the constraint by evaluating assigned variables and 
+        // upper or lower bound deduced from the constraint by evaluating assigned variables and
         // eliminating bounded variables using FM elimination
         Rational bound;
         // bounds used for FM elimination to derive `bound`
@@ -117,13 +118,12 @@ private:
     };
 
     /** Count distinct bounds in @p bounds and all their dependencies
-     * 
+     *
      * @tparam Bound_range range of bounds
      * @param bounds range of bounds
      * @return number of distinct bounds in @p bounds and their dependencies
      */
-    template<std::ranges::range Bound_range>
-    int count_distinct_bounds(Bound_range&& bounds)
+    template <std::ranges::range Bound_range> int count_distinct_bounds(Bound_range&& bounds)
     {
         std::vector<int> vars;
         vars.reserve(bounds.size());
@@ -145,28 +145,28 @@ private:
     }
 
     /** Check whether @p bound is an equality (=)
-     * 
+     *
      * @param bound checked bound
      * @return true iff @p bound implies an equality for the bounded variable
      */
     [[nodiscard]] bool is_equality(Bound const& bound) const;
 
     /** Deduce bounds from an equality @p cons (=)
-     * 
+     *
      * @param models partial assignment of variables
      * @param cons an equality linear constraint (=)
      */
     void deduce_from_equality(Models const& models, Constraint cons);
 
     /** Deduce bounds from an inequality @p cons (<, <=, >, >=)
-     * 
+     *
      * @param models partial assignment of variables
      * @param cons an inequality linear constraint (<, <=, >, >=)
      */
     void deduce_from_inequality(Models const& models, Constraint cons);
 
     /** Check whether @p bound depends on a linear constraint whose boolean variable is @p bool_var
-     * 
+     *
      * @param bound checked bound
      * @param bool_var ordinal number of a boolean variable
      * @return true iff @p bound depends on @p bool_var
@@ -174,6 +174,6 @@ private:
     bool depends_on(Implied_value<Rational> const& bound, int bool_var) const;
 };
 
-}
+} // namespace perun
 
 #endif // PERUN_BOUNDS_H

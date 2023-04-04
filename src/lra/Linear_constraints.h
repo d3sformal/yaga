@@ -202,6 +202,7 @@ public:
     inline auto begin() const { return constraints.begin(); }
     inline auto end() const { return constraints.end(); }
     inline auto size() const { return constraints.size(); }
+
 private:
     using Constraint_hash = Linear_constraint_hash<Value>;
     using Constraint_equal = Linear_constraint_equal<Value>;

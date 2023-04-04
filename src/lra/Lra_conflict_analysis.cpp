@@ -7,7 +7,7 @@ void Fm_elimination::init(Constraint const& cons)
 {
     assert(cons.pred() != Order_predicate::eq || !cons.lit().is_negation()); // cons is not !=
 
-    // Convert `cons` to an internal representation of a linear constraint: 
+    // Convert `cons` to an internal representation of a linear constraint:
     // `polynomial {<,<=,=} 0`. If `cons` is negated, its polynomial has to be multiplied
     // by -1 and we have to switch < to <= and <= to <.
     // For example, `not(x <= 0)` -> `x > 0` -> `-x < 0`.
@@ -55,15 +55,13 @@ void Fm_elimination::resolve(Fm_elimination const& other, int var_ord)
     assert(!other.derived().variables.empty());
 
     // find the variable to eliminate in `poly`
-    auto poly_it = std::find_if(poly.begin(), poly.end(), [var_ord](auto const& pair) {
-        return pair.first == var_ord;
-    });
+    auto poly_it = std::find_if(poly.begin(), poly.end(),
+                                [var_ord](auto const& pair) { return pair.first == var_ord; });
     assert(poly_it != poly.end());
 
     // find the variable to eliminate in `other`
-    auto other_it = std::find_if(other.derived().begin(), other.derived().end(), [var_ord](auto const& pair) {
-        return pair.first == var_ord;
-    });
+    auto other_it = std::find_if(other.derived().begin(), other.derived().end(),
+                                 [var_ord](auto const& pair) { return pair.first == var_ord; });
     assert(other_it != other.derived().end());
     assert(other_it->first == poly_it->first);
 
@@ -88,8 +86,8 @@ void Fm_elimination::resolve(Fm_elimination const& other, int var_ord)
     poly.constant = poly.constant + other.derived().constant * other_mult;
     poly.normalize();
 
-    assert(std::find_if(poly.begin(), poly.end(),
-                        [&](auto var) { return var.first == var_ord; }) == poly.end());
+    assert(std::find_if(poly.begin(), poly.end(), [&](auto var) { return var.first == var_ord; }) ==
+           poly.end());
 
     // find predicate of the derivation
     pred = combine(pred, other.predicate());
@@ -135,7 +133,8 @@ Fm_elimination::Constraint Fm_elimination::finish(Trail& trail)
     return cons;
 }
 
-Fm_elimination Lra_conflict_analysis::eliminate(Models const& models, Bounds& bounds, Implied_value<Rational> const& bound)
+Fm_elimination Lra_conflict_analysis::eliminate(Models const& models, Bounds& bounds,
+                                                Implied_value<Rational> const& bound)
 {
     // add assumption to the implication
     clause.push_back(bound.reason().lit().negate());
@@ -177,12 +176,11 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
     }
     assert(lb->var() == ub->var());
 
-    // Derive a conflict using FM elimination. We implicitly use resolution to resolve intermediate 
+    // Derive a conflict using FM elimination. We implicitly use resolution to resolve intermediate
     // results.
     Lra_conflict_analysis analysis{lra};
     auto fm = analysis.eliminate(models, bounds, *lb);
     fm.resolve(analysis.eliminate(models, bounds, *ub), ub->var());
-    //fm = analysis.minimize(trail, models, bounds, std::move(fm));
 
     auto& conflict = analysis.finish();
     auto derived = fm.finish(trail);
@@ -198,7 +196,8 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
     return conflict;
 }
 
-std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds& bounds, int var_ord)
+std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds& bounds,
+                                                            int var_ord)
 {
     auto models = lra->relevant_models(trail);
     auto lb = bounds[var_ord].lower_bound(models);

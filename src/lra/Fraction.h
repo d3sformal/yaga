@@ -5,10 +5,10 @@
 #include <cmath>
 #include <concepts>
 #include <cstdint>
+#include <limits>
 #include <numeric>
 #include <ostream>
 #include <type_traits>
-#include <limits>
 
 namespace perun {
 

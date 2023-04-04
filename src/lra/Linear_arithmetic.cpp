@@ -191,6 +191,10 @@ void Linear_arithmetic::replace_watch(Trail& trail, Models& models, int lra_var_
                 {
                     propagate(trail, models, cons);
                 }
+                else
+                {
+                    assert(is_unit(models.owned(), cons));
+                }
             }
             ++i;
         }
@@ -211,16 +215,17 @@ int Linear_arithmetic::decision_level(Trail const& trail, Constraint const& cons
 bool Linear_arithmetic::is_unit(Model<Rational> const& model, Constraint const& cons) const
 {
     // Unit constraint will have exactly one watched variable assigned. The first two variables
-    // in each constraint are the watched variables. Moreover, we move the unassigned variable 
+    // in each constraint are the watched variables. Moreover, we move the unassigned variable
     // to the front in case one of the watched variables is assigned.
     if (cons.empty() || model.is_defined(cons.vars().front()))
     {
-        return false; 
+        return false;
     }
     return cons.size() == 1 || model.is_defined(cons.vars()[1]);
 }
 
-bool Linear_arithmetic::is_fully_assigned(Model<Rational> const& model, Constraint const& cons) const
+bool Linear_arithmetic::is_fully_assigned(Model<Rational> const& model,
+                                          Constraint const& cons) const
 {
     return cons.empty() || model.is_defined(cons.vars().front());
 }
@@ -239,14 +244,12 @@ std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, int var_ord)
     return {}; // no conflict
 }
 
-void Linear_arithmetic::unit(Models& models, Constraint cons)
-{
-    bounds.update(models, cons);
-}
+void Linear_arithmetic::unit(Models& models, Constraint cons) { bounds.update(models, cons); }
 
 void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& models)
 {
-    if (!trail.empty() && trail.assigned(trail.decision_level()).front().var.type() == Variable::rational)
+    if (!trail.empty() &&
+        trail.assigned(trail.decision_level()).front().var.type() == Variable::rational)
     {
         auto decided_var = trail.assigned(trail.decision_level()).front().var;
         to_check.push_back(decided_var.ord());
@@ -278,6 +281,35 @@ void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& model
         if (to_check.size() == old_size)
         {
             break;
+        }
+    }
+}
+
+void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models)
+{
+    if (trail.decision_level() == 0)
+    {
+        return;
+    }
+
+    auto decided_var = trail.assigned(trail.decision_level()).front().var;
+    if (decided_var.type() != Variable::rational)
+    {
+        return;
+    }
+
+    for (auto cons : occur[decided_var.ord()])
+    {
+        if (!models.boolean().is_defined(cons.lit().var().ord()))
+        {
+            for (auto c : {cons, cons.negate()})
+            {
+                if (bounds.is_implied(models, c))
+                {
+                    trail.propagate(c.lit().var(), nullptr, trail.decision_level());
+                    models.boolean().set_value(c.lit().var().ord(), !c.lit().is_negation());
+                }
+            }
         }
     }
 }
@@ -338,7 +370,8 @@ void Linear_arithmetic::add_variable(Trail& trail, Models const& models, Variabl
     }
 }
 
-std::optional<Linear_arithmetic::Rational> Linear_arithmetic::find_integer(Models const& models, Bounds_type& bounds)
+std::optional<Linear_arithmetic::Rational> Linear_arithmetic::find_integer(Models const& models,
+                                                                           Bounds_type& bounds)
 {
     auto abs = [](int val) -> int {
         if (val == std::numeric_limits<int>::min())
@@ -441,7 +474,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     trail.decide(var);
 }
 
-void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& trail, 
+void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& trail,
                                                  Models const& models)
 {
     std::vector<Rational> ub;
@@ -461,11 +494,11 @@ void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& t
             continue;
         }
 
-        auto cons = models.boolean().value(c.lit().var().ord()) == !c.lit().is_negation() ? c : c.negate();
-        bool unit = !models.owned().is_defined(cons.vars().front()) && 
-            std::all_of(cons.vars().begin() + 1, cons.vars().end(), [&](auto ord) {
-                return models.owned().is_defined(ord);
-            });
+        auto cons =
+            models.boolean().value(c.lit().var().ord()) == !c.lit().is_negation() ? c : c.negate();
+        bool unit = !models.owned().is_defined(cons.vars().front()) &&
+                    std::all_of(cons.vars().begin() + 1, cons.vars().end(),
+                                [&](auto ord) { return models.owned().is_defined(ord); });
         if (unit)
         {
             auto var = cons.vars().front();
@@ -478,7 +511,7 @@ void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& t
                     ub_reason[var] = cons;
                 }
             }
-            
+
             if (bounds.implies_lower_bound(cons))
             {
                 if (bound > lb[var])
@@ -521,24 +554,22 @@ void Linear_arithmetic::check_watch_consistency([[maybe_unused]] Models const& m
         }
 
         // the first variable is assigned => all variables are assigned
-        assert(!models.owned().is_defined(cons.vars().front()) || 
-                std::all_of(cons.vars().begin(), cons.vars().end(), [&](auto var) {
-                    return models.owned().is_defined(var);
-                }));
+        assert(!models.owned().is_defined(cons.vars().front()) ||
+               std::all_of(cons.vars().begin(), cons.vars().end(),
+                           [&](auto var) { return models.owned().is_defined(var); }));
         if (cons.size() > 1)
         {
             // the second variable is assigned => the constraint is unit
             assert(!models.owned().is_defined(cons.vars()[1]) ||
-                    std::all_of(cons.vars().begin() + 2, cons.vars().end(), [&](auto var) {
-                        return models.owned().is_defined(var);
-                    }));
+                   std::all_of(cons.vars().begin() + 2, cons.vars().end(),
+                               [&](auto var) { return models.owned().is_defined(var); }));
         }
 
         for ([[maybe_unused]] auto var : cons.vars() | std::views::take(2))
         {
             assert(std::find_if(watched[var].begin(), watched[var].end(), [cons](auto& watch) {
-                return watch.constraint.lit().var() == cons.lit().var();
-            }) != watched[var].end());
+                       return watch.constraint.lit().var() == cons.lit().var();
+                   }) != watched[var].end());
         }
     }
 }

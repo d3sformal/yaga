@@ -10,10 +10,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Lra_conflict_analysis.h"
 #include "Bounds.h"
 #include "Fraction.h"
 #include "Linear_constraints.h"
+#include "Lra_conflict_analysis.h"
 #include "Model.h"
 #include "Theory.h"
 #include "Variable_bounds.h"
@@ -25,7 +25,7 @@ public:
     // types of variable values
     using Rational = Fraction<int>;
     // bounds object which keeps implied bounds of variables
-    using Bounds_type = Bounds<Rational>;
+    using Bounds_type = Variable_bounds<Rational>;
     // models relevant to this theory
     using Models = Theory_models<Rational>;
     // type of linear constraints
@@ -46,7 +46,7 @@ public:
      *
      * @param db clause database
      * @param trail current solver trail
-     * @return list of conflict clauses if there exists a real variable that cannot be assigned 
+     * @return list of conflict clauses if there exists a real variable that cannot be assigned
      * any value. Empty list, otherwise.
      */
     std::vector<Clause> propagate(Database&, Trail&) override;
@@ -127,10 +127,10 @@ public:
     inline Constraint constraint(int bool_var_ord) { return constraints[bool_var_ord]; }
 
     /** Find linear constraint which is defined by @p lit
-     * 
+     *
      * @param lit literal
-     * @return constraint represented by @p lit or an empty constraint if @p lit does not 
-     * represent a linear constraint. 
+     * @return constraint represented by @p lit or an empty constraint if @p lit does not
+     * represent a linear constraint.
      */
     inline Constraint constraint(Literal lit)
     {
@@ -142,6 +142,7 @@ public:
         cons = cons.lit() != lit ? cons.negate() : cons;
         return cons;
     }
+
 private:
     struct Watched_constraint {
         // watched constraint
@@ -211,7 +212,7 @@ private:
      */
     [[nodiscard]] std::optional<Clause> check_bounds(Trail& trail, int var_ord);
 
-    /** Update bounds implied by a new unit constraint @p cons 
+    /** Update bounds implied by a new unit constraint @p cons
      *
      * @param models partial assignment of variables
      * @param cons new unit constraint
@@ -219,22 +220,28 @@ private:
     void unit(Models& models, Constraint cons);
 
     /** Deduce new bounds using bounds added at this decision level
-     * 
+     *
      * @param trail current solver trail
      * @param models partial assignment of variables
      */
     void propagate_bounds(Trail const& trail, Models const& models);
 
+    /** Propagate true constraints to the trail
+     *
+     * @param trail current solver trail
+     * @param models partial assignment of variables
+     */
+    void propagate_unassigned(Trail& trail, Models& models);
 
     /** Finish propagation by checking if there are any conflicts.
-     * 
+     *
      * @param trail current solver trail
      * @return conflict clauses or an empty list if there are no conflicts.
      */
     std::vector<Clause> finish(Trail& trail);
 
     /** Check if @p cons is unit (i.e., exactly one variable is unassigned)
-     * 
+     *
      * @param model partial assignment of variables in trail
      * @param cons queried linear constraint
      * @return true iff @p cons is unit constraint
@@ -242,16 +249,17 @@ private:
     [[nodiscard]] bool is_unit(Model<Rational> const& model, Constraint const& cons) const;
 
     /** Check if all variables in @p cons are assigned.
-     * 
+     *
      * @param model partial assignment of variables in trail
      * @param cons queries linear constraint
      * @return true iff all variables in @p cons are assigned.
      */
-    [[nodiscard]] bool is_fully_assigned(Model<Rational> const& model, Constraint const& cons) const;
+    [[nodiscard]] bool is_fully_assigned(Model<Rational> const& model,
+                                         Constraint const& cons) const;
 
     /** Find the highest decision level of any assigned variable in @p cons including the boolean
      * variable which represents @p cons (i.e., `cons.lit().var()`)
-     * 
+     *
      * @param trail solver trail
      * @param cons linear constraint
      * @return the highest decision level of any variable in @p cons including the boolean variable
@@ -284,14 +292,14 @@ private:
     [[nodiscard]] std::optional<Rational> find_integer(Models const& models, Bounds_type& bounds);
 
     /** Check that bounds is consistent with all unit constraints on the trail
-     * 
+     *
      * @param trail solver trail
      * @param models partial assignment of variables in @p trail
      */
     void check_bounds_consistency(Trail const& trail, Models const& models);
 
     /** Check that watched variables are in watch lists
-     * 
+     *
      * @param models partial assignment of variables
      */
     void check_watch_consistency(Models const& models);

@@ -2,10 +2,7 @@
 
 namespace perun {
 
-void Bounds::resize(int num_vars)
-{
-    bounds.resize(num_vars);
-}
+void Bounds::resize(int num_vars) { bounds.resize(num_vars); }
 
 bool Bounds::depends_on(Bound const& bound, int bool_var) const
 {
@@ -17,9 +14,8 @@ bool Bounds::depends_on(Bound const& bound, int bool_var) const
 bool Bounds::is_equality(Bound const& bound) const
 {
     return bound.reason().pred() == Order_predicate::eq && !bound.reason().lit().is_negation() &&
-        std::all_of(bound.bounds().begin(), bound.bounds().end(), [this](auto const& other) {
-            return is_equality(other);
-        });
+           std::all_of(bound.bounds().begin(), bound.bounds().end(),
+                       [this](auto const& other) { return is_equality(other); });
 }
 
 void Bounds::deduce_from_equality(Models const& models, Constraint cons)
@@ -46,10 +42,8 @@ void Bounds::deduce_from_equality(Models const& models, Constraint cons)
         else // `*var_it` is unassigned
         {
             // bounds used to derive a lower/upper bound from this equality using FM elimination
-            std::array<Bound const*, 2> var_bounds{
-                bounds[*var_it].upper_bound(models),
-                bounds[*var_it].lower_bound(models)
-            };
+            std::array<Bound const*, 2> var_bounds{bounds[*var_it].upper_bound(models),
+                                                   bounds[*var_it].lower_bound(models)};
             if (*coef_it < 0)
             {
                 std::swap(var_bounds[0], var_bounds[1]);
@@ -128,7 +122,7 @@ void Bounds::deduce_from_inequality(Models const& models, Constraint cons)
         else // `*var_it` is unassigned
         {
             Bound const* var_bound = nullptr;
-            if ((!cons.lit().is_negation() && *coef_it > 0) || 
+            if ((!cons.lit().is_negation() && *coef_it > 0) ||
                 (cons.lit().is_negation() && *coef_it < 0))
             {
                 var_bound = bounds[*var_it].lower_bound(models);
@@ -243,7 +237,7 @@ bool Bounds::is_implied(Models const& models, Constraint cons)
             bound -= *coef_it * bound_ptr->value();
         }
     }
-    return cons.lit().is_negation() ? !cons.pred()(Rational{0}, bound) 
+    return cons.lit().is_negation() ? !cons.pred()(Rational{0}, bound)
                                     : cons.pred()(Rational{0}, bound);
 }
 
@@ -328,4 +322,4 @@ std::vector<int> const& Bounds::changed()
     return updated_read;
 }
 
-}
+} // namespace perun

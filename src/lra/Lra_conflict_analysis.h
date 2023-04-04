@@ -134,12 +134,9 @@ public:
      * @param lra LRA plugin
      * @param cons linear constraint
      */
-    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons) : lra(lra) 
-    {
-        init(cons);
-    }
+    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons) : lra(lra) { init(cons); }
 
-    /** Create FM elimination starting with the polynomial of @p cons multiplied by @p mult with 
+    /** Create FM elimination starting with the polynomial of @p cons multiplied by @p mult with
      * predicate @p pred
      *
      * @param lra LRA plugin
@@ -147,7 +144,9 @@ public:
      * @param pred predicate of the constraint (actual predicate of @p cons is ignored)
      * @param mult constant by which we multiply linear polynomial from @p cons
      */
-    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons, Order_predicate pred, Rational mult) : lra(lra) 
+    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons, Order_predicate pred,
+                          Rational mult)
+        : lra(lra)
     {
         init(cons, pred, mult);
     }
@@ -161,7 +160,7 @@ public:
     Fm_elimination& operator=(Fm_elimination&& other) = default;
 
     /** FM elimination of @p var using constraint derived from @p other FM elimination
-     * 
+     *
      * @param other other FM elimination
      * @param var rational variable ordinal to resolve
      */
@@ -175,25 +174,26 @@ public:
     Constraint finish(Trail& trail);
 
     /** Get current derived polynomial
-     * 
+     *
      * @return current linear polynomial
      */
     inline Polynomial& derived() { return poly; }
     inline Polynomial const& derived() const { return poly; }
 
     /** Get current predicate
-     * 
+     *
      * @return derived predicate
      */
     inline Order_predicate predicate() const { return pred; }
 
     /** Find predicate of the constraint after FM elimination
-     * 
+     *
      * @param first predicate of one constraint
      * @param second predicate of the other constraint
      * @return predicate of the combination (constraint after FM elimination)
      */
     Order_predicate combine(Order_predicate first, Order_predicate second) const;
+
 private:
     // polynomial of the currently derived constraint
     Polynomial poly;
@@ -209,7 +209,7 @@ private:
     void init(Constraint const& cons);
 
     /** Set current constraint to the derived constraint from @p other elimination
-     * 
+     *
      * @param other other FM elimination
      */
     void init(Fm_elimination&& other);
@@ -250,20 +250,20 @@ public:
     inline Lra_conflict_analysis(Linear_arithmetic* lra) : lra(lra) {}
 
     /** Eliminate a variable using @p bound
-     * 
-     * All unassigned variables in @p bound are eliminated using FM elimination and the old 
+     *
+     * All unassigned variables in @p bound are eliminated using FM elimination and the old
      * constraints used for the elimination are added as assumptions to current conflict clause.
-     * 
+     *
      * @param models partial assignment of variables
      * @param bounds variable bounds
      * @param bound bound of a variable to eliminate
      * @return derived linear constraint of @p bound after eliminating all unassigned variables
      */
-    Fm_elimination eliminate(Models const& models, Bounds& bounds, 
+    Fm_elimination eliminate(Models const& models, Bounds& bounds,
                              Implied_value<Rational> const& bound);
 
     /** Remove duplicates from the conflict clause
-     * 
+     *
      * @return current conflict clause
      */
     Clause& finish();
@@ -272,6 +272,7 @@ public:
     inline Clause& conflict() { return clause; }
     // get current unfinished conflict clause
     inline Clause const& conflict() const { return clause; }
+
 private:
     Linear_arithmetic* lra;
     Clause clause;
@@ -296,6 +297,7 @@ public:
      * @return conflict clause if there is a bound conflict. None, otherwise.
      */
     std::optional<Clause> analyze(Trail& trail, Bounds& bounds, int var_ord);
+
 private:
     Linear_arithmetic* lra;
 };
