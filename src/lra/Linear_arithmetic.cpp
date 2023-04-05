@@ -344,16 +344,20 @@ void Linear_arithmetic::add_variable(Trail& trail, Models const& models, Variabl
     }
 }
 
-std::optional<Linear_arithmetic::Rational> Linear_arithmetic::find_integer(Models const& models,
+std::optional<Rational> Linear_arithmetic::find_integer(Models const& models,
                                                                            Variable_bounds& bounds)
 {
-    auto abs = [](int val) -> int {
+
+
+/*
+    auto abs = [](Rational val) -> int {
         if (val == std::numeric_limits<int>::min())
         {
             return std::numeric_limits<int>::max();
         }
-        return val >= 0 ? val : -val;
+        return int(val >= 0 ? val : -val);
     };
+*/
 
     Rational lb{std::numeric_limits<int>::lowest()};
     Rational ub{std::numeric_limits<int>::max()};
@@ -367,35 +371,36 @@ std::optional<Linear_arithmetic::Rational> Linear_arithmetic::find_integer(Model
         ub = upper_bound.value().value();
     }
 
-    int abs_min_value = 0;
-    int abs_bound = 0;
+    Rational abs_min_value = 0;
+    Rational abs_bound = 0;
     if (lb <= Rational{0} && ub >= Rational{0})
     {
-        abs_bound = std::max<int>(abs(static_cast<int>(lb)), static_cast<int>(ub));
+        abs_bound = abs(lb);
+        abs_bound = std::max(abs(lb), ub);
     }
     else if (lb > Rational{0})
     {
-        abs_min_value = static_cast<int>(lb);
-        abs_bound = static_cast<int>(ub);
+        abs_min_value = lb;
+        abs_bound = ub;
     }
     else // lb <= ub < 0
     {
-        abs_bound = abs(static_cast<int>(lb));
-        abs_min_value = abs(static_cast<int>(ub));
+        abs_bound = abs(lb);
+        abs_min_value = abs(ub);
     }
     assert(abs_bound >= 0);
     assert(abs_min_value >= 0);
 
     Rational value{0};
-    for (int int_value = abs_min_value; int_value <= abs_bound; ++int_value)
+    for (auto int_value = abs_min_value; int_value <= abs_bound; int_value = int_value + 1)
     {
-        value = static_cast<Rational>(int_value);
+        value = int_value;
         if (lb <= value && value <= ub && bounds.is_allowed(models, value))
         {
             break;
         }
 
-        value = static_cast<Rational>(-int_value);
+        value = -int_value;
         if (lb <= value && value <= ub && bounds.is_allowed(models, value))
         {
             break;

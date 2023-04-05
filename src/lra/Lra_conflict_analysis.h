@@ -10,7 +10,7 @@
 
 #include "Bounds.h"
 #include "Clause.h"
-#include "Fraction.h"
+#include "Rational.h"
 #include "Linear_constraint.h"
 #include "Trail.h"
 
@@ -120,7 +120,6 @@ class Linear_arithmetic;
 
 class Fourier_motzkin_elimination {
 public:
-    using Rational = Fraction<int>;
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
@@ -198,7 +197,6 @@ private:
 
 class Bound_conflict_analysis {
 public:
-    using Rational = Fraction<int>;
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
@@ -222,7 +220,6 @@ private:
 
 class Inequality_conflict_analysis {
 public:
-    using Rational = Fraction<int>;
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
