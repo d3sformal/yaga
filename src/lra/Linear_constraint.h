@@ -207,6 +207,10 @@ public:
         return {~lit(), pos(), pred(), rhs(), constraints};
     }
 
+    /** Negate this linear constraint.
+     */
+    inline void negate() { literal.negate(); }
+
     /** Check if this linear constraint represents a strict inequality (< or > or !=)
      *
      * @return true iff this is a constraint of type <, >, or !=

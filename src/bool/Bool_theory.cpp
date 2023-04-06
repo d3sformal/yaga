@@ -192,7 +192,7 @@ bool Bool_theory::fix_second_watch(Trail const& trail, Model<bool> const& model,
 }
 
 std::optional<Clause> 
-Bool_theory::falsified(Trail const& trail, Model<bool> const& model, Literal falsified_lit)
+Bool_theory::falsified([[maybe_unused]] Trail const& trail, Model<bool> const& model, Literal falsified_lit)
 {
     assert(eval(model, falsified_lit) == false);
 

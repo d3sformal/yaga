@@ -56,6 +56,10 @@ public:
         return r;
     }
 
+    /** Negate this literal.
+     */
+    inline void negate() { value = -value; }
+
     /** Get representation of the boolean variable used in this literal
      *
      * @return boolean variable used in this literal
