@@ -43,8 +43,8 @@ TEST_CASE("Pick the most used variable if there has not been a conflict", "[evsi
     using namespace perun::test;
 
     Database db;
-    db.assert_clause(lit(0), lit(1), -lit(2));
-    db.assert_clause(lit(0), -lit(1));
+    db.assert_clause(lit(0), lit(1), ~lit(2));
+    db.assert_clause(lit(0), ~lit(1));
     db.assert_clause(lit(0));
 
     Trail trail;
@@ -78,8 +78,8 @@ TEST_CASE("Pick a variable after a large number of score decays", "[evsids]")
     using namespace perun::test;
 
     Database db;
-    db.assert_clause(lit(0), lit(1), -lit(2));
-    db.assert_clause(lit(0), -lit(1));
+    db.assert_clause(lit(0), lit(1), ~lit(2));
+    db.assert_clause(lit(0), ~lit(1));
     db.assert_clause(lit(0));
 
     Trail trail;

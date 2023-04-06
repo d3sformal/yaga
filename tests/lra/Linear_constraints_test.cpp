@@ -142,10 +142,10 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
         REQUIRE(std::ranges::equal(cons.coef(), std::vector<Value_type>{1, -1_r / 2}));
         REQUIRE(cons.rhs() == -2);
         REQUIRE(cons.pred() == Order_predicate::lt);
-        REQUIRE(cons.lit() == Literal{0}.negate());
+        REQUIRE(cons.lit() == ~Literal{0});
 
         auto cons2 = make(-y + 2 * x < -4);
-        REQUIRE(cons.lit() == cons2.lit().negate());
+        REQUIRE(cons.lit() == ~cons2.lit());
         REQUIRE(std::ranges::equal(cons.vars(), cons2.vars()));
         REQUIRE(std::ranges::equal(cons.vars(), cons2.vars()));
         REQUIRE(cons.rhs() == cons2.rhs());
@@ -243,7 +243,7 @@ TEST_CASE("Evaluate negation of a linear constraint", "[linear_constraints]")
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
     auto [x, y, z] = real_vars<3>();
-    auto cons = make(x >= y).negate();
+    auto cons = ~make(x >= y);
 
     Model<Value_type> model;
     model.resize(3);
@@ -281,7 +281,7 @@ TEST_CASE("Encode true constraint and false constraint uniformly", "[linear_cons
     REQUIRE(true_cons2.lit() == true_cons3.lit());
     REQUIRE(true_cons3.lit() == true_cons4.lit());
 
-    REQUIRE(true_cons4.lit() == false_cons1.lit().negate());
+    REQUIRE(true_cons4.lit() == ~false_cons1.lit());
     REQUIRE(false_cons1.lit() == false_cons2.lit());
     REQUIRE(false_cons2.lit() == false_cons3.lit());
     REQUIRE(false_cons3.lit() == false_cons4.lit());

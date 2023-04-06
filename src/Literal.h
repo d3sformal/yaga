@@ -34,14 +34,14 @@ public:
     /** Check whether two literals are equal.
      *
      * @param other other literal
-     * @return true iff this literal is equalivant to @p other
+     * @return true iff this literal is equivalent to @p other
      */
     inline bool operator==(Literal const& other) const { return value == other.value; }
 
     /** Check whether two literals are different.
      *
      * @param other other literal
-     * @return true iff this literal is not equalivant to @p other
+     * @return true iff this literal is not equivalent to @p other
      */
     inline bool operator!=(Literal const& other) const { return !operator==(other); }
 
@@ -49,7 +49,7 @@ public:
      *
      * @return new literal which represents negation of this literal
      */
-    inline Literal negate() const
+    inline Literal operator~() const
     {
         Literal r;
         r.value = -value;

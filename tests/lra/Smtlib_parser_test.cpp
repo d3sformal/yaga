@@ -31,8 +31,8 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 3);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), lit(0)));
-        REQUIRE(db.asserted()[1] == clause(-lit(4), lit(1)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), lit(0)));
+        REQUIRE(db.asserted()[1] == clause(~lit(4), lit(1)));
         REQUIRE(db.asserted()[2] == clause(lit(4)));
     }
 
@@ -43,10 +43,10 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 5);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), lit(0)));
-        REQUIRE(db.asserted()[1] == clause(-lit(4), lit(1)));
-        REQUIRE(db.asserted()[2] == clause(-lit(4), lit(2)));
-        REQUIRE(db.asserted()[3] == clause(-lit(4), lit(3)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), lit(0)));
+        REQUIRE(db.asserted()[1] == clause(~lit(4), lit(1)));
+        REQUIRE(db.asserted()[2] == clause(~lit(4), lit(2)));
+        REQUIRE(db.asserted()[3] == clause(~lit(4), lit(3)));
         REQUIRE(db.asserted()[4] == clause(lit(4)));
     }
 
@@ -57,9 +57,9 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 4);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), lit(0)));
-        REQUIRE(db.asserted()[1] == clause(-lit(4), lit(2)));
-        REQUIRE(db.asserted()[2] == clause(-lit(4), lit(3)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), lit(0)));
+        REQUIRE(db.asserted()[1] == clause(~lit(4), lit(2)));
+        REQUIRE(db.asserted()[2] == clause(~lit(4), lit(3)));
         REQUIRE(db.asserted()[3] == clause(lit(4)));
     }
 
@@ -70,7 +70,7 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 2);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), -lit(0), -lit(1)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), ~lit(0), ~lit(1)));
         REQUIRE(db.asserted()[1] == clause(lit(4)));
     }
 
@@ -81,7 +81,7 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 2);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), lit(0), lit(1)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), lit(0), lit(1)));
         REQUIRE(db.asserted()[1] == clause(lit(4)));
     }
 
@@ -92,7 +92,7 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 2);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), lit(0), lit(1), lit(2), lit(3)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), lit(0), lit(1), lit(2), lit(3)));
         REQUIRE(db.asserted()[1] == clause(lit(4)));
     }
 
@@ -103,7 +103,7 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 2);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), lit(0), lit(2), lit(3)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), lit(0), lit(2), lit(3)));
         REQUIRE(db.asserted()[1] == clause(lit(4)));
     }
 
@@ -114,8 +114,8 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 3);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), -lit(0)));
-        REQUIRE(db.asserted()[1] == clause(-lit(4), -lit(1)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), ~lit(0)));
+        REQUIRE(db.asserted()[1] == clause(~lit(4), ~lit(1)));
         REQUIRE(db.asserted()[2] == clause(lit(4)));
     }
 
@@ -126,7 +126,7 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 2);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), lit(0), lit(1)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), lit(0), lit(1)));
         REQUIRE(db.asserted()[1] == clause(lit(4)));
     }
 }
@@ -156,8 +156,8 @@ TEST_CASE("Parse boolean equality", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 3);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), -lit(0), lit(1)));
-        REQUIRE(db.asserted()[1] == clause(-lit(4), lit(0), -lit(1)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), ~lit(0), lit(1)));
+        REQUIRE(db.asserted()[1] == clause(~lit(4), lit(0), ~lit(1)));
         REQUIRE(db.asserted()[2] == clause(lit(4)));
     }
 
@@ -168,8 +168,8 @@ TEST_CASE("Parse boolean equality", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 5);
         REQUIRE(db.asserted().size() == 3);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), lit(0), lit(1)));
-        REQUIRE(db.asserted()[1] == clause(-lit(4), -lit(0), -lit(1)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), lit(0), lit(1)));
+        REQUIRE(db.asserted()[1] == clause(~lit(4), ~lit(0), ~lit(1)));
         REQUIRE(db.asserted()[2] == clause(lit(4)));
     }
 
@@ -200,7 +200,7 @@ TEST_CASE("Parse boolean equality", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
-        REQUIRE(db.asserted()[0] == clause(-lit(0)));
+        REQUIRE(db.asserted()[0] == clause(~lit(0)));
     }
 
     SECTION("non-negated with FALSE on the left-hand-side")
@@ -210,7 +210,7 @@ TEST_CASE("Parse boolean equality", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
-        REQUIRE(db.asserted()[0] == clause(-lit(0)));
+        REQUIRE(db.asserted()[0] == clause(~lit(0)));
     }
 
     SECTION("negated with TRUE on the right-hand-side")
@@ -220,7 +220,7 @@ TEST_CASE("Parse boolean equality", "[test_parser]")
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
-        REQUIRE(db.asserted()[0] == clause(-lit(0)));
+        REQUIRE(db.asserted()[0] == clause(~lit(0)));
     }
 
     SECTION("negated with FALSE on the right-hand-side")
@@ -394,7 +394,7 @@ TEST_CASE("Parse if-then-else with real output", "[test_parser]")
 
         REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 5);
         REQUIRE(db.asserted().size() == 3);
-        REQUIRE(db.asserted()[0] == clause(-linear(x < y), linear(new_var - z == 0)));
+        REQUIRE(db.asserted()[0] == clause(~linear(x < y), linear(new_var - z == 0)));
         REQUIRE(db.asserted()[1] == clause(linear(x < y), linear(new_var - w == 0)));
         REQUIRE(db.asserted()[2] == clause(linear(new_var == 0)));
     }
@@ -450,8 +450,8 @@ TEST_CASE("parse if-then-else with a boolean output", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(db.asserted().size() == 3);
-        REQUIRE(db.asserted()[0] == clause(-lit(4), -lit(0), lit(1)));
-        REQUIRE(db.asserted()[1] == clause(-lit(4), lit(0), lit(2)));
+        REQUIRE(db.asserted()[0] == clause(~lit(4), ~lit(0), lit(1)));
+        REQUIRE(db.asserted()[1] == clause(~lit(4), lit(0), lit(2)));
         REQUIRE(db.asserted()[2] == clause(lit(4)));
     }
 
@@ -461,8 +461,8 @@ TEST_CASE("parse if-then-else with a boolean output", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(db.asserted().size() == 3);
-        REQUIRE(db.asserted()[0] == clause(-lit(7), -linear(x < 0).lit(), linear(y == 0).lit()));
-        REQUIRE(db.asserted()[1] == clause(-lit(7), linear(x < 0).lit(), linear(z == 0).lit()));
+        REQUIRE(db.asserted()[0] == clause(~lit(7), ~linear(x < 0).lit(), linear(y == 0).lit()));
+        REQUIRE(db.asserted()[1] == clause(~lit(7), linear(x < 0).lit(), linear(z == 0).lit()));
         REQUIRE(db.asserted()[2] == clause(lit(7)));
     }
 }

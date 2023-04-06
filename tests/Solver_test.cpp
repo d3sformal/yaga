@@ -16,13 +16,13 @@ TEST_CASE("Check a satisfiable boolean formula", "[sat][integration]")
     solver.set_restart_policy<No_restart>();
     solver.trail().set_model<bool>(Variable::boolean, 3);
     solver.db().assert_clause(lit(0), lit(1), lit(2));
-    solver.db().assert_clause(lit(0), lit(1), -lit(2));
+    solver.db().assert_clause(lit(0), lit(1), ~lit(2));
     //solver.db().assert_clause(lit(0), -lit(1), lit(2));
-    solver.db().assert_clause(lit(0), -lit(1), -lit(2));
-    solver.db().assert_clause(-lit(0), lit(1), lit(2));
-    solver.db().assert_clause(-lit(0), lit(1), -lit(2));
-    solver.db().assert_clause(-lit(0), -lit(1), lit(2));
-    solver.db().assert_clause(-lit(0), -lit(1), -lit(2));
+    solver.db().assert_clause(lit(0), ~lit(1), ~lit(2));
+    solver.db().assert_clause(~lit(0), lit(1), lit(2));
+    solver.db().assert_clause(~lit(0), lit(1), ~lit(2));
+    solver.db().assert_clause(~lit(0), ~lit(1), lit(2));
+    solver.db().assert_clause(~lit(0), ~lit(1), ~lit(2));
 
     auto result = solver.check();
     REQUIRE(result == Solver::Result::sat);
@@ -47,13 +47,13 @@ TEST_CASE("Check an unsatisfiable boolean formula", "[unsat][integration]")
     solver.set_restart_policy<No_restart>();
     solver.trail().set_model<bool>(Variable::boolean, 3);
     solver.db().assert_clause(lit(0), lit(1), lit(2));
-    solver.db().assert_clause(lit(0), lit(1), -lit(2));
-    solver.db().assert_clause(lit(0), -lit(1), lit(2));
-    solver.db().assert_clause(lit(0), -lit(1), -lit(2));
-    solver.db().assert_clause(-lit(0), lit(1), lit(2));
-    solver.db().assert_clause(-lit(0), lit(1), -lit(2));
-    solver.db().assert_clause(-lit(0), -lit(1), lit(2));
-    solver.db().assert_clause(-lit(0), -lit(1), -lit(2));
+    solver.db().assert_clause(lit(0), lit(1), ~lit(2));
+    solver.db().assert_clause(lit(0), ~lit(1), lit(2));
+    solver.db().assert_clause(lit(0), ~lit(1), ~lit(2));
+    solver.db().assert_clause(~lit(0), lit(1), lit(2));
+    solver.db().assert_clause(~lit(0), lit(1), ~lit(2));
+    solver.db().assert_clause(~lit(0), ~lit(1), lit(2));
+    solver.db().assert_clause(~lit(0), ~lit(1), ~lit(2));
 
     auto result = solver.check();
     REQUIRE(result == Solver::Result::unsat);

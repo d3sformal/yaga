@@ -282,7 +282,7 @@ void Bounds::update(Models const& models, Constraint cons)
     int var = cons.vars().front();
 
     // find which constraint is on the trail (either cons or its negation)
-    cons = perun::eval(models.boolean(), cons.lit()).value() ? cons : cons.negate();
+    cons = perun::eval(models.boolean(), cons.lit()).value() ? cons : ~cons;
 
     bool has_changed = false;
     if (implies_equality(cons))

@@ -137,7 +137,7 @@ Fm_elimination Lra_conflict_analysis::eliminate(Models const& models, Bounds& bo
                                                 Implied_value<Rational> const& bound)
 {
     // add assumption to the implication
-    clause.push_back(bound.reason().lit().negate());
+    clause.push_back(~bound.reason().lit());
 
     // eliminate all unassigned variables in the linear constraint except for `bound.var()`
     Fm_elimination fm{lra, bound.reason()};
@@ -224,7 +224,7 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds
     assert(neq->var() == lb->var());
 
     Lra_conflict_analysis analysis{lra};
-    analysis.conflict().push_back(neq->reason().lit().negate());
+    analysis.conflict().push_back(~neq->reason().lit());
 
     auto mult = neq->reason().coef().front() > 0 ? 1 : -1;
     for (auto bound_ptr : {lb, ub})

@@ -136,8 +136,8 @@ TEST_CASE("Check an unsatisfiable formula in LRA", "[lra][unsat][integration]")
 
     solver.db().assert_clause(clause(linear(x + y < 1)));
     solver.db().assert_clause(clause(linear(x - y > 0)));
-    solver.db().assert_clause(clause(-linear(x >= 0), linear(y > 1_r / 2)));
-    solver.db().assert_clause(clause(-linear(x < 0), linear(y > 1)));
+    solver.db().assert_clause(clause(~linear(x >= 0), linear(y > 1_r / 2)));
+    solver.db().assert_clause(clause(~linear(x < 0), linear(y > 1)));
 
     auto result = solver.check();
     REQUIRE(result == Solver::Result::unsat);

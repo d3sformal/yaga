@@ -194,7 +194,7 @@ TEST_CASE("Validity of bounds depends on theory models", "[variable_bounds]")
     SECTION("Get bounds after backtracking negation of the bound")
     {
         auto cons = make(x <= 0);
-        auto not_cons = cons.negate();
+        auto not_cons = ~cons;
         models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
 
         bounds.add_upper_bound(models, implied(models, cons));

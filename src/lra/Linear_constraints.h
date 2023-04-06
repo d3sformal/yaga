@@ -77,7 +77,7 @@ public:
         }
 
         // negate literal if `*it` represents negation of the input constraint
-        auto lit = is_negation ? it->lit().negate() : it->lit();
+        auto lit = is_negation ? ~it->lit() : it->lit();
 
         return {lit, it->pos(), it->pred(), it->rhs(), this};
     }

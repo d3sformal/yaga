@@ -18,11 +18,6 @@ inline perun::Literal lit(int ord)
     return perun::Literal{ord};
 }
 
-inline perun::Literal operator-(perun::Literal l)
-{
-    return l.negate();
-}
-
 template<typename... Args>
 inline Clause clause(Args&&... args)
 {
@@ -58,13 +53,6 @@ template<typename Value, typename... Tail>
 inline Clause clause(Linear_constraint<Value> cons, Linear_constraint<Tail>... tail)
 {
     return clause(cons.lit(), tail.lit()...);
-}
-
-// create a negation of a linear constraint
-template<typename Value>
-inline Linear_constraint<Value> operator-(Linear_constraint<Value> const& cons)
-{
-    return cons.negate();
 }
 
 }

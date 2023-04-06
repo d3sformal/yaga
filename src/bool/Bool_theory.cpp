@@ -78,7 +78,7 @@ void Bool_theory::initialize(Database& db, Trail& trail)
     {
         if (var.type() == Variable::boolean)
         {
-            auto lit = model.value(var.ord()) ? Literal{var.ord()} : Literal{var.ord()}.negate();
+            auto lit = model.value(var.ord()) ? Literal{var.ord()} : ~Literal{var.ord()};
             satisfied.push_back({lit, reason});
         }
     }
@@ -109,7 +109,7 @@ std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
             return other_lit == lit || eval(model, other_lit) == false;
         }));
 
-        if (auto conflict = falsified(trail, model, lit.negate()))
+        if (auto conflict = falsified(trail, model, ~lit))
         {
             conflicts.push_back(std::move(conflict.value()));
         }

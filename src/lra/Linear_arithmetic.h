@@ -110,7 +110,7 @@ public:
         {
             for (auto var : cons.vars())
             {
-                occur[var].push_back(cons.lit().is_negation() ? cons.negate() : cons);
+                occur[var].push_back(cons.lit().is_negation() ? ~cons : cons);
             }
             add_variable(trail, models, cons.lit().var());
             watch(cons, models.owned());
@@ -155,8 +155,7 @@ public:
         {
             return cons;
         }
-        cons = cons.lit() != lit ? cons.negate() : cons;
-        return cons;
+        return cons.lit() != lit ? ~cons : cons;
     }
 
 private:

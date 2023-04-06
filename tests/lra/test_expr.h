@@ -568,7 +568,7 @@ inline auto factory(Linear_constraints<T>& repository)
         // move right-hand-side to left-hand-side
         auto poly = val.lhs - val.rhs;
         auto cons = rep_ptr->make(poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
-        return val.is_negation ? cons.negate() : cons;
+        return val.is_negation ? ~cons : cons;
     };
 }
 
@@ -580,7 +580,7 @@ inline auto factory(Linear_arithmetic& plugin, Trail& trail)
         // move right-hand-side to left-hand-side
         auto poly = val.lhs - val.rhs;
         auto cons = plugin_ptr->constraint(*trail_ptr, poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
-        return val.is_negation ? cons.negate() : cons;
+        return val.is_negation ? ~cons : cons;
     };
 }
 

@@ -190,10 +190,10 @@ TEST_CASE("Derive bound conflict when some variables are not assigned", "[bound_
     auto conflict = analysis.analyze(trail, bounds, x.ord());
     REQUIRE(conflict);
     REQUIRE_THAT(*conflict, Catch::Matchers::UnorderedEquals(clause(
-        constraints[0].negate(),
-        constraints[1].negate(),
-        constraints[2].negate(),
-        constraints[3].negate(),
+        ~constraints[0],
+        ~constraints[1],
+        ~constraints[2],
+        ~constraints[3],
         make(a - 2 * b < 12)
     )));
 }
@@ -260,11 +260,11 @@ TEST_CASE("Derive inequality conflict when some variables are not assigned", "[i
     auto conflict = analysis.analyze(trail, bounds, x.ord());
     REQUIRE(conflict);
     REQUIRE_THAT(*conflict, Catch::Matchers::UnorderedEquals(clause(
-        constraints[0].negate(),
-        constraints[1].negate(),
-        constraints[2].negate(),
-        constraints[3].negate(),
-        constraints[4].negate(),
+        ~constraints[0],
+        ~constraints[1],
+        ~constraints[2],
+        ~constraints[3],
+        ~constraints[4],
         make(c - a < -3),
         make(2 * b - 3 * c < -7)
     )));

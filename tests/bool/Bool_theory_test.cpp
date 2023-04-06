@@ -10,8 +10,8 @@ TEST_CASE("Propagate unit clauses if the trail is empty", "[bool_theory][bcp]")
 
     Database db;
     db.assert_clause(lit(0), lit(1), lit(2));
-    db.assert_clause(-lit(0));
-    db.assert_clause(-lit(1));
+    db.assert_clause(~lit(0));
+    db.assert_clause(~lit(1));
 
     Trail trail;
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
@@ -47,7 +47,7 @@ TEST_CASE("Run BCP after a value is decided", "[bool_theory][bcp]")
 
     Database db;
     db.assert_clause(lit(0), lit(1));
-    db.assert_clause(-lit(0), -lit(2));
+    db.assert_clause(~lit(0), ~lit(2));
     db.assert_clause(lit(0), lit(3));
 
     Trail trail;
@@ -96,8 +96,8 @@ TEST_CASE("Run BCP after backtracking", "[bool_theory][bcp]")
 
     Database db;
     db.assert_clause(lit(0), lit(1));
-    db.assert_clause(-lit(0));
-    db.assert_clause(-lit(1), -lit(2), lit(3));
+    db.assert_clause(~lit(0));
+    db.assert_clause(~lit(1), ~lit(2), lit(3));
 
     Trail trail;
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
@@ -138,7 +138,7 @@ TEST_CASE("Skip satisfied clauses", "[bool_theory][bcp]")
 
     Database db;
     db.assert_clause(lit(0), lit(1));
-    db.assert_clause(-lit(0), lit(1), lit(2));
+    db.assert_clause(~lit(0), lit(1), lit(2));
 
     Trail trail;
     auto& model = trail.set_model<bool>(Variable::boolean, 10);

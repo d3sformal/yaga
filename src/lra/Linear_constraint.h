@@ -202,9 +202,9 @@ public:
      *
      * @return new linear constraint that represents negation of this constraint
      */
-    inline Linear_constraint negate() const
+    inline Linear_constraint operator~() const
     {
-        return {lit().negate(), pos(), pred(), rhs(), constraints};
+        return {~lit(), pos(), pred(), rhs(), constraints};
     }
 
     /** Check if this linear constraint represents a strict inequality (< or > or !=)

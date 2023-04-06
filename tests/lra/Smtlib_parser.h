@@ -69,7 +69,7 @@ public:
         }
         else if (id == "false")
         {
-            push(true_lit.negate());
+            push(~true_lit);
             return;
         }
 
@@ -91,7 +91,7 @@ public:
             Literal lit{var_it->second.ord()};
             if (negate)
             {
-                lit = lit.negate();
+                lit = ~lit;
             }
             push(lit);
         }
@@ -109,7 +109,7 @@ public:
         {
             return;
         }
-        assert(lit != true_lit.negate());
+        assert(lit != ~true_lit);
         assert_clause(Clause{lit});
     }
 
@@ -248,9 +248,9 @@ private:
             {
                 value = true_lit;
             }
-            else if (arg == true_lit.negate() && !is_or)
+            else if (arg == ~true_lit && !is_or)
             {
-                value = true_lit.negate();
+                value = ~true_lit;
             }
         }
 
@@ -270,7 +270,7 @@ private:
 
             if (is_or)
             {
-                Clause res{new_lit.negate()};
+                Clause res{~new_lit};
                 res.insert(res.end(), args.rbegin(), args.rend());
                 assert_clause(std::move(res));
             }
@@ -278,7 +278,7 @@ private:
             {
                 for (auto arg : args | std::views::reverse)
                 {
-                    assert_clause(Clause{new_lit.negate(), arg});
+                    assert_clause(Clause{~new_lit, arg});
                 }
             }
         }
@@ -298,17 +298,17 @@ private:
         {
             push(lhs);
         }
-        else if (rhs == true_lit.negate())
+        else if (rhs == ~true_lit)
         {
-            push(lhs.negate());
+            push(~lhs);
         }
         else if (!negate)
         {
             assert(!is_constant(lhs));
             assert(!is_constant(rhs));
             Literal new_lit{new_bool_var().ord()};
-            assert_clause(Clause{new_lit.negate(), lhs.negate(), rhs});
-            assert_clause(Clause{new_lit.negate(), lhs, rhs.negate()});
+            assert_clause(Clause{~new_lit, ~lhs, rhs});
+            assert_clause(Clause{~new_lit, lhs, ~rhs});
             push(new_lit);
         }
         else // negate
@@ -316,8 +316,8 @@ private:
             assert(!is_constant(lhs));
             assert(!is_constant(rhs));
             Literal new_lit{new_bool_var().ord()};
-            assert_clause(Clause{new_lit.negate(), lhs.negate(), rhs.negate()});
-            assert_clause(Clause{new_lit.negate(), lhs, rhs});
+            assert_clause(Clause{~new_lit, ~lhs, ~rhs});
+            assert_clause(Clause{~new_lit, lhs, rhs});
             push(new_lit);
         }
     }
@@ -347,13 +347,13 @@ private:
                 (name == "=" && norm_poly.constant != 0) || (name == ">" && norm_poly.constant > 0) ||
                 (name == ">=" && norm_poly.constant >= 0))
             {
-                lit = true_lit.negate();
+                lit = ~true_lit;
             }
             else
             {
                 lit = true_lit;
             }
-            push(negate ? lit.negate() : lit);
+            push(negate ? ~lit : lit);
             return;
         }
 
@@ -384,7 +384,7 @@ private:
 
         if (negate)
         {
-            cons = cons.negate();
+            cons = ~cons;
         }
         push(cons.lit());
     }
@@ -451,7 +451,7 @@ private:
         {
             push(if_true);
         }
-        else if (cond_lit == true_lit.negate())
+        else if (cond_lit == ~true_lit)
         {
             push(if_false);
         }
@@ -466,11 +466,11 @@ private:
             if (negate)
             {
                 assert_clause(Clause{cond_lit, true_res.lit()});
-                assert_clause(Clause{cond_lit.negate(), true_res.lit()});
+                assert_clause(Clause{~cond_lit, true_res.lit()});
             }
             else
             {
-                assert_clause(Clause{cond_lit.negate(), true_res.lit()});
+                assert_clause(Clause{~cond_lit, true_res.lit()});
                 assert_clause(Clause{cond_lit, false_res.lit()});
             }
         }
@@ -486,8 +486,8 @@ private:
         push(new_lit);
 
         assert(!negate);
-        assert_clause(Clause{new_lit.negate(), cond_lit.negate(), if_true});
-        assert_clause(Clause{new_lit.negate(), cond_lit, if_false});
+        assert_clause(Clause{~new_lit, ~cond_lit, if_true});
+        assert_clause(Clause{~new_lit, cond_lit, if_false});
     }
 
     inline Literal pop_lit()

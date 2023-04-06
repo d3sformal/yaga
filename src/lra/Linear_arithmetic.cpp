@@ -268,7 +268,7 @@ void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& model
         {
             if (auto val = eval(models.boolean(), cons.lit()))
             {
-                bounds.deduce(models, val == true ? cons : cons.negate());
+                bounds.deduce(models, val == true ? cons : ~cons);
             }
         }
     }
@@ -283,7 +283,7 @@ void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& model
             {
                 if (auto val = eval(models.boolean(), cons.lit()))
                 {
-                    bounds.deduce(models, val == true ? cons : cons.negate());
+                    bounds.deduce(models, val == true ? cons : ~cons);
                 }
             }
         }
@@ -313,7 +313,7 @@ void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models)
     {
         if (!models.boolean().is_defined(cons.lit().var().ord()))
         {
-            for (auto c : {cons, cons.negate()})
+            for (auto c : {cons, ~cons})
             {
                 if (bounds.is_implied(models, c))
                 {
@@ -512,8 +512,7 @@ void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& t
             continue;
         }
 
-        auto cons =
-            models.boolean().value(c.lit().var().ord()) == !c.lit().is_negation() ? c : c.negate();
+        auto cons = models.boolean().value(c.lit().var().ord()) == !c.lit().is_negation() ? c : ~c;
         bool unit = !models.owned().is_defined(cons.vars().front()) &&
                     std::all_of(cons.vars().begin() + 1, cons.vars().end(),
                                 [&](auto ord) { return models.owned().is_defined(ord); });

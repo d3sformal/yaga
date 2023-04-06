@@ -7,10 +7,10 @@ void Subsumption::minimize(Trail const& trail, Clause& clause)
     auto const& model = trail.model<bool>(Variable::boolean);
 
     auto is_redundant = [&](auto lit) {
-        if (eval(model, lit.negate()) == true)
+        if (eval(model, ~lit) == true)
         {
             auto reason = trail.reason(lit.var());
-            return reason && selfsubsumes(*reason, clause, lit.negate());
+            return reason && selfsubsumes(*reason, clause, ~lit);
         }
         return false;
     };
@@ -60,7 +60,7 @@ bool Subsumption::subsumes(Subsumption::Clause_ptr first, Subsumption::Clause_pt
 bool Subsumption::selfsubsumes(Clause const& first, Clause const& second, Literal lit)
 {
     assert(std::find(first.begin(), first.end(), lit) != first.end());
-    assert(std::find(second.begin(), second.end(), lit.negate()) != second.end());
+    assert(std::find(second.begin(), second.end(), ~lit) != second.end());
 
     if (first.size() > second.size())
     {
