@@ -33,6 +33,22 @@ public:
     // type of the repository that stores linear constraints
     using Constraint_repository = Linear_constraints<Rational>;
 
+    struct Options {
+        /** Derive new bounds using FM elimination
+         */
+        bool prop_bounds = false;
+
+        /** Propagate unassigned linear constraints when they become true due to assignment of 
+         * real variables or due to variable bounds.
+         */
+        bool prop_unassigned = false;
+
+        /** If true, propagate() returns all conflicts derived at current decision level. 
+         * Otherwise, only the first conflict is returned.
+         */
+        bool return_all_conflicts = true;
+    };
+
     virtual ~Linear_arithmetic() = default;
 
     /** Allocate memory for @p num_vars variables of type @p type
@@ -168,6 +184,8 @@ private:
     std::vector<int> to_check;
     // map real variable -> list of constraints in which it occurs
     std::vector<std::vector<Constraint>> occur;
+    // parameters of optional features
+    Options options;
 
     /** Start watching LRA variables in @p cons
      *
@@ -205,6 +223,8 @@ private:
     void replace_watch(Trail& trail, Models& models, int lra_var_ord);
 
     /** Check if some value can be assigned to @p var_ord
+     * 
+     * If there is a conflict, new constraints can be propagated to @p trail
      *
      * @param trail current solver trail
      * @param var_ord variable to check
@@ -217,7 +237,7 @@ private:
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    void unit(Models& models, Constraint cons);
+    void unit(Models const& models, Constraint cons);
 
     /** Deduce new bounds using bounds added at this decision level
      *

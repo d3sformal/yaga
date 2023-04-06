@@ -58,7 +58,15 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
         }
     }
 
-    propagate_bounds(trail, models);
+    if (options.prop_bounds)
+    {
+        propagate_bounds(trail, models);
+    }
+
+    if (options.prop_unassigned)
+    {
+        propagate_unassigned(trail, models);
+    }
     return finish(trail);
 }
 
@@ -244,7 +252,10 @@ std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, int var_ord)
     return {}; // no conflict
 }
 
-void Linear_arithmetic::unit(Models& models, Constraint cons) { bounds.update(models, cons); }
+void Linear_arithmetic::unit(Models const& models, Constraint cons) 
+{ 
+    bounds.update(models, cons); 
+}
 
 void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& models)
 {
@@ -319,16 +330,23 @@ std::vector<Clause> Linear_arithmetic::finish(Trail& trail)
     // find all rational variables whose bound has changed
     auto const& changed = bounds.changed();
     to_check.insert(to_check.end(), changed.begin(), changed.end());
-    std::sort(to_check.begin(), to_check.end());
-    to_check.erase(std::unique(to_check.begin(), to_check.end()), to_check.end());
 
     // check for conflict
+    std::unordered_set<int> checked;
     std::vector<Clause> result;
     for (auto var_ord : to_check)
     {
-        if (auto conflict = check_bounds(trail, var_ord))
+        auto [_, is_inserted] = checked.insert(var_ord);
+        if (is_inserted)
         {
-            result.push_back(std::move(*conflict));
+            if (auto conflict = check_bounds(trail, var_ord))
+            {
+                result.push_back(std::move(*conflict));
+                if (!options.return_all_conflicts)
+                {
+                    break;
+                }
+            }
         }
     }
     to_check.clear();

@@ -151,7 +151,6 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
-    auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
@@ -169,10 +168,6 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     REQUIRE(!trail.decision_level(x));
     REQUIRE(trail.decision_level(y) == 1);
     REQUIRE(!trail.decision_level(z));
-
-    auto& bounds_x = lra.find_bounds(x.ord());
-    REQUIRE(!bounds_x.lower_bound(models));
-    REQUIRE(bounds_x.upper_bound(models)->value() == 4);
 }
 
 TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")
