@@ -62,7 +62,7 @@ void Bool_theory::initialize(Database& db, Trail& trail)
                 if (clause.size() == 1) // propagate unit clauses
                 {
                     watched[clause[0]].emplace_back(Watched_clause{&clause});
-                    satisfied.push_back({clause[0], &clause, /*decision_level=*/0});
+                    satisfied.push_back({clause[0], &clause});
                 }
                 else // non-unit clause
                 {
@@ -79,9 +79,7 @@ void Bool_theory::initialize(Database& db, Trail& trail)
         if (var.type() == Variable::boolean)
         {
             auto lit = model.value(var.ord()) ? Literal{var.ord()} : Literal{var.ord()}.negate();
-            auto level = trail.decision_level(lit.var());
-            assert(level.has_value());
-            satisfied.push_back({lit, reason, level.value()});
+            satisfied.push_back({lit, reason});
         }
     }
 }
@@ -94,33 +92,26 @@ std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
     initialize(db, trail);
 
     std::vector<Clause> conflicts;
-    while (!satisfied.empty())
+    while (conflicts.empty() && !satisfied.empty())
     {
-        auto [lit, reason, level] = satisfied.back();
+        auto [lit, reason] = satisfied.back();
         satisfied.pop_back();
 
         // propagate the literal if necessary
         if (reason != nullptr && !model.is_defined(lit.var().ord()))
         {
-            assert(level == trail.decision_level());
             model.set_value(lit.var().ord(), !lit.is_negation());
-            trail.propagate(lit.var(), reason, level);
+            trail.propagate(lit.var(), reason, trail.decision_level());
         }
+        assert(eval(model, lit) == true);
         // reason clause is a unit clause which implies lit
         assert(reason == nullptr || std::all_of(reason->begin(), reason->end(), [&](auto other_lit) {
             return other_lit == lit || eval(model, other_lit) == false;
         }));
 
-        if (eval(model, lit) == true)
+        if (auto conflict = falsified(trail, model, lit.negate()))
         {
-            if (auto conflict = falsified(trail, model, lit.negate()))
-            {
-                conflicts.push_back(std::move(conflict.value()));
-            }
-        }
-        else // implied literal lit is not true in trail => there is a conflict
-        {
-            assert(eval(model, lit) == false);
+            conflicts.push_back(std::move(conflict.value()));
         }
     }
 
@@ -258,8 +249,7 @@ Bool_theory::falsified(Trail const& trail, Model<bool> const& model, Literal fal
                 return eval(model, lit) == false;
             }));
             assert(clause.size() > 1);
-            int level = trail.decision_level(clause[1].var()).value();
-            satisfied.push_back({clause[0], &clause, level});
+            satisfied.push_back({clause[0], &clause});
         }
     }
     return {};

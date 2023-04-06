@@ -65,8 +65,8 @@ private:
         }
     };
 
-    // satisfied literal with pointer to the reason clause (or nullptr) and decision level
-    using Satisfied_literal = std::tuple<Literal, Clause*, int>;
+    // satisfied literal with pointer to the reason clause (or nullptr)
+    using Satisfied_literal = std::tuple<Literal, Clause*>;
 
     // map literal -> list of clauses in which it is watched
     Literal_map<std::vector<Watched_clause>> watched;
