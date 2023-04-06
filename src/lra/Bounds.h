@@ -107,14 +107,14 @@ private:
     struct Deduced_properties {
         // upper or lower bound deduced from the constraint by evaluating assigned variables and
         // eliminating bounded variables using FM elimination
-        Rational bound;
+        Rational bound{0};
         // bounds used for FM elimination to derive `bound`
         std::vector<Bound> deps;
         // number of unassigned variables which have not been eliminated
         int num_vars;
         // the last unbounded variable and its coefficient
         int unbounded_var;
-        Rational unbounded_coef;
+        Rational unbounded_coef{0};
     };
 
     /** Count distinct bounds in @p bounds and all their dependencies

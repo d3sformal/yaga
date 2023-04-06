@@ -97,8 +97,8 @@ public:
      * @return linear constraint
      */
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline Constraint constraint(Trail& trail, Var_range&& vars, Coef_range&& coef,
-                                 Order_predicate pred, Rational rhs)
+    Constraint constraint(Trail& trail, Var_range&& vars, Coef_range&& coef,
+                          Order_predicate pred, Rational const& rhs)
     {
         // create the constraint
         auto cons = constraints.make(std::forward<Var_range>(vars), std::forward<Coef_range>(coef),

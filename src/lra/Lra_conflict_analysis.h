@@ -26,7 +26,7 @@ template <typename T> struct Linear_polynomial {
     // pairs of variable and coefficient
     std::vector<Variable_coefficient> variables;
     // constant term
-    T constant;
+    T constant{0};
 
     inline auto begin() { return variables.begin(); }
     inline auto end() { return variables.end(); }

@@ -18,7 +18,7 @@ template <typename T>
     requires std::is_integral_v<T>
 class Fraction {
 public:
-    inline constexpr Fraction() {}
+    Fraction() = delete;
     inline constexpr Fraction(T num) : num(num), denom(T{1}) {}
     inline constexpr Fraction(T num, T denom, Normalized_tag) : num(num), denom(denom) {}
     inline constexpr Fraction(T num, T denom)

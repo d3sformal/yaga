@@ -51,7 +51,8 @@ public:
         Constraint cons;
         if (mult) // constraint with variables
         {
-            auto [lit, range] = add(mult.value(), var_range, coef_range);
+            auto [lit, range] = add(mult.value(), std::forward<Var_range>(var_range), 
+                                    std::forward<Value_range>(coef_range));
             cons = constraints.emplace_back(lit, range, norm_pred(mult.value(), pred),
                                             mult.value() * rhs, this);
             is_negation = pred != Order_predicate::eq && mult.value() < Value{0};
@@ -219,8 +220,8 @@ private:
 
     // find a constant by which the constraint will be multiplied in order to normalize coefficients
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline std::optional<Value> find_norm_constant(Var_range&& var_range,
-                                                   Coef_range&& coef_range) const
+    inline std::optional<Value> find_norm_constant(Var_range const& var_range,
+                                                   Coef_range const& coef_range) const
     {
         int min_var = std::numeric_limits<int>::max();
         Value min_coef{0};
@@ -262,7 +263,7 @@ private:
 
     // copy constraint values multiplied by normalization constant `mult`
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline std::pair<Literal, std::pair<int, int>> add(Value mult, Var_range&& var_range,
+    inline std::pair<Literal, std::pair<int, int>> add(Value const& mult, Var_range&& var_range,
                                                        Coef_range&& coef_range)
     {
         auto size = std::distance(std::begin(var_range), std::end(var_range));
@@ -271,7 +272,7 @@ private:
                                   static_cast<int>(variables.size() + size)};
 
         variables.resize(range.second);
-        coefficients.resize(range.second);
+        coefficients.resize(range.second, Value{0});
 
         std::copy(std::begin(var_range), std::end(var_range), variables.begin() + range.first);
         std::copy(std::begin(coef_range), std::end(coef_range), coefficients.begin() + range.first);

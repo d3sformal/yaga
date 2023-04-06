@@ -36,13 +36,13 @@ template<Arithmetic T>
 struct Linear_polynomial {
     std::vector<int> vars;
     std::vector<T> coef;
-    T constant;
+    T constant{0};
 
     // conversion to other type
     template<typename To>
     explicit operator Linear_polynomial<To>() const
     {
-        std::vector<To> new_coef(coef.size());
+        std::vector<To> new_coef(coef.size(), To{0});
         std::copy(coef.begin(), coef.end(), new_coef.begin());
         return {.vars = vars, .coef = new_coef, .constant = static_cast<To>(constant)};
     }

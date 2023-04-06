@@ -110,7 +110,7 @@ void Bounds::deduce_from_inequality(Models const& models, Constraint cons)
     auto bound = cons.rhs();
     int num_unbounded = 0;
     int unbounded_var = 0;
-    Rational unbounded_coef;
+    Rational unbounded_coef{0};
     auto [var_it, var_end] = cons.vars();
     auto coef_it = cons.coef().begin();
     for (; var_it != var_end; ++var_it, ++coef_it)

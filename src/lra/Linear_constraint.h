@@ -256,7 +256,7 @@ private:
     // literal that that represents this constraint
     Literal literal;
     // right-hand-side of the constraint
-    Value_type constant;
+    Value_type constant{0};
     // container which contains this constraint
     Linear_constraints<Value_type>* constraints;
 
