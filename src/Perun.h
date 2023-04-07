@@ -80,7 +80,7 @@ struct logic {
  * Variable x = smt.make(Variable::rational);
  * Variable y = smt.make(Variable::rational);
  * Literal a = smt.make_bool();
- * Literal b = smt.linear_constraint(std::array{x.ord(), y.ord()}, std::array<Rational>{2, -1}, 
+ * Literal b = smt.linear_constraint(std::array{x.ord(), y.ord()}, std::array<Rational, 2>{2, -1}, 
  *                                   Order_predicate::leq, 4);
  * smt.assert_clause(a);
  * smt.assert_clause(~a, b); 
