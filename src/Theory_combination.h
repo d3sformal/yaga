@@ -4,6 +4,7 @@
 #include <concepts>
 #include <deque>
 #include <memory>
+#include <ranges>
 
 #include "Clause.h"
 #include "Database.h"
@@ -101,12 +102,21 @@ public:
             }
         }
         auto conc_theory_ptr = theory.get();
-        theories.emplace_back(std::move(theory));
+        theory_list.emplace_back(std::move(theory));
         return *conc_theory_ptr;
     }
 
+    /** Get all theories in this object
+     * 
+     * @return range of theory pointers in this object
+     */
+    inline std::ranges::view auto theories()
+    {
+        return theory_list | std::views::transform([](auto& ptr) { return ptr.get(); });
+    }
+
 private:
-    std::deque<std::unique_ptr<Theory>> theories;
+    std::deque<std::unique_ptr<Theory>> theory_list;
     std::vector<int> current_num_vars;
 };
 

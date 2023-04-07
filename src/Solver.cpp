@@ -164,7 +164,7 @@ std::optional<Variable> Solver::pick_variable() { return variable_order->pick(db
 void Solver::decide(Variable var)
 {
     ++total_decisions;
-    theory->decide(db(), trail(), var);
+    theory()->decide(db(), trail(), var);
 }
 
 void Solver::init()

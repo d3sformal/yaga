@@ -68,7 +68,7 @@ public:
         }
 
         auto concrete_theory_ptr = concrete_theory.get();
-        theory = std::move(concrete_theory);
+        solver_theory = std::move(concrete_theory);
         return *concrete_theory_ptr;
     }
 
@@ -130,12 +130,32 @@ public:
      */
     inline int num_restarts() const { return total_restarts; }
 
+    /** Get range of listeners in this solver
+     * 
+     * @return range with pointers to event listeners
+     */
+    inline auto listeners()
+    {
+        return std::array<Event_listener*, 4>{
+            solver_theory.get(),
+            restart_policy.get(),
+            variable_order.get(),
+            &subsumption,
+        };
+    }
+
+    /** Get theory used by this solver
+     * 
+     * @return theory used by this solver or nullptr if no theory was set
+     */
+    inline Theory* theory() { return solver_theory.get(); }
+
 private:
     Trail solver_trail;
     Database database;
     Subsumption subsumption;
     Conflict_analysis analysis;
-    std::unique_ptr<Theory> theory;
+    std::unique_ptr<Theory> solver_theory;
     std::unique_ptr<Restart> restart_policy;
     std::unique_ptr<Variable_order> variable_order;
     int num_bool_vars = 0;
@@ -147,17 +167,6 @@ private:
     int total_conflicts = 0;
     int total_restarts = 0;
     int total_decisions = 0;
-
-    // get all event listeners
-    inline auto listeners()
-    {
-        return std::array<Event_listener*, 4>{
-            theory.get(),
-            restart_policy.get(),
-            variable_order.get(),
-            &subsumption,
-        };
-    }
 
     // run propagate in theory
     [[nodiscard]] std::vector<Clause> propagate();

@@ -13,6 +13,7 @@
 #include "Clause.h"
 #include "Linear_constraints.h"
 #include "Linear_arithmetic.h"
+#include "Perun.h"
 
 namespace perun::test {
 
@@ -569,6 +570,17 @@ inline auto factory(Linear_constraints<T>& repository)
         auto poly = val.lhs - val.rhs;
         auto cons = rep_ptr->make(poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
         return val.is_negation ? ~cons : cons;
+    };
+}
+
+// create a factory functor for linear constraints from solver facade (returns a literal)
+inline auto factory(Perun& smt)
+{
+    return [facade = &smt]<std::convertible_to<Linear_arithmetic::Rational> R>(Linear_predicate<R> const& val)
+    {
+        auto poly = val.lhs - val.rhs;
+        auto lit = facade->linear_constraint(poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
+        return val.is_negation ? ~lit : lit;
     };
 }
 

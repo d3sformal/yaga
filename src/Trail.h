@@ -109,6 +109,13 @@ public:
         return dynamic_cast<Model<T>&>(*var_models[type]);
     }
 
+    /** Get base model instance for variables of type @p type
+     * 
+     * @param type type of variables
+     * @return partial model of variables of type @p type
+     */
+    inline Model_base const& model(Variable::Type type) const { return *var_models[type]; }
+
     // get model for each type in this trail
     inline auto models() const
     {
