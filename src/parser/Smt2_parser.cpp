@@ -106,7 +106,14 @@ bool Smt2_command_context::parse_command()
     // (define-fun <symbol> (<sorted_var>*) <sort> <term>)
     case Token::DEFINE_FUN_TOK:
     {
-        UNIMPLEMENTED;
+        auto name = term_parser.parse_symbol();
+        auto sorted_vars = term_parser.parse_sorted_var_list();
+        auto return_sort = term_parser.parse_sort();
+        parser_context.push_binding_scope();
+        auto bound_vars = parser_context.bind_vars(sorted_vars);
+        term_t function_body = term_parser.parse_term();
+        parser_context.pop_binding_scope();
+        parser_context.store_defined_fun(name, function_body, std::move(bound_vars), return_sort);
     }
     break;
     // (define-sort <symbol> (<symbol>*) <sort>)
