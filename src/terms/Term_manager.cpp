@@ -5,6 +5,8 @@
 #include "Arithmetic_polynomial.h"
 #include "Terms.h"
 
+#define UNIMPLEMENTED throw std::logic_error("Not implemented yet!")
+
 namespace perun::terms {
 
 Term_manager::Term_manager()
@@ -24,14 +26,163 @@ term_t Term_manager::get_term_by_name(std::string const& name)
     return term_table->get_term_by_name(name);
 }
 
-type_t Term_manager::get_term_type(term_t term)
+type_t Term_manager::get_type(term_t term) const
 {
     return term_table->get_type(term);
+}
+
+std::span<const term_t> Term_manager::get_args(term_t term) const
+{
+    return term_table->get_args(term);
+}
+
+Kind Term_manager::get_kind(term_t term) const
+{
+    return term_table->get_kind(term);
 }
 
 term_t Term_manager::mk_uninterpreted_constant(type_t type)
 {
     return term_table->new_uninterpreted_constant(type);
+}
+
+// TODO: Maybe this should be in the rewriter?
+term_t Term_manager::mk_term(Kind kind, std::span<term_t> args)
+{
+    switch (kind)
+    {
+    case Kind::ARITH_GE_ATOM:
+        assert(args.size() == 1);
+        return mk_arithmetic_geq(args[0], zero_term);
+    case Kind::ARITH_EQ_ATOM:
+        assert(args.size() == 1);
+        return mk_arithmetic_eq(args[0], zero_term);
+    case Kind::ARITH_BINEQ_ATOM:
+        assert(args.size() == 2);
+        return mk_arithmetic_eq(args[0], args[1]);
+    case Kind::EQ_TERM:
+        assert(args.size() == 2);
+        return mk_binary_eq(args[0], args[1]);
+    case Kind::OR_TERM:
+        return mk_or(args);
+    case Kind::ARITH_PRODUCT:
+        return mk_arithmetic_times(args);
+    case Kind::ARITH_POLY:
+        return mk_arithmetic_plus(args);
+    case Kind::ITE_TERM:
+        assert(args.size() == 3);
+        return mk_ite(args[0], args[1], args[2]);
+
+    case Kind::UNINTERPRETED_TERM:
+    case Kind::ARITH_CONSTANT:
+        assert(false);
+        throw std::logic_error("Unexpected situation");
+    default:
+        throw std::logic_error("Case not covered!");
+    }
+}
+
+term_t Term_manager::mk_term(std::string const& op, std::span<term_t> args)
+{
+    if (op == ">=")
+    {
+        assert(args.size() == 2);
+        return mk_arithmetic_geq(args[0], args[1]);
+    }
+    else if (op == "<=")
+    {
+        assert(args.size() == 2);
+        return mk_arithmetic_leq(args[0], args[1]);
+    }
+    else if (op == "<")
+    {
+        assert(args.size() == 2);
+        return mk_arithmetic_lt(args[0], args[1]);
+    }
+    else if (op == ">")
+    {
+        assert(args.size() == 2);
+        return mk_arithmetic_gt(args[0], args[1]);
+    }
+    else if (op == "=")
+    {
+        return mk_eq(args);
+    }
+    else if (op == "or")
+    {
+        return mk_or(args);
+    }
+    else if (op == "and")
+    {
+        return mk_and(args);
+    }
+    else if (op == "=>")
+    {
+        assert(args.size() == 2);
+        return mk_implies(args[0], args[1]);
+    }
+    else if (op == "not")
+    {
+        assert(args.size() == 1);
+        return terms::opposite_term(args[0]);
+    }
+    else if (op == "-")
+    {
+        if (args.size() == 1)
+        {
+            return mk_unary_minus(args[0]);
+        }
+        else
+        {
+            assert(args.size() == 2);
+            return mk_arithmetic_minus(args[0], args[1]);
+        }
+    }
+    else if (op == "+")
+    {
+        return mk_arithmetic_plus(args);
+    }
+    else if (op == "*")
+    {
+        return mk_arithmetic_times(args);
+    }
+    else if (op == "/")
+    {
+        assert(args.size() == 2);
+        return mk_divides(args[0], args[1]);
+    }
+    else if (op == "ite")
+    {
+        assert(args.size() == 3);
+        return mk_ite(args[0], args[1], args[2]);
+    }
+    UNIMPLEMENTED;
+}
+
+term_t Term_manager::mk_eq(std::span<term_t> args)
+{
+    if (args.size() == 2)
+    {
+        return mk_binary_eq(args[0], args[1]);
+    }
+    UNIMPLEMENTED;
+}
+
+term_t Term_manager::mk_binary_eq(term_t t1, term_t t2)
+{
+    type_t type = get_type(t1);
+    if (type != get_type(t2)) {
+        throw std::logic_error("Types do not match");
+    }
+
+    if (type == terms::types::real_type) {
+        return mk_arithmetic_eq(t1, t2);
+    }
+    if (type == terms::types::bool_type)
+    {
+        return mk_iff(t1, t2);
+    }
+    UNIMPLEMENTED;
 }
 
 term_t Term_manager::mk_or(std::span<term_t> args)
@@ -168,13 +319,14 @@ term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
         // Simplify (p = 0) to (x1 = x2) if c1 + c2 = 0
         if (mono1.var == term_t::Undef)
         {
+            assert(mono1.coeff != 0 and mono2.coeff != 0);
             term_t coeff = term_table->arithmetic_constant(-mono1.coeff / mono2.coeff);
-            return direct_arithemetic_binary_equality(mono2.var, coeff);
+            return direct_arithmetic_binary_equality(mono2.var, coeff);
         }
         assert(mono2.var != term_t::Undef);
         if (mono1.coeff + mono2.coeff == 0)
         {
-            return direct_arithemetic_binary_equality(mono1.var, mono2.var);
+            return direct_arithmetic_binary_equality(mono1.var, mono2.var);
         }
     }
     // TODO: Normalize the polynomial!
@@ -182,10 +334,11 @@ term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
     return term_table->arithmetic_eq_zero(t);
 }
 
-term_t Term_manager::direct_arithemetic_binary_equality(term_t t1, term_t t2)
+term_t Term_manager::direct_arithmetic_binary_equality(term_t t1, term_t t2)
 {
     assert(t1 != t2);
-    if (t2 < t1)
+    assert(get_kind(t1) == Kind::UNINTERPRETED_TERM or get_kind(t2) == Kind::UNINTERPRETED_TERM);
+    if (get_kind(t1) != Kind::UNINTERPRETED_TERM or ((get_kind(t2) == Kind::UNINTERPRETED_TERM and t2 < t1)))
     {
         std::swap(t1, t2);
     }
@@ -349,11 +502,11 @@ term_t Term_manager::mk_arithmetic_times(std::span<term_t> args)
     }
     // General term c * p
     term_t poly_term = *pit;
-    switch(term_table->get_kind(poly_term))
+    switch(get_kind(poly_term))
     {
     case Kind::UNINTERPRETED_TERM:
     case Kind::ITE_TERM:
-        assert(term_table->get_type(poly_term) == types::real_type);
+        assert(get_type(poly_term) == types::real_type);
         return term_table->arithmetic_product(val, *pit);
     case Kind::ARITH_PRODUCT: {
         term_t var = term_table->var_of_product(poly_term);
@@ -388,9 +541,9 @@ term_t Term_manager::mk_divides(term_t t1, term_t t2)
 
 term_t Term_manager::mk_ite(term_t i, term_t t, term_t e)
 {
-    assert(get_term_type(i) == types::bool_type);
-    type_t type1 = get_term_type(t);
-    if (get_term_type(e) != type1)
+    assert(get_type(i) == types::bool_type);
+    type_t type1 = get_type(t);
+    if (get_type(e) != type1)
     {
         throw std::invalid_argument("Types in ITE do not match!");
     }

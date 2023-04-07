@@ -19,6 +19,13 @@ class Term_manager {
 public:
     Term_manager();
     ~Term_manager();
+
+    // Generic method that delegates the work to specific methods for each operation
+    term_t mk_term(std::string const& op, std::span<term_t> args);
+    term_t mk_term(Kind kind, std::span<term_t> args);
+    term_t mk_eq(std::span<term_t> args);
+    term_t mk_binary_eq(term_t t1, term_t t2);
+
     // Creates uninterpreted constants of type `type` (these are the free variables of formulae)
     term_t mk_uninterpreted_constant(type_t type);
 
@@ -62,10 +69,14 @@ public:
     void set_term_name(term_t t, std::string const& name);
     term_t get_term_by_name(std::string const& name);
 
-    // types
-    type_t get_term_type(term_t term);
+    // term queries
+    [[nodiscard]] type_t get_type(term_t term) const;
 
-    Term_table const& get_term_table() const { return *term_table; }
+    [[nodiscard]] std::span<const term_t> get_args(term_t term) const;
+
+    [[nodiscard]] Kind get_kind(term_t term) const;
+
+    [[nodiscard]] Term_table const& get_term_table() const { return *term_table; }
 
 private:
     term_t poly_to_term(poly_t const& poly);
@@ -74,7 +85,7 @@ private:
     term_t mk_bool_ite(term_t i, term_t t, term_t e);
     term_t mk_arithmetic_ite(term_t i, term_t t, term_t e);
 
-    term_t direct_arithemetic_binary_equality(term_t t1, term_t t2);
+    term_t direct_arithmetic_binary_equality(term_t t1, term_t t2);
 
 
 };

@@ -3,6 +3,7 @@
 #include "Solver_wrapper.h"
 #include "Term_manager.h"
 #include "Terms.h"
+#include "Term_rewriter.h"
 
 #define UNIMPLEMENTED throw std::logic_error("Not implemented yet!")
 
@@ -33,6 +34,12 @@ term_t Parser_context::get_term_for_symbol(std::string const& symbol)
     if (maybe_term.has_value())
     {
         return maybe_term.value();
+    }
+    if (defined_functions.has(symbol))
+    {
+        auto defined = defined_functions.get(symbol);
+        assert(defined.signature.args.empty());
+        return defined.body;
     }
     term_t t = term_manager.get_term_by_name(symbol);
     assert(t != terms::null_term);
@@ -74,179 +81,60 @@ term_t Parser_context::mk_decimal(std::string const& decimal_string)
 
 term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>&& args)
 {
-    if (name == ">=")
+    if (defined_functions.has(name))
     {
-        return mk_geq(std::move(args));
+        return resolve_defined_function(name, args);
     }
-    else if (name == "<=")
-    {
-        return mk_leq(std::move(args));
-    }
-    else if (name == "<")
-    {
-        return mk_lt(std::move(args));
-    }
-    else if (name == ">")
-    {
-        return mk_gt(std::move(args));
-    }
-    else if (name == "=")
-    {
-        return mk_eq(std::move(args));
-    }
-    else if (name == "or")
-    {
-        return mk_or(std::move(args));
-    }
-    else if (name == "and")
-    {
-        return mk_and(std::move(args));
-    }
-    else if (name == "=>")
-    {
-        assert(args.size() == 2);
-        return mk_implies(args[0], args[1]);
-    }
-    else if (name == "not")
-    {
-        assert(args.size() == 1);
-        return terms::opposite_term(args[0]);
-    }
-    else if (name == "-")
-    {
-        if (args.size() == 1)
-        {
-            return mk_unary_minus(args[0]);
-        }
-        else
-        {
-            assert(args.size() == 2);
-            return mk_binary_minus(args[0], args[1]);
-        }
-    }
-    else if (name == "+")
-    {
-        return term_manager.mk_arithmetic_plus(args);
-    }
-    else if (name == "*")
-    {
-        return mk_times(args);
-    }
-    else if (name == "/")
-    {
-        assert(args.size() == 2);
-        return mk_binary_divides(args[0], args[1]);
-    }
-    else if (name == "ite")
-    {
-        return mk_ite(args);
-    }
-    UNIMPLEMENTED;
+    return term_manager.mk_term(name, args);
 }
 
-term_t Parser_context::mk_leq(std::vector<term_t>&& args)
+std::vector<term_t> Parser_context::bind_vars(std::span<Sorted_var> sorted_vars)
 {
-    if (args.size() == 2)
+    std::vector<term_t> ret;
+    ret.reserve(sorted_vars.size());
+    for (auto && sorter_var : sorted_vars)
     {
-        return mk_binary_leq(args[0], args[1]);
+        term_t var = term_manager.mk_uninterpreted_constant(sorter_var.type);
+        let_records.add_binding(sorter_var.var_name, var);
+        ret.push_back(var);
     }
-    UNIMPLEMENTED;
+    return ret;
+}
+void Parser_context::store_defined_fun(std::string const& name, term_t definition,
+                                       std::vector<term_t> && formal_args, type_t return_sort)
+{
+    defined_functions.insert(name, Function_template(name, std::move(formal_args), return_sort, definition));
 }
 
-term_t Parser_context::mk_geq(std::vector<term_t>&& args)
+void Parser_context::push_binding_scope()
 {
-    if (args.size() == 2)
+    let_records.push_frame();
+}
+
+void Parser_context::pop_binding_scope()
+{
+    let_records.pop_frame();
+}
+
+term_t resolve(Function_template const& function_template, std::span<term_t> args, terms::Term_manager& term_manager);
+
+term_t Parser_context::resolve_defined_function(std::string const& name, std::span<term_t> args)
+{
+    auto const& function_template = defined_functions.get(name);
+    return resolve(function_template, args, term_manager);
+}
+
+term_t resolve(Function_template const& function_template, std::span<term_t> args, terms::Term_manager& term_manager)
+{
+    using subst_map_t = std::unordered_map<term_t, term_t>;
+    auto size = function_template.signature.args.size();
+    assert(size == args.size());
+    subst_map_t subst_map;
+    for (std::size_t i = 0u; i != size; ++i)
     {
-        return mk_binary_geq(args[0], args[1]);
+        subst_map.insert({function_template.signature.args[i], args[i]});
     }
-    UNIMPLEMENTED;
-}
-
-term_t Parser_context::mk_lt(std::vector<term_t>&& args)
-{
-    return terms::opposite_term(mk_geq(std::move(args)));
-}
-
-term_t Parser_context::mk_gt(std::vector<term_t>&& args)
-{
-    return terms::opposite_term(mk_leq(std::move(args)));
-}
-
-term_t Parser_context::mk_eq(std::vector<term_t>&& args)
-{
-    if (args.size() == 2)
-    {
-        return mk_binary_eq(args[0], args[1]);
-    }
-    UNIMPLEMENTED;
-}
-
-term_t Parser_context::mk_binary_eq(term_t t1, term_t t2)
-{
-    type_t type = term_manager.get_term_type(t1);
-    if (type != term_manager.get_term_type(t2)) {
-        throw std::logic_error("Types do not match");
-    }
-
-    if (type == terms::types::real_type) {
-        return term_manager.mk_arithmetic_eq(t1, t2);
-    }
-    if (type == terms::types::bool_type)
-    {
-        return term_manager.mk_iff(t1, t2);
-    }
-    UNIMPLEMENTED;
-}
-
-term_t Parser_context::mk_binary_geq(term_t t1, term_t t2)
-{
-    return term_manager.mk_arithmetic_geq(t1, t2);
-}
-
-term_t Parser_context::mk_binary_leq(term_t t1, term_t t2)
-{
-    return term_manager.mk_arithmetic_leq(t1, t2);
-}
-
-term_t Parser_context::mk_or(std::vector<term_t>&& args)
-{
-    return term_manager.mk_or(args);
-}
-
-term_t Parser_context::mk_and(std::vector<term_t>&& args)
-{
-    return term_manager.mk_and(args);
-}
-
-term_t Parser_context::mk_implies(term_t t1, term_t t2)
-{
-    return term_manager.mk_implies(t1, t2);
-}
-
-term_t Parser_context::mk_unary_minus(term_t t)
-{
-    return term_manager.mk_unary_minus(t);
-}
-
-term_t Parser_context::mk_binary_minus(term_t t1, term_t t2)
-{
-    return term_manager.mk_arithmetic_minus(t1, t2);
-}
-
-term_t Parser_context::mk_times(std::span<term_t> args)
-{
-    return term_manager.mk_arithmetic_times(args);
-}
-
-term_t Parser_context::mk_binary_divides(term_t t1, term_t t2)
-{
-    return term_manager.mk_divides(t1, t2);
-}
-
-term_t Parser_context::mk_ite(std::span<term_t> args)
-{
-    assert(args.size() == 3);
-    return term_manager.mk_ite(args[0], args[1], args[2]);
+    return terms::simultaneous_variable_substitution(term_manager, subst_map, function_template.body);
 }
 
 } // namespace perun::parser

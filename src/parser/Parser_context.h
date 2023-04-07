@@ -21,6 +21,12 @@ using term_t = terms::term_t;
 using type_t = terms::type_t;
 using let_bindings_t = std::vector<std::pair<std::string, term_t>>;
 
+struct Sorted_var
+{
+    std::string var_name;
+    type_t type;
+};
+
 class Let_binder {
     term_t current_value;
     std::vector<term_t> shadowed_values;
@@ -82,6 +88,41 @@ public:
     }
 };
 
+struct Function_signature {
+    std::string name;
+    std::vector<term_t> args;
+    type_t return_type;
+};
+
+struct Function_template {
+    Function_signature signature;
+    term_t body;
+
+    Function_template(std::string name, std::vector<term_t> args, type_t ret_type, term_t body)
+    : signature{std::move(name), std::move(args), ret_type}, body(body) {}
+};
+
+class Defined_functions {
+    std::unordered_map<std::string, Function_template> defined_functions;
+
+public:
+    bool has(std::string const & name) const
+    {
+        return defined_functions.find(name) != defined_functions.end();
+    }
+
+    void insert(std::string const & name, Function_template && templ)
+    {
+        assert(not has(name));
+        defined_functions.insert({name, std::move(templ)});
+    }
+
+    Function_template const& get(std::string const& name) const
+    {
+        return defined_functions.at(name);
+    }
+};
+
 class Parser_context {
 public:
     explicit Parser_context(terms::Term_manager& term_manager) : term_manager(term_manager) {}
@@ -103,30 +144,25 @@ public:
     term_t mk_numeral(std::string const& numeric_string);
     term_t mk_decimal(std::string const& decimal_string);
 
+    /*
+     * Bindings
+     */
+    void push_binding_scope();
+    void pop_binding_scope();
+
+    std::vector<term_t> bind_vars(std::span<Sorted_var> sorted_vars);
+
+    void store_defined_fun(std::string const& name, term_t definition, std::vector<term_t> && formal_args, type_t ret_sort);
+
+
 private:
     Let_records let_records;
 
+    Defined_functions defined_functions;
+
     terms::Term_manager& term_manager;
 
-    term_t mk_eq(std::vector<term_t>&& args);
-    term_t mk_geq(std::vector<term_t>&& args);
-    term_t mk_leq(std::vector<term_t>&& args);
-    term_t mk_gt(std::vector<term_t>&& args);
-    term_t mk_lt(std::vector<term_t>&& args);
-    term_t mk_or(std::vector<term_t>&& args);
-    term_t mk_and(std::vector<term_t>&& args);
-    term_t mk_implies(term_t t1, term_t t2);
-
-    term_t mk_binary_eq(term_t t1, term_t t2);
-    term_t mk_binary_geq(term_t t1, term_t t2);
-    term_t mk_binary_leq(term_t t1, term_t t2);
-
-    term_t mk_unary_minus(term_t t);
-    term_t mk_binary_minus(term_t t1, term_t t2);
-    term_t mk_times(std::span<term_t> args);
-    term_t mk_binary_divides(term_t t1, term_t t2);
-
-    term_t mk_ite(std::span<term_t> args);
+    term_t resolve_defined_function(std::string const& name, std::span<term_t> args);
 };
 
 }
