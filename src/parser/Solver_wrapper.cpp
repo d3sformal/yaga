@@ -102,6 +102,10 @@ public:
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
+    if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
+    {
+        return Solver_answer::UNSAT;
+    }
     auto const& term_table = term_manager.get_term_table();
     Collect_vars_config config(term_table);
     terms::Visitor<Collect_vars_config> visitor(term_table, config);
