@@ -150,6 +150,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     // add top level assertions to the solver
     for (term_t assertion : assertions)
     {
+        if (assertion == terms::true_term) { continue; }
         auto possibly_literal = internalizer_config.get_literal_for(terms::positive_term(assertion));
         assert(possibly_literal.has_value());
         Literal literal = possibly_literal.value();
@@ -363,6 +364,15 @@ void Internalizer_config::visit(term_t t)
             Literal l = internal_bool_vars.at(cond_term);
             database.assert_clause(l, false_constraint.lit());
             database.assert_clause(l.negate(), true_constraint.lit());
+        }
+        return;
+    }
+
+    case terms::Kind::CONSTANT_TERM:
+    {
+        if (t != terms::true_term)
+        {
+            throw std::logic_error("Unhandled internalize case!");
         }
         return;
     }
