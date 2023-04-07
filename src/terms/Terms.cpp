@@ -166,9 +166,8 @@ term_t Term_table::arithmetic_binary_eq(term_t t1, term_t t2)
 {
     assert(get_type(t1) == types::real_type);
     assert(get_type(t2) == types::real_type);
-    assert(get_kind(t1) != Kind::ARITH_PRODUCT and get_kind(t1) != Kind::ARITH_POLY);
+    assert(get_kind(t1) == Kind::UNINTERPRETED_TERM);
     assert(get_kind(t2) != Kind::ARITH_PRODUCT and get_kind(t2) != Kind::ARITH_POLY);
-    assert(t1 < t2);
     std::array<term_t, 2> args{t1, t2};
     Composite_term_proxy proxy{Kind::ARITH_BINEQ_ATOM, types::bool_type, hash_composite_term(Kind::ARITH_BINEQ_ATOM, args), *this, args};
     return known_terms.get_composite_term(proxy);

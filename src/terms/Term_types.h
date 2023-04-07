@@ -63,7 +63,7 @@ enum class Kind {
     OR_TERM,       // n-ary OR
     XOR_TERM,      // n-ary XOR
 
-    ARITH_BINEQ_ATOM,   // equality: (t1 == t2)  (between two arithmetic terms)
+    ARITH_BINEQ_ATOM,   // equality: (t1 == t2)  (between two arithmetic terms, LHS is always a variable!)
     ARITH_RDIV,         // real division: (/ x y)
     ARITH_IDIV,         // integer division: (div x y) as defined in SMT-LIB 2
     ARITH_MOD,          // remainder: (mod x y) is y - x * (div x y)
