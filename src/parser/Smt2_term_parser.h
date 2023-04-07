@@ -40,6 +40,8 @@ public:
 
     std::string parse_keyword();
     std::string parse_sexpr();
+
+    std::vector<Sorted_var> parse_sorted_var_list();
 };
 
 } // namespace perun::parser

@@ -281,4 +281,19 @@ std::string Smt2_term_parser::parse_sexpr()
     return lexer.token_string();
 }
 
+std::vector<Sorted_var> Smt2_term_parser::parse_sorted_var_list()
+{
+    std::vector<Sorted_var> vars;
+    lexer.eat_token(Token::LPAREN_TOK);
+    // while the next token is LPAREN, exit if RPAREN
+    while (lexer.eatTokenChoice(Token::LPAREN_TOK, Token::RPAREN_TOK))
+    {
+        auto name = parse_symbol();
+        auto type = parse_sort();
+        vars.push_back({name, type});
+        lexer.eat_token(Token::RPAREN_TOK);
+    }
+    return vars;
+}
+
 } // namespace perun::parser
