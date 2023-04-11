@@ -38,7 +38,7 @@ class Propositional final : public Initializer {
 public:
     virtual ~Propositional() = default;
 
-    /** Initializer @p solver with only the plugin for boolean variables
+    /** Initialize @p solver with only the plugin for boolean variables
      * 
      * @param solver solver to initializer
      */
@@ -110,9 +110,11 @@ public:
      */
     Literal make_bool();
 
-    /** Add a new linear constraint or create a new one.
+    /** Add a new linear constraint or return an old constraint if it already exists.
      * 
-     * @tparam Var_range range of ordinal numbers (ints) or rational variables
+     * Constraints are normalized. Order of variables does not matter.
+     * 
+     * @tparam Var_range range of ordinal numbers (ints) of rational variables
      * @tparam Coef_range range of coefficients of variables (Rational)
      * @param vars variables in the constraint
      * @param coef coefficients of variables
@@ -128,7 +130,7 @@ public:
             throw std::logic_error{"This logic does not support linear constraints."};
         }
 
-        auto num_real_vars = static_cast<int>(solver().trail().model<Rational>(Variable::rational).num_vars());
+        auto num_real_vars = static_cast<int>(solver().trail().model(Variable::rational).num_vars());
         for (auto&& var : vars)
         {
             if (var < 0 || var >= num_real_vars)
@@ -137,7 +139,8 @@ public:
             }
         }
 
-        return lra->constraint(smt.trail(), std::forward<Var_range>(vars), std::forward<Coef_range>(coef), pred, rhs).lit();
+        return lra->constraint(smt.trail(), std::forward<Var_range>(vars), 
+                               std::forward<Coef_range>(coef), pred, rhs).lit();
     }
 
     /** Assert a new clause to the solver (range of literals)
