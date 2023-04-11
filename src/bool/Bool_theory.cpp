@@ -62,7 +62,7 @@ void Bool_theory::initialize(Database& db, Trail& trail)
                 if (clause.size() == 1) // propagate unit clauses
                 {
                     watched[clause[0]].emplace_back(Watched_clause{&clause});
-                    satisfied.push_back({clause[0], &clause});
+                    satisfied.push_back({.lit = clause[0], .reason = &clause});
                 }
                 else // non-unit clause
                 {
@@ -79,7 +79,7 @@ void Bool_theory::initialize(Database& db, Trail& trail)
         if (var.type() == Variable::boolean)
         {
             auto lit = model.value(var.ord()) ? Literal{var.ord()} : ~Literal{var.ord()};
-            satisfied.push_back({lit, reason});
+            satisfied.push_back({.lit = lit, .reason = reason});
         }
     }
 }
@@ -249,7 +249,7 @@ Bool_theory::falsified([[maybe_unused]] Trail const& trail, Model<bool> const& m
                 return eval(model, lit) == false;
             }));
             assert(clause.size() > 1);
-            satisfied.push_back({clause[0], &clause});
+            satisfied.push_back({.lit = clause[0], .reason = &clause});
         }
     }
     return {};

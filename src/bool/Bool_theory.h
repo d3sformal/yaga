@@ -66,7 +66,18 @@ private:
     };
 
     // satisfied literal with pointer to the reason clause (or nullptr)
-    using Satisfied_literal = std::tuple<Literal, Clause*>;
+    struct Satisfied_literal {
+        // satisfied literal
+        Literal lit;
+        // clause that led to propagation of the literal or nullptr if there is none
+        Clause* reason;
+
+        /** Convert the structure to pair so we can tie the properties
+         * 
+         * @return pair of the values from this structure
+         */
+        inline operator std::pair<Literal, Clause*>() { return {lit, reason}; }
+    };
 
     // map literal -> list of clauses in which it is watched
     Literal_map<std::vector<Watched_clause>> watched;
