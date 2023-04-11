@@ -2,7 +2,7 @@
 
 namespace perun {
 
-std::vector<Clause> Solver::propagate() { return theory->propagate(database, solver_trail); }
+std::vector<Clause> Solver::propagate() { return theory()->propagate(database, solver_trail); }
 
 std::pair<std::vector<Clause>, int> Solver::analyze_conflicts(std::vector<Clause>&& conflicts)
 {

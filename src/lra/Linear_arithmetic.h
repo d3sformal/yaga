@@ -158,6 +158,12 @@ public:
         return cons.lit() != lit ? ~cons : cons;
     }
 
+    /** Set options
+     * 
+     * @param opts new options
+     */
+    inline void set_options(Options const& opts) { options = opts; }
+
 private:
     struct Watched_constraint {
         // watched constraint
