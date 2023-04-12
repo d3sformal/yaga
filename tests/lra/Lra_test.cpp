@@ -12,15 +12,18 @@
 #include "Restart.h"
 #include "First_unassigned.h"
 #include "Smtlib_parser.h"
+#include "Rational.h"
+
+using namespace perun;
+using namespace perun::test;
+using namespace perun::literals;
 
 TEST_CASE("Check a satisfiable formula in LRA", "[lra][sat][integration]")
 {
-    using namespace perun;
-    using namespace perun::test;
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
+    solver.trail().set_model<Rational>(Variable::rational, 2);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -43,20 +46,18 @@ TEST_CASE("Check a satisfiable formula in LRA", "[lra][sat][integration]")
     auto y_val = models.owned().value(y.ord());
     REQUIRE(models.owned().is_defined(x.ord()));
     REQUIRE(models.owned().is_defined(y.ord()));
-    REQUIRE(x_val + 2 * y_val <= 8);
-    REQUIRE(2 * x_val + y_val >= 2);
+    REQUIRE(x_val + 2_r * y_val <= 8);
+    REQUIRE(2_r * x_val + y_val >= 2);
     REQUIRE((x_val >= 0 || y_val >= 0));
     REQUIRE((x_val < 0 || y_val < 0));
 }
 
 TEST_CASE("Solve system of equations in LRA", "[lra][sat][integration]")
 {
-    using namespace perun;
-    using namespace perun::test;
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    solver.trail().set_model<Rational>(Variable::rational, 3);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -77,18 +78,14 @@ TEST_CASE("Solve system of equations in LRA", "[lra][sat][integration]")
     auto y_val = models.owned().value(y.ord());
     auto z_val = models.owned().value(z.ord());
     REQUIRE(x_val + y_val + z_val == 8);
-    REQUIRE(2 * x_val - y_val - 4 * z_val == 4);
-    REQUIRE(x_val - y_val - 2 * z_val == 2);
+    REQUIRE(2_r * x_val - y_val - 4_r * z_val == 4);
+    REQUIRE(x_val - y_val - 2_r * z_val == 2);
 }
-
 TEST_CASE("Solve system with a mix of equations and inequalities in LRA", "[lra][sat][integration]")
 {
-    using namespace perun;
-    using namespace perun::test;
-
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    solver.trail().set_model<Rational>(Variable::rational, 3);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -119,13 +116,9 @@ TEST_CASE("Solve system with a mix of equations and inequalities in LRA", "[lra]
 
 TEST_CASE("Check an unsatisfiable formula in LRA", "[lra][unsat][integration]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
-
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
+    solver.trail().set_model<Rational>(Variable::rational, 2);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -145,10 +138,6 @@ TEST_CASE("Check an unsatisfiable formula in LRA", "[lra][unsat][integration]")
 
 TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][integration]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
-
     // modified version of the benchmark:
     // https://clc-gitlab.cs.uiowa.edu:2443/SMT-LIB-benchmarks/QF_LRA/-/blob/master/meti-tarski/CMOS/CMOS-opamp-chunk-0016.smt2
     std::stringstream input;
@@ -159,7 +148,7 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 0);
+    solver.trail().set_model<Rational>(Variable::rational, 0);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();
@@ -171,7 +160,7 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
 
     auto result = solver.check();
 
-    auto& real_model = solver.trail().model<Fraction<int>>(Variable::rational);
+    auto& real_model = solver.trail().model<Rational>(Variable::rational);
     auto sko_x = real_model.value(parser.listener().var("skoX").ord());
     auto sko_y = real_model.value(parser.listener().var("skoY").ord());
     auto pi = real_model.value(parser.listener().var("pi").ord());
@@ -182,14 +171,11 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
     REQUIRE(sko_y <= pi / 3);
     REQUIRE(pi / 4 <= sko_y);
     REQUIRE(sko_x <= 120);
-    REQUIRE(100 <= sko_x);
+    REQUIRE(100_r <= sko_x);
 }
 
 TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat][integration]")
 {
-    using namespace perun;
-    using namespace perun::test;
-
     // https://clc-gitlab.cs.uiowa.edu:2443/SMT-LIB-benchmarks/QF_LRA/-/blob/master/meti-tarski/CMOS/CMOS-opamp-chunk-0024.smt2
     std::stringstream input;
     input << "(declare-fun skoX () Real)\n";
@@ -199,7 +185,7 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
 
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Linear_arithmetic::Rational>(Variable::rational, 0);
+    solver.trail().set_model<Rational>(Variable::rational, 0);
     solver.set_restart_policy<No_restart>();
     solver.set_variable_order<First_unassigned>();
     auto& theories = solver.set_theory<Theory_combination>();

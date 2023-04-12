@@ -14,7 +14,7 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 0);
+    trail.set_model<Rational>(Variable::rational, 0);
     Linear_arithmetic lra;
     Smtlib_parser<Direct_interpreter> parser{lra, db, trail};
 
@@ -139,7 +139,7 @@ TEST_CASE("Parse boolean equality", "[test_parser]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 0);
+    trail.set_model<Rational>(Variable::rational, 0);
     Linear_arithmetic lra;
     Smtlib_parser<Direct_interpreter> parser{lra, db, trail};
 
@@ -242,7 +242,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 0);
+    trail.set_model<Rational>(Variable::rational, 0);
     Linear_arithmetic lra;
     Smtlib_parser<Direct_interpreter> parser{lra, db, trail};
 
@@ -261,7 +261,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(6 * x + 8 * y - z < 0)));
     }
@@ -272,7 +272,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x <= y)));
     }
@@ -283,7 +283,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x > y)));
     }
@@ -294,7 +294,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x >= y)));
     }
@@ -305,7 +305,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x - y == 0)));
     }
@@ -316,7 +316,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x >= y)));
     }
@@ -327,7 +327,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x > y)));
     }
@@ -338,7 +338,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x <= y)));
     }
@@ -349,7 +349,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x < y)));
     }
@@ -360,7 +360,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
         parser.parse(input);
 
         REQUIRE(trail.model<bool>(Variable::boolean).num_vars() == 1);
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x - y != 0)));
     }
@@ -374,7 +374,7 @@ TEST_CASE("Parse if-then-else with real output", "[test_parser]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 0);
+    trail.set_model<Rational>(Variable::rational, 0);
     Linear_arithmetic lra;
     Smtlib_parser<Direct_interpreter> parser{lra, db, trail};
 
@@ -392,7 +392,7 @@ TEST_CASE("Parse if-then-else with real output", "[test_parser]")
         input << "(assert (= (ite (< x y) z w) 0))";
         parser.parse(input);
 
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 5);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 5);
         REQUIRE(db.asserted().size() == 3);
         REQUIRE(db.asserted()[0] == clause(-linear(x < y), linear(new_var - z == 0)));
         REQUIRE(db.asserted()[1] == clause(linear(x < y), linear(new_var - w == 0)));
@@ -404,7 +404,7 @@ TEST_CASE("Parse if-then-else with real output", "[test_parser]")
         input << "(assert (< (ite (= 20 40) x y) 0))";
         parser.parse(input);
 
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(y < 0)));
     }
@@ -414,7 +414,7 @@ TEST_CASE("Parse if-then-else with real output", "[test_parser]")
         input << "(assert (< (ite (= 40 40) x y) 0))";
         parser.parse(input);
 
-        REQUIRE(trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars() == 4);
+        REQUIRE(trail.model<Rational>(Variable::rational).num_vars() == 4);
         REQUIRE(db.asserted().size() == 1);
         REQUIRE(db.asserted()[0] == clause(linear(x < 0)));
     }
@@ -428,7 +428,7 @@ TEST_CASE("parse if-then-else with a boolean output", "[test_parser]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 0);
+    trail.set_model<Rational>(Variable::rational, 0);
     Linear_arithmetic lra;
     Smtlib_parser<Direct_interpreter> parser{lra, db, trail};
 

@@ -15,7 +15,7 @@ TEST_CASE("Validity of bounds depends on theory models", "[bounds]")
     using namespace perun;
     using namespace perun::test;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Model<bool> bool_model;
     Model<Value_type> lra_model;

@@ -12,7 +12,7 @@
 #include <map>
 
 #include "test_expr.h"
-#include "Fraction.h"
+#include "Rational.h"
 #include "Linear_arithmetic.h"
 #include "Linear_constraint.h"
 #include "Literal.h"
@@ -24,8 +24,8 @@ namespace perun::test {
 // directly translate smtlib expressions to linear constraints and clauses
 class Direct_interpreter {
 public:
-    using Polynomial_type = Linear_polynomial<Fraction<int>>;
-    using Value_type = Fraction<int>;
+    using Polynomial_type = Linear_polynomial<Rational>;
+    using Value_type = Rational;
 
     inline explicit Direct_interpreter(Linear_arithmetic& lra, Database& db, Trail& trail) 
         : lra(&lra), db(&db), trail(&trail) {}
@@ -357,7 +357,7 @@ private:
             return;
         }
 
-        Linear_constraint<Fraction<int>> cons;
+        Linear_constraint<Rational> cons;
         if (name == "<")
         {
             cons = lra->constraint(*trail, norm_poly.vars, norm_poly.coef, Order_predicate::lt, -norm_poly.constant);
@@ -529,7 +529,7 @@ private:
 
     inline Variable new_real_var()
     {
-        auto num_real = static_cast<int>(trail->model<Fraction<int>>(Variable::rational).num_vars());
+        auto num_real = static_cast<int>(trail->model<Rational>(Variable::rational).num_vars());
         trail->resize(Variable::rational, num_real + 1);
         lra->on_variable_resize(Variable::rational, num_real + 1);
         return Variable{num_real, Variable::rational};
@@ -708,12 +708,12 @@ public:
         }
     }
 
-    Fraction<int> read_constant(std::istream& in)
+    Rational read_constant(std::istream& in)
     {
         skip_space(in);
 
         int num = 0;
-        int denom = 1;
+        unsigned int denom = 1;
 
         while (std::isdigit(in.peek()))
         {

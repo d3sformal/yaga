@@ -26,9 +26,9 @@ auto decide(Trail& trail, Literal lit)
 }
 
 // decide that a real variable var is equal to a value val
-auto decide(Trail& trail, Variable var, Fraction<int> value)
+auto decide(Trail& trail, Variable var, Rational value)
 {
-    auto& model = trail.model<Fraction<int>>(Variable::rational);
+    auto& model = trail.model<Rational>(Variable::rational);
     assert(!model.is_defined(var.ord()));
     model.set_value(var.ord(), value);
     trail.decide(var);
@@ -54,7 +54,7 @@ TEST_CASE("Propagate in an empty trail", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 10);
+    trail.set_model<Rational>(Variable::rational, 10);
     Linear_arithmetic lra;
     auto conflict = lra.propagate(db, trail);
     REQUIRE(!conflict);
@@ -69,7 +69,7 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -96,7 +96,7 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -146,7 +146,7 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -181,7 +181,7 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithme
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -216,7 +216,7 @@ TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -250,7 +250,7 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -380,7 +380,7 @@ TEST_CASE("Detect trivial bound conflict with several variables", "[linear_arith
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
+    trail.set_model<Rational>(Variable::rational, 2);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 2);
     auto linear = factory(lra, trail);
@@ -402,7 +402,7 @@ TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
+    trail.set_model<Rational>(Variable::rational, 2);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 2);
     auto linear = factory(lra, trail);
@@ -425,7 +425,7 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 1);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     lra.on_variable_resize(Variable::boolean, 1);
@@ -453,7 +453,7 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
     auto models = lra.relevant_models(trail);
@@ -529,9 +529,9 @@ TEST_CASE("Backtrack-decide a constraint", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
+    trail.set_model<Rational>(Variable::rational, 2);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars());
+    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
     auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
@@ -561,9 +561,9 @@ TEST_CASE("Propagate derived bound constraint semantically only if it is not on 
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
+    trail.set_model<Rational>(Variable::rational, 2);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars());
+    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
@@ -584,9 +584,9 @@ TEST_CASE("Propagate derived inequality constraint semantically only if it is no
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 2);
+    trail.set_model<Rational>(Variable::rational, 2);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars());
+    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
@@ -627,9 +627,9 @@ TEST_CASE("The first two unassigned variables in a derived constraint have the h
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars());
+    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
@@ -658,9 +658,9 @@ TEST_CASE("Decide variable", "[linear_arithmetic]")
     Database db;
     Trail trail;
     trail.set_model<bool>(Variable::boolean, 0);
-    trail.set_model<Linear_arithmetic::Rational>(Variable::rational, 3);
+    trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Linear_arithmetic::Rational>(Variable::rational).num_vars());
+    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
     auto linear = factory(lra, trail);
     auto models = lra.relevant_models(trail);
 
