@@ -4,7 +4,14 @@ David Monniaux, VERIMAG 2008-2009
 
 Copyright (c) 2008, 2009 Centre national de la recherche scientifique (CNRS)
 
+Available under the MIT license.
+
 Modified by Jan Kofron, Charles University, to integrate with the Perun framework.
+
+Modifications:
+Antti Hyvarinen (Univerzita Svizzera italiana Lugano)
+Martin Blicha  (Univerzita Svizzera italiana Lugano)
+Jan Kofron (Charles University, Prague)
  */
 #ifndef LONG_FRACTION_H
 #define LONG_FRACTION_H
@@ -117,27 +124,28 @@ public:
     // Methods for questioning inner state
     inline bool wordPartValid() const { return  static_cast<state_t>(state) & wordValidMask; }
     inline bool wordAndMpqEqual() const;
-    inline bool mpqMemoryAllocated() const { return  static_cast<state_t>(state) & mpqMemoryAllocatedMask; }
+    inline constexpr bool mpqMemoryAllocated() const { return  static_cast<state_t>(state) & mpqMemoryAllocatedMask; }
     inline bool mpqPartValid() const { return  static_cast<state_t>(state) & mpqValidMask; }
 
     //
     // Constructors
     //
-    Long_fraction       () : state{State::WORD_VALID}, num(0), den(1) {}
-    Long_fraction       (word x) : state{State::WORD_VALID}, num(x), den(1) {}
-    Long_fraction       (uint32_t);
+    constexpr Long_fraction       () : state{State::WORD_VALID}, num(0), den(1) {}
+    constexpr Long_fraction       (word x) : state{State::WORD_VALID}, num(x), den(1) {}
+    Long_fraction                 (uint32_t x);
+
     inline Long_fraction(word n, uword d);
     // The string must be in the format accepted by mpq_set_str, e.g., "1/2"
     explicit Long_fraction(const char* s, const int base = 10);
     inline Long_fraction  (const Long_fraction &);
     inline Long_fraction  (Long_fraction&& other) noexcept;
 
-    Long_fraction(mpz_t x);
+    explicit Long_fraction(mpz_t x);
 
     //
     // Destroyer
     //
-    ~Long_fraction( ) { kill_mpq(); }
+    constexpr ~Long_fraction( ) { kill_mpq(); }
     Long_fraction & operator=(Long_fraction && other) {
         std::swap(this->state, other.state);
         std::swap(this->num, other.num);
@@ -149,7 +157,7 @@ public:
     void reset();
     inline Long_fraction & operator=( const Long_fraction & );
 private:
-    void kill_mpq()
+    constexpr void kill_mpq()
     {
         if (mpqMemoryAllocated()) {
             pool.release(mpq);
@@ -237,16 +245,25 @@ public:
         }
         else {
             force_ensure_mpq_valid();
-            return {mpq_denref(mpq)};
+            return Long_fraction(mpq_denref(mpq));
         }
     }
+
+    Long_fraction denominator() const {
+        return get_den();
+    }
+
     Long_fraction get_num() const {
         if (wordPartValid()) {
             return {num};
         }
         else {
-            return {mpq_numref(mpq)};
+            return Long_fraction(mpq_numref(mpq));
         }
+    }
+
+    Long_fraction numerator() const {
+        return get_num();
     }
 
     inline int compare(const Long_fraction& b) const;
@@ -398,6 +415,14 @@ public:
         r = r.floor();
         r = (*this) - r*d;
         return r;
+    }
+
+    inline Long_fraction inv() const {
+        if (sign() >= 0) {
+            return {static_cast<word>(den), static_cast<uword>(num)};
+        } else {
+            return {static_cast<word>(-den), static_cast<uword>(-num)};
+        }
     }
 };
 
@@ -1079,9 +1104,5 @@ template<> struct std::hash<perun::Long_fraction> {
         }
     };
 
-
-template<> struct std::is_arithmetic<perun::Long_fraction> {
-    inline static constexpr bool value = true;
-};
 
 #endif

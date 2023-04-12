@@ -56,7 +56,7 @@ namespace perun {
         }
     }
 
-    constexpr Long_fraction::Long_fraction(uint32_t x) {
+    Long_fraction::Long_fraction(uint32_t x)  {
         if (x > INT_MAX) {
             mpq = pool.alloc();
             mpq_set_ui(mpq, x, 1);
@@ -68,18 +68,6 @@ namespace perun {
         }
     }
 
-    constexpr Long_fraction::Long_fraction(unsigned long long x) {
-        if (x > INT_MAX) {
-            mpq = pool.alloc();
-            mpq_set_ui(mpq, x, 1);
-            state = State::MPQ_ALLOCATED_AND_VALID;
-        } else {
-            num = x;
-            den = 1;
-            state = State::WORD_VALID;
-        }
-
-    }
 
 
     void Long_fraction::reset() {
