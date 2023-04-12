@@ -10,25 +10,42 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Lra_conflict_analysis.h"
 #include "Bounds.h"
 #include "Rational.h"
 #include "Linear_constraints.h"
+#include "Lra_conflict_analysis.h"
 #include "Model.h"
 #include "Theory.h"
+#include "Variable_bounds.h"
 
 namespace perun {
 
 class Linear_arithmetic final : public Theory {
 public:
     // bounds object which keeps implied bounds of variables
-    using Variable_bounds = Bounds<Rational>;
+    using Bounds_type = Variable_bounds<Rational>;
     // models relevant to this theory
     using Models = Theory_models<Rational>;
     // type of linear constraints
     using Constraint = Linear_constraint<Rational>;
     // type of the repository that stores linear constraints
     using Constraint_repository = Linear_constraints<Rational>;
+
+    struct Options {
+        /** Derive new bounds using FM elimination
+         */
+        bool prop_bounds = false;
+
+        /** Propagate unassigned linear constraints when they become true due to assignment of 
+         * real variables or due to variable bounds.
+         */
+        bool prop_unassigned = false;
+
+        /** If true, propagate() returns all conflicts derived at current decision level. 
+         * Otherwise, only the first conflict is returned.
+         */
+        bool return_all_conflicts = true;
+    };
 
     virtual ~Linear_arithmetic() = default;
 
@@ -39,22 +56,14 @@ public:
      */
     void on_variable_resize(Variable::Type type, int num_vars) override;
 
-    /** Cache current values of LRA variables on conflict
+    /** Add all semantic propagations to the @p trail and update variable bounds
      *
      * @param db clause database
      * @param trail current solver trail
-     * @param learned newly learned clause
+     * @return list of conflict clauses if there exists a real variable that cannot be assigned
+     * any value. Empty list, otherwise.
      */
-    void on_learned_clause(Database& db, Trail& trail, Clause const& learned) override;
-
-    /** Add all semantic propagations to the @p trail
-     *
-     * @param db clause database
-     * @param trail current solver trail
-     * @return conflict clause if there exists a real variable that cannot be assigned any value.
-     * None, otherwise.
-     */
-    std::optional<Clause> propagate(Database&, Trail&) override;
+    std::vector<Clause> propagate(Database&, Trail&) override;
 
     /** Decide value for @p variable if it is a real variable and add it to the trail.
      *
@@ -86,8 +95,8 @@ public:
      * @return linear constraint
      */
     template <std::ranges::range Var_range, std::ranges::range Coef_range>
-    inline Constraint constraint(Trail& trail, Var_range&& vars, Coef_range&& coef,
-                                 Order_predicate pred, Rational rhs)
+    Constraint constraint(Trail& trail, Var_range&& vars, Coef_range&& coef,
+                          Order_predicate pred, Rational const& rhs)
     {
         // create the constraint
         auto cons = constraints.make(std::forward<Var_range>(vars), std::forward<Coef_range>(coef),
@@ -97,6 +106,10 @@ public:
         auto models = relevant_models(trail);
         if (is_new(models, cons.lit().var()))
         {
+            for (auto var : cons.vars())
+            {
+                occur[var].push_back(cons.lit().is_negation() ? ~cons : cons);
+            }
             add_variable(trail, models, cons.lit().var());
             watch(cons, models.owned());
         }
@@ -108,14 +121,14 @@ public:
      * @param lra_var_ord ordinal number of a real variable
      * @return implied bounds for @p lra_var_ord
      */
-    inline Variable_bounds& find_bounds(int lra_var_ord) { return bounds[lra_var_ord]; }
+    [[nodiscard]] inline Bounds_type& find_bounds(int lra_var_ord) { return bounds[lra_var_ord]; }
 
     /** Get models relevant to this theory
      *
      * @param trail current solver trail
      * @return models from @p trail relevant to this theory
      */
-    inline Models relevant_models(Trail& trail) const
+    [[nodiscard]] inline Models relevant_models(Trail& trail) const
     {
         return {trail.model<bool>(Variable::boolean), trail.model<Rational>(Variable::rational)};
     }
@@ -126,6 +139,28 @@ public:
      * @return constraint which implements the boolean variable @p bool_var_ord
      */
     inline Constraint constraint(int bool_var_ord) { return constraints[bool_var_ord]; }
+
+    /** Find linear constraint which is defined by @p lit
+     *
+     * @param lit literal
+     * @return constraint represented by @p lit or an empty constraint if @p lit does not
+     * represent a linear constraint.
+     */
+    inline Constraint constraint(Literal lit)
+    {
+        auto cons = constraint(lit.var().ord());
+        if (cons.empty())
+        {
+            return cons;
+        }
+        return cons.lit() != lit ? ~cons : cons;
+    }
+
+    /** Set options
+     * 
+     * @param opts new options
+     */
+    inline void set_options(Options const& opts) { options = opts; }
 
 private:
     struct Watched_constraint {
@@ -145,9 +180,15 @@ private:
     // map real variable -> list of constraints in which it is watched
     std::vector<std::vector<Watched_constraint>> watched;
     // map real variable -> set of allowed values
-    std::vector<Bounds<Rational>> bounds;
+    Bounds bounds;
     // cached assignment of LRA variables
     Model<Rational> cached_values;
+    // list of rational variables whose bound has changed at this level
+    std::vector<int> to_check;
+    // map real variable -> list of constraints in which it occurs
+    std::vector<std::vector<Constraint>> occur;
+    // parameters of optional features
+    Options options;
 
     /** Start watching LRA variables in @p cons
      *
@@ -181,83 +222,73 @@ private:
      * @param trail current solver trail
      * @param models partial assignment of variables
      * @param lra_var_ord newly assigned LRA variable
-     * @return conflict clause if a conflict is detected. None, otherwise.
      */
-    std::optional<Clause> replace_watch(Trail& trail, Models& models, int lra_var_ord);
+    void replace_watch(Trail& trail, Models& models, int lra_var_ord);
 
-    /** Update bounds using unit constraint @p cons
-     *
-     * @param models partial assignment of variables
-     * @param cons unit constraint
-     */
-    void update_bounds(Models const& models, Constraint& cons);
-
-    /** Check if @p bounds is empty (i.e., no value can be assigned to a variable)
+    /** Check if some value can be assigned to @p var_ord
+     * 
+     * If there is a conflict, new constraints can be propagated to @p trail
      *
      * @param trail current solver trail
-     * @param bounds bounds object to check
-     * @return conflict clause if @p bounds is empty. None, otherwise.
+     * @param var_ord variable to check
+     * @return conflict clause if @p var_ord cannot be assigned any value. None, otherwise.
      */
-    std::optional<Clause> check_bounds(Trail& trail, Variable_bounds& bounds);
+    [[nodiscard]] std::optional<Clause> check_bounds(Trail& trail, int var_ord);
 
-    /** Report a new unit constraint @p cons and check for conflicts.
+    /** Update bounds implied by a new unit constraint @p cons
      *
-     * If the unassigned variable in @p cons cannot be assigned any value, this method returns a
-     * conflict clause.
-     *
-     * @param trail current solver trail
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    std::optional<Clause> unit(Trail& trail, Models& models, Constraint& cons);
+    void unit(Models const& models, Constraint cons);
 
-    /** Check whether the unit constraint @p cons implies an equality for the only unassigned
-     * variable (e.g., `x == 5`)
+    /** Deduce new bounds using bounds added at this decision level
      *
-     * @param cons linear constraint with exactly one unassigned variable
-     * @return true iff @p cons implies an equality
+     * @param trail current solver trail
+     * @param models partial assignment of variables
      */
-    bool implies_equality(Constraint const& cons) const;
+    void propagate_bounds(Trail const& trail, Models const& models);
 
-    /** Check whether the unit constraint @p cons implies an inequality for the only unassigned
-     * variable (e.g., `x != 4`)
+    /** Propagate true constraints to the trail
      *
-     * @param cons linear constraint with exactly one unassigned variable
-     * @return true iff @p cons implies an inequality
+     * @param trail current solver trail
+     * @param models partial assignment of variables
      */
-    bool implies_inequality(Constraint const& cons) const;
+    void propagate_unassigned(Trail& trail, Models& models);
 
-    /** Check whether the unit constraint @p cons implies a lower bound for the only unassigned
-     * variable (e.g., `x > 0`, or `x >= 0`)
+    /** Finish propagation by checking if there are any conflicts.
      *
-     * @param cons linear constraint with exactly one unassigned variable
-     * @return true iff @p cons implies a lower bound
+     * @param trail current solver trail
+     * @return conflict clauses or an empty list if there are no conflicts.
      */
-    bool implies_lower_bound(Constraint const& cons) const;
-
-    /** Check whether the unit constraint @p cons implies an upper bound for the only unassigned
-     * variable (e.g., `x < 0`, or `x <= 0`)
-     *
-     * @param cons linear constraint with exactly one unassigned variable
-     * @return true iff @p cons implies an upper bound
-     */
-    bool implies_upper_bound(Constraint const& cons) const;
+    std::vector<Clause> finish(Trail& trail);
 
     /** Check if @p cons is unit (i.e., exactly one variable is unassigned)
-     * 
+     *
      * @param model partial assignment of variables in trail
      * @param cons queried linear constraint
      * @return true iff @p cons is unit constraint
      */
-    bool is_unit(Model<Rational> const& model, Constraint const& cons) const;
+    [[nodiscard]] bool is_unit(Model<Rational> const& model, Constraint const& cons) const;
 
     /** Check if all variables in @p cons are assigned.
-     * 
+     *
      * @param model partial assignment of variables in trail
      * @param cons queries linear constraint
      * @return true iff all variables in @p cons are assigned.
      */
-    bool is_fully_assigned(Model<Rational> const& model, Constraint const& cons) const;
+    [[nodiscard]] bool is_fully_assigned(Model<Rational> const& model,
+                                         Constraint const& cons) const;
+
+    /** Find the highest decision level of any assigned variable in @p cons including the boolean
+     * variable which represents @p cons (i.e., `cons.lit().var()`)
+     *
+     * @param trail solver trail
+     * @param cons linear constraint
+     * @return the highest decision level of any variable in @p cons including the boolean variable
+     * which represents @p cons or 0 if no variable is assigned in @p cons
+     */
+    [[nodiscard]] int decision_level(Trail const& trail, Constraint const& cons) const;
 
     /** Check if @p var is in @p models
      *
@@ -265,7 +296,7 @@ private:
      * @param var checked variables
      * @return true iff @p var is in @p models
      */
-    bool is_new(Models const& models, Variable var) const;
+    [[nodiscard]] bool is_new(Models const& models, Variable var) const;
 
     /** Allocate space for a new variable @p var in @p trail if it is necessary.
      *
@@ -281,7 +312,20 @@ private:
      * @param bounds implied bounds of a variable
      * @return integer value allowed by @p bounds or none if there is no such value
      */
-    std::optional<Rational> find_integer(Models const& models, Variable_bounds& bounds);
+    [[nodiscard]] std::optional<Rational> find_integer(Models const& models, Bounds_type& bounds);
+
+    /** Check that bounds is consistent with all unit constraints on the trail
+     *
+     * @param trail solver trail
+     * @param models partial assignment of variables in @p trail
+     */
+    void check_bounds_consistency(Trail const& trail, Models const& models);
+
+    /** Check that watched variables are in watch lists
+     *
+     * @param models partial assignment of variables
+     */
+    void check_watch_consistency(Models const& models);
 };
 
 } // namespace perun

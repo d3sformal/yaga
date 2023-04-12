@@ -23,7 +23,7 @@ void Conflict_analysis::resolve(Trail const& trail, Clause const& other, Literal
 
     for (auto lit : other)
     {
-        if (lit != conflict_lit.negate())
+        if (lit != ~conflict_lit)
         {
             auto [_, is_inserted] = conflict.insert(lit);
             if (is_inserted && trail.decision_level(lit.var()) == top_level)

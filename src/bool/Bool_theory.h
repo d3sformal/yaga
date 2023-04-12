@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <optional>
 #include <vector>
+#include <ranges>
 
 #include "Database.h"
 #include "Literal.h"
@@ -24,7 +25,7 @@ public:
      * @param trail current solver trail
      * @return conflict clause if there is a conflict, none otherwise.
      */
-    std::optional<Clause> propagate(Database& db, Trail& trail) override;
+    std::vector<Clause> propagate(Database& db, Trail& trail) override;
 
     /** Decide value for variable @p var if it is a boolean variable
      *
@@ -64,18 +65,31 @@ private:
         }
     };
 
+    // satisfied literal with pointer to the reason clause (or nullptr)
+    struct Satisfied_literal {
+        // satisfied literal
+        Literal lit;
+        // clause that led to propagation of the literal or nullptr if there is none
+        Clause* reason;
+
+        /** Convert the structure to pair so we can tie the properties
+         * 
+         * @return pair of the values from this structure
+         */
+        inline operator std::pair<Literal, Clause*>() { return {lit, reason}; }
+    };
+
     // map literal -> list of clauses in which it is watched
     Literal_map<std::vector<Watched_clause>> watched;
     // stack of true literals to propagate with a pointer to the reason clause
-    std::vector<std::pair<Literal, Clause*>> satisfied;
+    std::vector<Satisfied_literal> satisfied;
 
     /** Propagate assigned literals at current decision level in @p trail
      *
      * @param db clause database
      * @param trail current trail
-     * @return conflict clause if a clause becomes false. None, otherwise.
      */
-    std::optional<Clause> initialize(Database& db, Trail& trail);
+    void initialize(Database& db, Trail& trail);
 
     /** Move watch from recently falsified literal @p lit to some other literal.
      *
@@ -84,21 +98,35 @@ private:
      * -# If some clause becomes false, this method will return a copy of that
      * clause.
      *
+     * @param trail current solver trail
      * @param model current assignment of boolean variables
      * @param lit recently falsified literal in @p model
-     * @return conflict clause if a clause becomes flase. None, otherwise.
+     * @return conflict clause if a clause becomes false. None, otherwise.
      */
-    std::optional<Clause> falsified(Model<bool> const& model, Literal lit);
+    std::optional<Clause> falsified(Trail const& trail, Model<bool> const& model, Literal lit);
 
     /** Try to replace the second watched literal in @p watch with some other
      * non-falsified literal
      *
      * @param model current assignment of boolean variables
      * @param watch
-     * @return true iff the second watched literal has been replaced with some
-     * other non-falsified literal in the clause
+     * @return true iff the second watched literal has been replaced with some non-falsified 
+     * literal in the clause
      */
     bool replace_second_watch(Model<bool> const& model, Watched_clause& watch);
+
+    /** Make sure the second watched variable has the highest decision level in a unit or a false
+     * clause.
+     * 
+     * Precondition: clause of @p watch is unit or false in @p model
+     * 
+     * @param trail current solver trail
+     * @param model partial assignment of boolean variables
+     * @param watch unit or false clause where the second watched variable is false
+     * @return true iff the second watch has been replaced with a literal with higher decision 
+     * level
+     */
+    bool fix_second_watch(Trail const& trail, Model<bool> const& model, Watched_clause& watch);
 };
 
 } // namespace perun

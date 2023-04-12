@@ -13,6 +13,7 @@
 #include "Rational.h"
 #include "Linear_constraint.h"
 #include "Trail.h"
+#include "Variable_bounds.h"
 
 namespace perun {
 
@@ -25,7 +26,7 @@ template <typename T> struct Linear_polynomial {
     // pairs of variable and coefficient
     std::vector<Variable_coefficient> variables;
     // constant term
-    T constant;
+    T constant{0};
 
     inline auto begin() { return variables.begin(); }
     inline auto end() { return variables.end(); }
@@ -73,7 +74,7 @@ template <typename T> struct Linear_polynomial {
      * @param models partial assignment of variables
      * @return
      */
-    T implied_value(Models models) const
+    T implied_value(Models const& models) const
     {
         assert(!empty());
 
@@ -118,20 +119,99 @@ template <typename T> std::ostream& operator<<(std::ostream& out, Linear_polynom
 
 class Linear_arithmetic;
 
-class Fourier_motzkin_elimination {
+class Fm_elimination {
 public:
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
     using Variable_coefficient = std::pair<int, Rational>;
 
-    inline explicit Fourier_motzkin_elimination(Linear_arithmetic* lra) : lra(lra) {}
+    inline explicit Fm_elimination(Linear_arithmetic* lra) : lra(lra) {}
+
+    /** Create FM elimination starting with the constraint @p cons
+     *
+     * @param lra LRA plugin
+     * @param cons linear constraint
+     */
+    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons) : lra(lra) { init(cons); }
+
+    /** Create FM elimination starting with the polynomial of @p cons multiplied by @p mult with
+     * predicate @p pred
+     *
+     * @param lra LRA plugin
+     * @param cons linear constraint
+     * @param pred predicate of the constraint (actual predicate of @p cons is ignored)
+     * @param mult constant by which we multiply linear polynomial from @p cons
+     */
+    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons, Order_predicate pred,
+                          Rational mult)
+        : lra(lra)
+    {
+        init(cons, pred, mult);
+    }
+
+    // non-copyable
+    Fm_elimination(Fm_elimination const&) = delete;
+    Fm_elimination& operator=(Fm_elimination const&) = delete;
+
+    // movable
+    Fm_elimination(Fm_elimination&& other) = default;
+    Fm_elimination& operator=(Fm_elimination&& other) = default;
+
+    /** FM elimination of @p var using constraint derived from @p other FM elimination
+     *
+     * @param other other FM elimination
+     * @param var rational variable ordinal to resolve
+     */
+    void resolve(Fm_elimination const& other, int var);
+
+    /** Create a linear constraint from current derivation and propagate it to the @p trail
+     *
+     * @param trail current solver trail
+     * @return FM derivation
+     */
+    Constraint finish(Trail& trail);
+
+    /** Get current derived polynomial
+     *
+     * @return current linear polynomial
+     */
+    inline Polynomial& derived() { return poly; }
+    inline Polynomial const& derived() const { return poly; }
+
+    /** Get current predicate
+     *
+     * @return derived predicate
+     */
+    inline Order_predicate predicate() const { return pred; }
+
+    /** Find predicate of the constraint after FM elimination
+     *
+     * @param first predicate of one constraint
+     * @param second predicate of the other constraint
+     * @return predicate of the combination (constraint after FM elimination)
+     */
+    Order_predicate combine(Order_predicate first, Order_predicate second) const;
+
+private:
+    // polynomial of the currently derived constraint
+    Polynomial poly;
+    // predicate of the currently derived constraint
+    Order_predicate pred = Order_predicate::eq;
+    // LRA plugin
+    Linear_arithmetic* lra;
 
     /** Set current constraint to @p cons
      *
      * @param cons linear constraint
      */
     void init(Constraint const& cons);
+
+    /** Set current constraint to the derived constraint from @p other elimination
+     *
+     * @param other other FM elimination
+     */
+    void init(Fm_elimination&& other);
 
     /** Set current constraint to the polynomial of @p cons multiplied by @p mult with predicate
      * @p pred
@@ -141,30 +221,6 @@ public:
      * @param mult constant by which we multiply linear polynomial from @p cons
      */
     void init(Constraint const& cons, Order_predicate pred, Rational mult);
-
-    /** Fourier-Motzkin elimination of the first variable in current constraint.
-     *
-     * If current constraint is `L <= x` and @p cons is `x <= U` (or vice versa), derive `L <= U`
-     * where `x` is the first variable in current constraint.
-     *
-     * @param cons linear constraint
-     */
-    void resolve(Constraint const& cons);
-
-    /** Create a linear constraint from current derivation and propagate it to the @p trail
-     *
-     * @param trail current solver trail
-     * @return FM derivation
-     */
-    Constraint finish(Trail& trail);
-
-private:
-    // polynomial of the currently derived constraint
-    Polynomial poly;
-    // predicate of the currently derived constraint
-    Order_predicate pred = Order_predicate::eq;
-    // LRA plugin
-    Linear_arithmetic* lra;
 
     // check if a linear constraint implies a lower bound for a variable with coefficient `coef`
     inline bool is_lower_bound(Rational coef, Order_predicate pred, bool is_negation) const
@@ -179,51 +235,77 @@ private:
         return pred == Order_predicate::eq || (coef > 0 && !is_negation) ||
                (coef < 0 && is_negation);
     }
-
-    // check if current constraint implies a lower bound
-    inline bool is_lower_bound() const
-    {
-        assert(!poly.empty());
-        return is_lower_bound(poly.variables.front().second, pred, false);
-    }
-
-    // check if current constraint implies an upper bound
-    inline bool is_upper_bound() const
-    {
-        assert(!poly.empty());
-        return is_upper_bound(poly.variables.front().second, pred, false);
-    }
 };
 
+/** Derive a conflict clause by eliminating all unassigned variables.
+ */
+class Lra_conflict_analysis {
+public:
+    using Models = Theory_models<Rational>;
+    using Constraint = Linear_constraint<Rational>;
+    using Polynomial = detail::Linear_polynomial<Rational>;
+
+    inline Lra_conflict_analysis(Linear_arithmetic* lra) : lra(lra) {}
+
+    /** Eliminate a variable using @p bound
+     *
+     * All unassigned variables in @p bound are eliminated using FM elimination and the old
+     * constraints used for the elimination are added as assumptions to current conflict clause.
+     *
+     * @param models partial assignment of variables
+     * @param bounds variable bounds
+     * @param bound bound of a variable to eliminate
+     * @return derived linear constraint of @p bound after eliminating all unassigned variables
+     */
+    Fm_elimination eliminate(Models const& models, Bounds& bounds,
+                             Implied_value<Rational> const& bound);
+
+    /** Remove duplicates from the conflict clause
+     *
+     * @return current conflict clause
+     */
+    Clause& finish();
+
+    // get current unfinished conflict clause
+    inline Clause& conflict() { return clause; }
+    // get current unfinished conflict clause
+    inline Clause const& conflict() const { return clause; }
+
+private:
+    Linear_arithmetic* lra;
+    Clause clause;
+};
+
+/** Analysis of bound conflicts.
+ */
 class Bound_conflict_analysis {
 public:
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
-    using Variable_bounds = Bounds<Rational>;
 
-    inline Bound_conflict_analysis(Linear_arithmetic* lra) : lra(lra), fm(lra) {}
+    inline Bound_conflict_analysis(Linear_arithmetic* lra) : lra(lra) {}
 
-    /** Check if there is a bound conflict (i.e., `L <= x` and `x <= U` and `L > U` or similar
-     * conflicts with strict bounds)
+    /** Check if there is a bound conflict and provide an explanation if there is a conflict.
      *
      * @param trail current solver trail
-     * @param bounds implied bounds for a variable
+     * @param bounds map rational variable -> implied bounds for that variable
+     * @param var_ord checked rational variable
      * @return conflict clause if there is a bound conflict. None, otherwise.
      */
-    std::optional<Clause> analyze(Trail& trail, Variable_bounds& bounds);
+    std::optional<Clause> analyze(Trail& trail, Bounds& bounds, int var_ord);
 
 private:
     Linear_arithmetic* lra;
-    Fourier_motzkin_elimination fm;
 };
 
+/** Analysis of inequality conflicts.
+ */
 class Inequality_conflict_analysis {
 public:
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
-    using Variable_bounds = Bounds<Rational>;
 
     inline Inequality_conflict_analysis(Linear_arithmetic* lra) : lra(lra), fm(lra) {}
 
@@ -231,14 +313,15 @@ public:
      * where L, U, D evaluate to the same value in @p trail
      *
      * @param trail current solver trail
-     * @param bounds implied bounds for a variable
+     * @param bounds map rational variable -> implied bounds for that variable
+     * @param var_ord checked rational variable
      * @return conflict clause if there is an inequality conflict. None, otherwise.
      */
-    std::optional<Clause> analyze(Trail& trail, Variable_bounds& bounds);
+    std::optional<Clause> analyze(Trail& trail, Bounds& bounds, int var_ord);
 
 private:
     Linear_arithmetic* lra;
-    Fourier_motzkin_elimination fm;
+    Fm_elimination fm;
 };
 
 } // namespace perun

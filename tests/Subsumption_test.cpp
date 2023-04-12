@@ -23,13 +23,13 @@ TEST_CASE("Remove subsumed learned clauses", "[subsumption]")
     REQUIRE(*db.learned().begin() == clause(lit(1), lit(2)));
 }
 
-TEST_CASE("Strenghten conflict clause", "[self-subsumption]")
+TEST_CASE("Strengthen conflict clause", "[self-subsumption]")
 {
     using namespace perun;
     using namespace perun::test;
 
     Database db;
-    db.learn_clause(-lit(0), -lit(1), lit(2));
+    db.learn_clause(~lit(0), ~lit(1), lit(2));
     db.learn_clause(lit(1));
 
     Trail trail;
@@ -44,7 +44,7 @@ TEST_CASE("Strenghten conflict clause", "[self-subsumption]")
     model.set_value(2, true);
     trail.decide(bool_var(2));
 
-    auto conflict = clause(lit(0), -lit(1), lit(2), lit(3));
+    auto conflict = clause(lit(0), ~lit(1), lit(2), lit(3));
 
     Subsumption s;
     s.on_variable_resize(Variable::boolean, 4);

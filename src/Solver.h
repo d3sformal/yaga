@@ -7,6 +7,7 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
+#include <ranges>
 
 #include "Clause.h"
 #include "Conflict_analysis.h"
@@ -67,7 +68,7 @@ public:
         }
 
         auto concrete_theory_ptr = concrete_theory.get();
-        theory = std::move(concrete_theory);
+        solver_theory = std::move(concrete_theory);
         return *concrete_theory_ptr;
     }
 
@@ -129,39 +130,56 @@ public:
      */
     inline int num_restarts() const { return total_restarts; }
 
-private:
-    Trail solver_trail;
-    Database database;
-    Subsumption subsumption;
-    Conflict_analysis analysis;
-    std::unique_ptr<Theory> theory;
-    std::unique_ptr<Restart> restart_policy;
-    std::unique_ptr<Variable_order> variable_order;
-    int num_bool_vars = 0;
-
-    // statistics
-    int total_conflicts = 0;
-    int total_restarts = 0;
-    int total_decisions = 0;
-
-    // get all event listeners
+    /** Get range of listeners in this solver
+     * 
+     * @return range with pointers to event listeners
+     */
     inline auto listeners()
     {
         return std::array<Event_listener*, 4>{
-            theory.get(),
+            solver_theory.get(),
             restart_policy.get(),
             variable_order.get(),
             &subsumption,
         };
     }
 
-    std::optional<Clause> propagate();
-    // analyze conflict clause
-    std::pair<Clause, int> analyze_conflict(Clause&& conflict);
-    // backtrack with conflict clause `learned` to assertion level `level`
-    void backtrack_with(Clause&& learned, int level);
+    /** Get theory used by this solver
+     * 
+     * @return theory used by this solver or nullptr if no theory was set
+     */
+    inline Theory* theory() { return solver_theory.get(); }
+
+private:
+    Trail solver_trail;
+    Database database;
+    Subsumption subsumption;
+    Conflict_analysis analysis;
+    std::unique_ptr<Theory> solver_theory;
+    std::unique_ptr<Restart> restart_policy;
+    std::unique_ptr<Variable_order> variable_order;
+    int num_bool_vars = 0;
+
+    using Clause_iterator = std::deque<Clause>::iterator;
+    using Clause_range = std::ranges::subrange<Clause_iterator>;
+
+    // statistics
+    int total_conflicts = 0;
+    int total_restarts = 0;
+    int total_decisions = 0;
+
+    // run propagate in theory
+    [[nodiscard]] std::vector<Clause> propagate();
+    // analyze conflict clauses
+    [[nodiscard]] std::pair<std::vector<Clause>, int> analyze_conflicts(std::vector<Clause>&& conflict);
+    // backtrack with conflict clauses to assertion level `level`
+    void backtrack_with(Clause_range clauses, int level);
+    // process all learned clauses and add them to database
+    [[nodiscard]] Clause_range learn(std::vector<Clause>&& learned);
+    // check if conflict `clause` is a semantic split clause
+    bool is_semantic_split(Clause const& clause) const;
     // pick the next variable to assign
-    std::optional<Variable> pick_variable();
+    [[nodiscard]] std::optional<Variable> pick_variable();
     // decide value of an unassigned variable
     void decide(Variable var);
     // restart the solver

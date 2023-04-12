@@ -74,6 +74,14 @@ public:
      */
     std::optional<Variable> pick(Database& db, Trail& trail) override;
 
+    /** Check whether @p lhs has a greater VSIDS score than @p rhs
+     * 
+     * @param lhs first variable
+     * @param rhs second variable
+     * @return true iff @p lhs has a greater VSIDS score than @p rhs
+     */
+    bool is_before(Variable lhs, Variable rhs) const override;
+
     /** Get current VSIDS score of @p var
      * 
      * @param var queried variable

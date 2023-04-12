@@ -13,6 +13,7 @@
 #include "First_unassigned.h"
 #include "Smtlib_parser.h"
 #include "Rational.h"
+#include "Perun.h"
 
 using namespace perun;
 using namespace perun::test;
@@ -129,8 +130,8 @@ TEST_CASE("Check an unsatisfiable formula in LRA", "[lra][unsat][integration]")
 
     solver.db().assert_clause(clause(linear(x + y < 1)));
     solver.db().assert_clause(clause(linear(x - y > 0)));
-    solver.db().assert_clause(clause(-linear(x >= 0), linear(y > 1_r / 2)));
-    solver.db().assert_clause(clause(-linear(x < 0), linear(y > 1)));
+    solver.db().assert_clause(clause(~linear(x >= 0), linear(y > 1_r / 2)));
+    solver.db().assert_clause(clause(~linear(x < 0), linear(y > 1)));
 
     auto result = solver.check();
     REQUIRE(result == Solver::Result::unsat);
@@ -146,21 +147,13 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
     input << "(declare-fun pi () Real)\n";
     input << "(assert (and (> pi (/ 15707963 5000000)) (and (not (<= (/ 31415927 10000000) pi)) (and (<= skoY (* pi (/ 1 3))) (and (<= (* pi (/ 1 4)) skoY) (and (<= skoX 120) (<= 100 skoX)))))))\n";
 
-    Solver solver;
-    solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Rational>(Variable::rational, 0);
-    solver.set_restart_policy<No_restart>();
-    solver.set_variable_order<First_unassigned>();
-    auto& theories = solver.set_theory<Theory_combination>();
-    theories.add_theory<Bool_theory>();
-    auto& lra = theories.add_theory<Linear_arithmetic>();
-
-    Smtlib_parser<Direct_interpreter> parser{lra, solver.db(), solver.trail()};
+    Perun smt{logic::qf_lra};
+    Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 
-    auto result = solver.check();
+    auto result = smt.solver().check();
 
-    auto& real_model = solver.trail().model<Rational>(Variable::rational);
+    auto& real_model = smt.solver().trail().model<Rational>(Variable::rational);
     auto sko_x = real_model.value(parser.listener().var("skoX").ord());
     auto sko_y = real_model.value(parser.listener().var("skoY").ord());
     auto pi = real_model.value(parser.listener().var("pi").ord());
@@ -183,18 +176,10 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
     input << "(declare-fun pi () Real)\n";
     input << "(assert (and (= skoX 0) (and (not (<= pi (/ 15707963 5000000))) (and (not (<= (/ 31415927 10000000) pi)) (and (<= skoY (* pi (/ 1 3))) (and (<= (* pi (/ 1 4)) skoY) (and (<= skoX 120) (<= 100 skoX))))))))\n";
 
-    Solver solver;
-    solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.trail().set_model<Rational>(Variable::rational, 0);
-    solver.set_restart_policy<No_restart>();
-    solver.set_variable_order<First_unassigned>();
-    auto& theories = solver.set_theory<Theory_combination>();
-    theories.add_theory<Bool_theory>();
-    auto& lra = theories.add_theory<Linear_arithmetic>();
-
-    Smtlib_parser<Direct_interpreter> parser{lra, solver.db(), solver.trail()};
+    Perun smt{logic::qf_lra};
+    Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 
-    auto result = solver.check();
+    auto result = smt.solver().check();
     REQUIRE(result == Solver::Result::unsat);
 }

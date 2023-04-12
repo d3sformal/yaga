@@ -3,334 +3,174 @@
 
 #include <algorithm>
 #include <cassert>
-#include <limits>
-#include <optional>
-#include <type_traits>
 #include <vector>
 
-#include "Linear_constraints.h"
-#include "Model.h"
+#include "Rational.h"
+#include "Linear_constraint.h"
+#include "Trail.h"
+#include "Variable_bounds.h"
 
 namespace perun {
 
-/** Reference to models relevant for a theory
- *
- * @tparam Value type of variables of the theory
+/** Type responsible for keeping bounds for all rational variables.
  */
-template <typename Value> class Theory_models {
+class Bounds {
 public:
-    Theory_models(Model<bool>& bool_model, Model<Value>& owned_model)
-        : bool_model(bool_model), owned_model(owned_model)
-    {
-    }
+    using Bound = Implied_value<Rational>;
+    using Models = Theory_models<Rational>;
+    using Constraint = Linear_constraint<Rational>;
 
-    inline Theory_models(Theory_models const&) = delete;
-    inline Theory_models& operator=(Theory_models const&) = delete;
-
-    /** Get model of boolean variables
+    /** Change the number of rational variables
      *
-     * @return partial assignment of boolean variables
+     * @param num_vars new number of rational variables
      */
-    inline Model<bool> const& boolean() const { return bool_model; }
+    void resize(int num_vars);
 
-    /** Get model of boolean variables
+    /** Deduce a new bounds from @p cons
      *
-     * @return partial assignment of boolean variables
+     * @param models partial assignment of variables
+     * @param cons constraint used to deduce new bounds
      */
-    inline Model<bool>& boolean() { return bool_model; }
+    void deduce(Models const& models, Constraint cons);
 
-    /** Get model of variables owned by the theory
+    /** Update bounds using the unit constraint @p cons
      *
-     * @return partial assignment of variables owned by the theory
+     * @param models partial assignment of variables
+     * @param cons new unit constraint
      */
-    inline Model<Value> const& owned() const { return owned_model; }
+    void update(Models const& models, Constraint cons);
 
-    /** Get model of variables owned by the theory
+    /** Get range of rational variables whose bound has changed since the last call to `changed()`
      *
-     * @return partial assignment of variables owned by the theory
+     * @return range of variables with updated bounds
      */
-    inline Model<Value>& owned() { return owned_model; }
+    std::vector<int> const& changed();
+
+    /** Check whether an unassigned constraint can be deduced to be true in current trail
+     *
+     * @param models partial assignment of variables
+     * @param cons checked constraint
+     * @return true iff @p cons is true in current trail
+     */
+    bool is_implied(Models const& models, Constraint cons);
+
+    /** Check whether the unit constraint @p cons implies an equality for the only unassigned
+     * variable (e.g., `x == 5`)
+     *
+     * @param cons linear constraint with exactly one unassigned variable
+     * @return true iff @p cons implies an equality
+     */
+    [[nodiscard]] bool implies_equality(Constraint const& cons) const;
+
+    /** Check whether the unit constraint @p cons implies an inequality for the only unassigned
+     * variable (e.g., `x != 4`)
+     *
+     * @param cons linear constraint with exactly one unassigned variable
+     * @return true iff @p cons implies an inequality
+     */
+    [[nodiscard]] bool implies_inequality(Constraint const& cons) const;
+
+    /** Check whether the unit constraint @p cons implies a lower bound for the only unassigned
+     * variable (e.g., `x > 0`, or `x >= 0`)
+     *
+     * @param cons linear constraint with exactly one unassigned variable
+     * @return true iff @p cons implies a lower bound
+     */
+    [[nodiscard]] bool implies_lower_bound(Constraint const& cons) const;
+
+    /** Check whether the unit constraint @p cons implies an upper bound for the only unassigned
+     * variable (e.g., `x < 0`, or `x <= 0`)
+     *
+     * @param cons linear constraint with exactly one unassigned variable
+     * @return true iff @p cons implies an upper bound
+     */
+    [[nodiscard]] bool implies_upper_bound(Constraint const& cons) const;
+
+    /** Get bounds for a variable @p var
+     *
+     * @param var rational variable number
+     * @return bounds for @p var
+     */
+    inline Variable_bounds<Rational>& operator[](int var) { return bounds[var]; }
 
 private:
-    Model<bool>& bool_model;
-    Model<Value>& owned_model;
-};
+    // map lra variable ordinal -> bounds for that variable
+    std::vector<Variable_bounds<Rational>> bounds;
+    // variables with updated bounds
+    std::vector<int> updated_read;
+    std::vector<int> updated_write;
+    // maximum number of dependencies of a bound (as a percentage of the number of variables)
+    float threshold = 0.8;
 
-/** Value implied by a linear constraint
- *
- * @tparam Value
- */
-template <typename Value> class Implied_value {
-public:
-    using Constraint = Linear_constraint<Value>;
-    using Models = Theory_models<Value>;
+    // properties deduced from a linear constraint
+    struct Deduced_properties {
+        // upper or lower bound deduced from the constraint by evaluating assigned variables and
+        // eliminating bounded variables using FM elimination
+        Rational bound{0};
+        // bounds used for FM elimination to derive `bound`
+        std::vector<Bound> deps;
+        // number of unassigned variables which have not been eliminated
+        int num_vars;
+        // the last unbounded variable and its coefficient
+        int unbounded_var;
+        Rational unbounded_coef{0};
+    };
 
-    inline Implied_value(Value val, Constraint cons, Models const& models)
-        : val(val), cons(cons),
-          timestamp(cons.size() >= 2 ? models.owned().timestamp(*++cons.vars().begin()) : -1)
+    /** Count distinct bounds in @p bounds and all their dependencies
+     *
+     * @tparam Bound_range range of bounds
+     * @param bounds range of bounds
+     * @return number of distinct bounds in @p bounds and their dependencies
+     */
+    template <std::ranges::range Bound_range> int count_distinct_bounds(Bound_range&& bounds)
     {
+        std::vector<int> vars;
+        vars.reserve(bounds.size());
+        auto add = [&](auto& self, Bound const& bound) -> void {
+            vars.push_back(bound.reason().lit().var().ord());
+            for (auto const& other : bound.bounds())
+            {
+                self(self, other);
+            }
+        };
+        for (auto const& bound : bounds)
+        {
+            add(add, bound);
+        }
+
+        // count distinct bounds
+        std::sort(vars.begin(), vars.end());
+        return std::distance(vars.begin(), std::unique(vars.begin(), vars.end()));
     }
 
-    /** Get the implied value
+    /** Check whether @p bound is an equality (=)
      *
-     * @return implied value
+     * @param bound checked bound
+     * @return true iff @p bound implies an equality for the bounded variable
      */
-    inline Value value() const { return val; }
+    [[nodiscard]] bool is_equality(Bound const& bound) const;
 
-    /** Get linear constraint that implied this bound.
-     *
-     * @return linear constraint that implied this bound
-     */
-    inline Constraint reason() const { return cons; }
-
-    /** Check whether this value is obsolete.
-     *
-     * Value becomes obsolete if `reason()` is no longer on the trail, it is no longer a unit
-     * constraint, or variables in `reason()` are assigned to different values than when this
-     * object was created.
+    /** Deduce bounds from an equality @p cons (=)
      *
      * @param models partial assignment of variables
-     * @return true iff `value()` is no longer a valid implied value from `reason()`
+     * @param cons an equality linear constraint (=)
      */
-    inline bool is_obsolete(Models const& models) const
-    {
-        if (reason().empty() || perun::eval(models.boolean(), reason().lit()) != true)
-        {
-            return true; // reason() is no longer on the trail
-        }
+    void deduce_from_equality(Models const& models, Constraint cons);
 
-        // find the assigned watched variable
-        auto [var_it, var_end] = cons.vars();
-        assert(var_it != var_end);
-        assert(!models.owned().is_defined(*var_it) ||
-               std::all_of(cons.vars().begin(), cons.vars().end(),
-                           [&](auto var_ord) { return models.owned().is_defined(var_ord); }));
-
-        if (models.owned().is_defined(*var_it))
-        {
-            return false;
-        }
-        else // the first variable is unassigned
-        {
-            ++var_it;
-        }
-
-        return var_it != var_end && (!models.owned().is_defined(*var_it) ||
-                                     models.owned().timestamp(*var_it) != timestamp);
-    }
-
-private:
-    // implied bound
-    Value val;
-    // linear constraint that implied the bound
-    Constraint cons;
-    // timestamp of the most recently assigned variable in cons
-    int timestamp;
-};
-
-/** This class keeps track of implied bounds and inequalities for a variable.
- *
- * Obsolete bounds are removed lazily when a bound is requested.
- *
- * @tparam Value value type of the bounds
- */
-template <typename Value> class Bounds {
-public:
-    using Implied_value_type = Implied_value<Value>;
-    using Constraint = Linear_constraint<Value>;
-    using Models = Theory_models<Value>;
-
-    /** Get current tightest implied upper bound
+    /** Deduce bounds from an inequality @p cons (<, <=, >, >=)
      *
      * @param models partial assignment of variables
-     * @return tightest upper bound or none if there is no implied upper bound
+     * @param cons an inequality linear constraint (<, <=, >, >=)
      */
-    inline std::optional<Implied_value_type> upper_bound(Models const& models)
-    {
-        remove_obsolete(ub, models);
+    void deduce_from_inequality(Models const& models, Constraint cons);
 
-        if (ub.empty()) // no bound
-        {
-            return {};
-        }
-        else // there is at least one implied upper bound
-        {
-            return ub.back();
-        }
-    }
-
-    /** Get current tightest implied lower bound
+    /** Check whether @p bound depends on a linear constraint whose boolean variable is @p bool_var
      *
-     * @param models partial assignment of variables
-     * @return tightest lower bound or none if there is no implied lower bound
+     * @param bound checked bound
+     * @param bool_var ordinal number of a boolean variable
+     * @return true iff @p bound depends on @p bool_var
      */
-    inline std::optional<Implied_value_type> lower_bound(Models const& models)
-    {
-        remove_obsolete(lb, models);
-
-        if (lb.empty()) // no bound
-        {
-            return {};
-        }
-        else // there is at least one implied lower bound
-        {
-            return lb.back();
-        }
-    }
-
-    /** Check whether there is an inequality of type `x != value`
-     *
-     * @param models partial assignment of variables
-     * @param value checked value
-     * @return implied inequality or none, if there is none.
-     */
-    std::optional<Implied_value_type> inequality(Models const& models, Value value)
-    {
-        // remove obsolete values
-        disallowed.erase(std::remove_if(disallowed.begin(), disallowed.end(),
-                                        [&](auto v) { return v.is_obsolete(models); }),
-                         disallowed.end());
-
-        // check if value is in the list
-        auto it = std::find_if(disallowed.begin(), disallowed.end(),
-                               [value](auto v) { return v.value() == value; });
-        if (it == disallowed.end())
-        {
-            return {};
-        }
-        return *it;
-    }
-
-    /** Add a new value to the list of disallowed values
-     *
-     * @param value value that cannot be assigned to the variable
-     */
-    inline void add_inequality(Implied_value_type value)
-    {
-        assert(value.reason().pred() == Order_predicate::eq && value.reason().lit().is_negation());
-        disallowed.push_back(value);
-    }
-
-    /** Add a new upper @p bound
-     *
-     * @param models partial assignment variables
-     * @param bound new upper bound
-     */
-    inline void add_upper_bound(Models const& models, Implied_value_type bound)
-    {
-        auto current_bound = upper_bound(models);
-        if (!current_bound || less(bound, current_bound.value()))
-        {
-            ub.push_back(bound);
-        }
-    }
-
-    /** Add a new lower @p bound
-     *
-     * @param models partial assignment of variables
-     * @param bound new lower bound
-     */
-    inline void add_lower_bound(Models const& models, Implied_value_type bound)
-    {
-        auto current_bound = lower_bound(models);
-        if (!current_bound || greater(bound, current_bound.value()))
-        {
-            lb.push_back(bound);
-        }
-    }
-
-    /** Check whether @p value satisfies currently implied lower bound
-     *
-     * @param models partial assignment of variables
-     * @param value checked value
-     * @return true if @p value is > `lower_bound()` and the bound is strict
-     * @return true if @p value is >= `lower_bound()` and the bound is not strict
-     */
-    inline bool check_lower_bound(Models const& models, Value value)
-    {
-        if (auto lb = lower_bound(models))
-        {
-            auto bound = lb.value();
-            return bound.value() < value || (bound.value() == value && !bound.reason().is_strict());
-        }
-        return true;
-    }
-
-    /** Check whether @p value satisfies currently implied upper bound
-     *
-     * @param models partial assignment of variables
-     * @param value checked value
-     * @return true if @p value is < `upper_bound()` and the bound is strict
-     * @return true if @p value is <= `upper_bound()` and the bound is not strict
-     */
-    inline bool check_upper_bound(Models const& models, Value value)
-    {
-        if (auto ub = upper_bound(models))
-        {
-            auto bound = ub.value();
-            return value < bound.value() || (bound.value() == value && !bound.reason().is_strict());
-        }
-        return true;
-    }
-
-    /** Check whether @p value is between currently implied lower and upper bound and there is no
-     * inequality that would disallow @p value
-     *
-     * @param models partial assignment of variables
-     * @param value checked value
-     * @return true iff @p value is between `lower_bound()` and `upper_bound()` and there is no
-     * inequality that would prohibit @p value
-     */
-    inline bool is_allowed(Models const& models, Value value)
-    {
-        return !inequality(models, value) && check_lower_bound(models, value) &&
-               check_upper_bound(models, value);
-    }
-
-private:
-    // stack with upper bounds
-    std::vector<Implied_value_type> ub;
-    // stack with lower bounds
-    std::vector<Implied_value_type> lb;
-    // list of values it should not be assigned to
-    std::vector<Implied_value_type> disallowed;
-
-    /** Check whether @p lhs is strictly less than @p rhs
-     *
-     * @param lhs first value
-     * @param rhs second value
-     * @return true iff @p lhs < @p rhs
-     */
-    inline bool less(Implied_value_type const& lhs, Implied_value_type const& rhs) const
-    {
-        return lhs.value() < rhs.value() || (lhs.value() == rhs.value() &&
-                                             lhs.reason().is_strict() && !rhs.reason().is_strict());
-    }
-
-    /** Check whether @p lhs is strictly greater than @p rhs
-     *
-     * @param lhs first value
-     * @param rhs second value
-     * @return true iff @p lhs > @p rhs
-     */
-    inline bool greater(Implied_value_type const& lhs, Implied_value_type const& rhs) const
-    {
-        return lhs.value() > rhs.value() || (lhs.value() == rhs.value() &&
-                                             lhs.reason().is_strict() && !rhs.reason().is_strict());
-    }
-
-    /** Remove obsolete bounds from the top of the @p bounds stack
-     *
-     * @param bounds stack with bounds
-     * @param models partial assignment of variables
-     */
-    inline void remove_obsolete(std::vector<Implied_value_type>& bounds, Models const& models)
-    {
-        while (!bounds.empty() && bounds.back().is_obsolete(models))
-        {
-            bounds.pop_back();
-        }
-    }
+    bool depends_on(Implied_value<Rational> const& bound, int bool_var) const;
 };
 
 } // namespace perun

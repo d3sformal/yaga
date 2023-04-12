@@ -12,8 +12,8 @@ Theory::Trail_subrange Theory::assigned(Trail const& trail)
 {
     auto skip = trail.decision_level() == current_level ? next_index : 0;
     current_level = trail.decision_level();
-    next_index = trail.assigned(trail.decision_level()).size();
-    return trail.assigned(trail.decision_level()) | std::views::drop(skip);
+    next_index = trail.recent().size();
+    return trail.recent() | std::views::drop(skip);
 }
 
-}
+} // namespace perun

@@ -27,10 +27,10 @@ public:
         inline operator std::pair<Variable, Clause*>() const { return {var, reason}; }
     };
 
-    inline Trail() : assigned_stack(1) {}
+    inline Trail() : trail(1) {}
 
     // get current decision level
-    inline int decision_level() const { return static_cast<int>(assigned_stack.size()) - 1; }
+    inline int decision_level() const { return static_cast<int>(trail.size()) - 1; }
 
     /** Get decision level of a variable
      *
@@ -52,13 +52,22 @@ public:
      */
     inline Clause const* reason(Variable var) const { return var_reason[var.type()][var.ord()]; }
 
-    /** Get a list of variables together with reason clause assigned at decision
-     * level @p level
-     *
-     * @param level decision level
-     * @return list of variables assigned at decision level @p level
+    /** Get variables assigned at current decision level.
+     * 
+     * Note, that level of variables in this list can be lower than `decision_level()`.
+     * 
+     * @return range of variables added to the trail at current decision level
      */
-    inline auto const& assigned(int level) const { return assigned_stack[level]; }
+    inline auto const& recent() const { return trail.back(); }
+
+    /** Get variables assigned at @p level
+     * 
+     * Note, that decision level of variables in this list can be lower than @p level
+     * 
+     * @param level decision level
+     * @return variables added to the trail at level @p level
+     */
+    inline auto const& assigned(int level) const { return trail[level]; }
 
     /** Create a new model for variables of type @p type in this trail
      *
@@ -99,6 +108,13 @@ public:
     {
         return dynamic_cast<Model<T>&>(*var_models[type]);
     }
+
+    /** Get base model instance for variables of type @p type
+     * 
+     * @param type type of variables
+     * @return partial model of variables of type @p type
+     */
+    inline Model_base const& model(Variable::Type type) const { return *var_models[type]; }
 
     // get model for each type in this trail
     inline auto models() const
@@ -146,19 +162,18 @@ public:
         assert(var.type() < var_reason.size());
         assert(var.type() < var_models.size());
 
-        assigned_stack.emplace_back(std::vector<Assignment>{Assignment{var, nullptr}});
+        trail.emplace_back(std::vector<Assignment>{Assignment{var, /*reason=*/nullptr}});
         var_level[var.type()][var.ord()] = decision_level();
         var_reason[var.type()][var.ord()] = nullptr;
     }
 
-    /** Propagate variable @p var due to clause @p reason at decision level @p
-     * level
+    /** Propagate variable @p var due to clause @p reason at decision level @p level
      *
      * @param var variable to propagate
-     * @param reason reason clause for the propagation or `nullptr` if this is a
-     * semantic propagation
-     * @param level decision level at which @p var is propagated (in `[0,
-     * decision_level()]` range)
+     * @param reason reason clause for the propagation or `nullptr` if this is a semantic
+     * propagation
+     * @param level decision level at which @p var is propagated (in `[0, decision_level()]`
+     * range)
      */
     inline void propagate(Variable var, Clause* reason, int level)
     {
@@ -167,13 +182,15 @@ public:
         assert(var.type() < var_reason.size());
         assert(var.type() < var_models.size());
 
-        assigned_stack[level].push_back(Assignment{var, reason});
+        for (int i = level; i <= decision_level(); ++i)
+        {
+            trail[i].push_back(Assignment{var, reason});
+        }
         var_level[var.type()][var.ord()] = level;
         var_reason[var.type()][var.ord()] = reason;
     }
 
-    /** Make all variables decided or propagated at levels > @p level
-     * unassigned.
+    /** Make all variables decided or propagated at levels > @p level unassigned.
      *
      * @param level decision level to backtrack to
      */
@@ -181,16 +198,18 @@ public:
     {
         assert(0 <= level);
 
-        for (; decision_level() > level; assigned_stack.pop_back())
+        for (; decision_level() > level; trail.pop_back())
         {
-            for (auto [var, _] : assigned_stack[decision_level()])
+            for (auto assignment : trail[decision_level()])
             {
-                var_level[var.type()][var.ord()] = unassigned;
-                var_reason[var.type()][var.ord()] = nullptr;
-                var_models[var.type()]->clear(var.ord());
+                if (var_level[assignment.var.type()][assignment.var.ord()] > level)
+                {
+                    var_level[assignment.var.type()][assignment.var.ord()] = unassigned;
+                    var_reason[assignment.var.type()][assignment.var.ord()] = nullptr;
+                    var_models[assignment.var.type()]->clear(assignment.var.ord());
+                }
             }
         }
-
         assert(level == decision_level());
     }
 
@@ -198,7 +217,7 @@ public:
      *
      * @return true iff no variable is assigned in this trail
      */
-    inline bool empty() const { return assigned_stack.size() == 1 && assigned_stack[0].empty(); }
+    inline bool empty() const { return trail.size() == 1 && trail[0].empty(); }
 
     /** Make all variables unassigned.
      */
@@ -228,21 +247,20 @@ public:
             }
         }
 
-        assigned_stack.clear();
-        assigned_stack.emplace_back();
+        trail.clear();
+        trail.emplace_back();
     }
 
 private:
     // level in `var_level` of unassigned variables
     inline static constexpr int unassigned = -1;
 
-    // map decision level -> list of decisions/propagations at that level
-    std::vector<std::vector<Assignment>> assigned_stack;
+    // map decision level -> list of decisions/propagations made at that level
+    std::vector<std::vector<Assignment>> trail;
     // map variable type -> variable ordinal -> reason clause (redundant data
     // for fast random access)
     std::vector<std::vector<Clause const*>> var_reason;
-    // map variable type -> variable ordinal -> decision level (redundant data
-    // for fast random access)
+    // map variable type -> variable ordinal -> decision level
     std::vector<std::vector<int>> var_level;
     // models managed by this trail
     std::vector<std::unique_ptr<Model_base>> var_models;

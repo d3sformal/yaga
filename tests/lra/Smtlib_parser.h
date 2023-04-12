@@ -18,6 +18,7 @@
 #include "Literal.h"
 #include "Clause.h"
 #include "Database.h"
+#include "Perun.h"
 
 namespace perun::test {
 
@@ -27,8 +28,8 @@ public:
     using Polynomial_type = Linear_polynomial<Rational>;
     using Value_type = Rational;
 
-    inline explicit Direct_interpreter(Linear_arithmetic& lra, Database& db, Trail& trail) 
-        : lra(&lra), db(&db), trail(&trail) {}
+    inline explicit Direct_interpreter(Perun& perun) 
+        : perun(perun) {}
 
     // declare a new variable
     inline void declare(std::string const& id, std::string const& type) 
@@ -40,7 +41,7 @@ public:
         }
         else
         {
-            var = new_bool_var();
+            var = new_bool_var().var();
         }
         auto [_, is_inserted] = vars.insert({id, var});
         if (!is_inserted)
@@ -69,7 +70,7 @@ public:
         }
         else if (id == "false")
         {
-            push(true_lit.negate());
+            push(~true_lit);
             return;
         }
 
@@ -91,7 +92,7 @@ public:
             Literal lit{var_it->second.ord()};
             if (negate)
             {
-                lit = lit.negate();
+                lit = ~lit;
             }
             push(lit);
         }
@@ -109,7 +110,7 @@ public:
         {
             return;
         }
-        assert(lit != true_lit.negate());
+        assert(lit != ~true_lit);
         assert_clause(Clause{lit});
     }
 
@@ -219,9 +220,9 @@ private:
     bool negate = false;
     // map user-defined variable name -> variable
     std::unordered_map<std::string, Variable> vars;
-    Linear_arithmetic* lra;
-    Database* db;
-    Trail* trail;
+    // solver facade
+    Perun& perun;
+
     // placeholder for a literal which represents a constant TRUE
     inline static Literal true_lit{std::numeric_limits<int>::max() - 1};
 
@@ -248,9 +249,9 @@ private:
             {
                 value = true_lit;
             }
-            else if (arg == true_lit.negate() && !is_or)
+            else if (arg == ~true_lit && !is_or)
             {
-                value = true_lit.negate();
+                value = ~true_lit;
             }
         }
 
@@ -260,8 +261,7 @@ private:
         }
         else
         {
-            auto new_var = new_bool_var();
-            Literal new_lit{new_var.ord()};
+            auto new_lit = new_bool_var();
             push(new_lit);
 
             assert(std::find_if(args.begin(), args.end(), [&](auto lit) {
@@ -270,7 +270,7 @@ private:
 
             if (is_or)
             {
-                Clause res{new_lit.negate()};
+                Clause res{~new_lit};
                 res.insert(res.end(), args.rbegin(), args.rend());
                 assert_clause(std::move(res));
             }
@@ -278,7 +278,7 @@ private:
             {
                 for (auto arg : args | std::views::reverse)
                 {
-                    assert_clause(Clause{new_lit.negate(), arg});
+                    assert_clause(Clause{~new_lit, arg});
                 }
             }
         }
@@ -298,26 +298,26 @@ private:
         {
             push(lhs);
         }
-        else if (rhs == true_lit.negate())
+        else if (rhs == ~true_lit)
         {
-            push(lhs.negate());
+            push(~lhs);
         }
         else if (!negate)
         {
             assert(!is_constant(lhs));
             assert(!is_constant(rhs));
-            Literal new_lit{new_bool_var().ord()};
-            assert_clause(Clause{new_lit.negate(), lhs.negate(), rhs});
-            assert_clause(Clause{new_lit.negate(), lhs, rhs.negate()});
+            auto new_lit = new_bool_var();
+            assert_clause(Clause{~new_lit, ~lhs, rhs});
+            assert_clause(Clause{~new_lit, lhs, ~rhs});
             push(new_lit);
         }
         else // negate
         {
             assert(!is_constant(lhs));
             assert(!is_constant(rhs));
-            Literal new_lit{new_bool_var().ord()};
-            assert_clause(Clause{new_lit.negate(), lhs.negate(), rhs.negate()});
-            assert_clause(Clause{new_lit.negate(), lhs, rhs});
+            auto new_lit = new_bool_var();
+            assert_clause(Clause{~new_lit, ~lhs, ~rhs});
+            assert_clause(Clause{~new_lit, lhs, rhs});
             push(new_lit);
         }
     }
@@ -347,46 +347,46 @@ private:
                 (name == "=" && norm_poly.constant != 0) || (name == ">" && norm_poly.constant > 0) ||
                 (name == ">=" && norm_poly.constant >= 0))
             {
-                lit = true_lit.negate();
+                lit = ~true_lit;
             }
             else
             {
                 lit = true_lit;
             }
-            push(negate ? lit.negate() : lit);
+            push(negate ? ~lit : lit);
             return;
         }
 
-        Linear_constraint<Rational> cons;
+        Literal cons;
         if (name == "<")
         {
-            cons = lra->constraint(*trail, norm_poly.vars, norm_poly.coef, Order_predicate::lt, -norm_poly.constant);
+            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::lt, -norm_poly.constant);
         }
         else if (name == "<=")
         {
-            cons = lra->constraint(*trail, norm_poly.vars, norm_poly.coef, Order_predicate::leq, -norm_poly.constant);
+            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::leq, -norm_poly.constant);
         }
         else if (name == "=")
         {
-            cons = lra->constraint(*trail, norm_poly.vars, norm_poly.coef, Order_predicate::eq, -norm_poly.constant);
+            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::eq, -norm_poly.constant);
         }
         else if (name == ">")
         {
             norm_poly = rhs - lhs;
-            cons = lra->constraint(*trail, norm_poly.vars, norm_poly.coef, Order_predicate::lt, -norm_poly.constant);
+            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::lt, -norm_poly.constant);
         }
         else // if (name == ">=")
         {
             assert(name == ">=");
             norm_poly = rhs - lhs;
-            cons = lra->constraint(*trail, norm_poly.vars, norm_poly.coef, Order_predicate::leq, -norm_poly.constant);
+            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::leq, -norm_poly.constant);
         }
 
         if (negate)
         {
-            cons = cons.negate();
+            cons = ~cons;
         }
-        push(cons.lit());
+        push(cons);
     }
 
     // translate unary -
@@ -451,7 +451,7 @@ private:
         {
             push(if_true);
         }
-        else if (cond_lit == true_lit.negate())
+        else if (cond_lit == ~true_lit)
         {
             push(if_false);
         }
@@ -460,18 +460,18 @@ private:
             push(perun::test::poly(new_real_var()));
             auto true_poly = poly.back() - if_true;
             auto false_poly = poly.back() - if_false;
-            auto true_res = lra->constraint(*trail, true_poly.vars, true_poly.coef, Order_predicate::eq, -true_poly.constant);
-            auto false_res = lra->constraint(*trail, false_poly.vars, false_poly.coef, Order_predicate::eq, -false_poly.constant);
+            auto true_res = perun.linear_constraint(true_poly.vars, true_poly.coef, Order_predicate::eq, -true_poly.constant);
+            auto false_res = perun.linear_constraint(false_poly.vars, false_poly.coef, Order_predicate::eq, -false_poly.constant);
 
             if (negate)
             {
-                assert_clause(Clause{cond_lit, true_res.lit()});
-                assert_clause(Clause{cond_lit.negate(), true_res.lit()});
+                assert_clause(Clause{cond_lit, true_res});
+                assert_clause(Clause{~cond_lit, true_res});
             }
             else
             {
-                assert_clause(Clause{cond_lit.negate(), true_res.lit()});
-                assert_clause(Clause{cond_lit, false_res.lit()});
+                assert_clause(Clause{~cond_lit, true_res});
+                assert_clause(Clause{cond_lit, false_res});
             }
         }
     }
@@ -481,13 +481,12 @@ private:
         auto if_false = pop_lit();
         auto if_true = pop_lit();
         auto cond_lit = pop_lit();
-        auto new_var = new_bool_var();
-        Literal new_lit{new_var.ord()};
+        auto new_lit = new_bool_var();
         push(new_lit);
 
         assert(!negate);
-        assert_clause(Clause{new_lit.negate(), cond_lit.negate(), if_true});
-        assert_clause(Clause{new_lit.negate(), cond_lit, if_false});
+        assert_clause(Clause{~new_lit, ~cond_lit, if_true});
+        assert_clause(Clause{~new_lit, cond_lit, if_false});
     }
 
     inline Literal pop_lit()
@@ -518,21 +517,14 @@ private:
         poly.push_back(value);
     }
 
-    inline Variable new_bool_var()
+    inline Literal new_bool_var()
     {
-        auto num_bool = static_cast<int>(trail->model<bool>(Variable::boolean).num_vars());
-
-        trail->resize(Variable::boolean, num_bool + 1);
-        lra->on_variable_resize(Variable::boolean, num_bool + 1);
-        return Variable{num_bool, Variable::boolean};
+        return perun.make_bool();
     }
 
     inline Variable new_real_var()
     {
-        auto num_real = static_cast<int>(trail->model<Rational>(Variable::rational).num_vars());
-        trail->resize(Variable::rational, num_real + 1);
-        lra->on_variable_resize(Variable::rational, num_real + 1);
-        return Variable{num_real, Variable::rational};
+        return perun.make(Variable::rational);
     }
 
     inline void assert_clause(Clause const& clause)
@@ -540,7 +532,7 @@ private:
         assert(std::find_if(clause.begin(), clause.end(), [&](auto lit) {
             return is_constant(lit);
         }) == clause.end());
-        db->assert_clause(clause);
+        perun.assert_clause(clause);
     }
 };
 

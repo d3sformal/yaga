@@ -6,6 +6,7 @@ add_subdirectory(variable_order)
 
 target_sources(perun PRIVATE
     Conflict_analysis.cpp
+    Perun.cpp
     Solver.cpp
     Subsumption.cpp
     Theory.cpp

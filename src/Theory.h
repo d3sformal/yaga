@@ -22,10 +22,9 @@ public:
      *
      * @param db clause database
      * @param trail current trail. All propagations are added to the trail.
-     * @return a conflict clause -- clause that is false in @p trail -- if it
-     * detects a conflict. None, otherwise.
+     * @return conflict clause -- clause that is false in @p trail
      */
-    virtual std::optional<Clause> propagate(Database&, Trail&) = 0;
+    virtual std::vector<Clause> propagate(Database&, Trail&) = 0;
 
     /** Decide a value for variable @p var
      *
@@ -55,8 +54,8 @@ protected:
     // current decision level to check whether `next_index` is valid
     int current_level = 0;
 
-    /** Find range of assigned elements at current decision level on @p trail which have not been
-     * processed yet by this plugin.
+    /** Find range of assigned variables on @p trail which have not been processed yet by this 
+     * plugin.
      *
      * @param trail current solver trail
      * @return range or assigned, unprocessed elements on the @p trail

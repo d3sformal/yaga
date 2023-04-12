@@ -2,11 +2,11 @@
 
 namespace perun {
 
-std::optional<Clause> Solver::propagate() { return theory->propagate(database, solver_trail); }
+std::vector<Clause> Solver::propagate() { return theory()->propagate(database, solver_trail); }
 
-std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
+std::pair<std::vector<Clause>, int> Solver::analyze_conflicts(std::vector<Clause>&& conflicts)
 {
-    // notify listeners that number of variables has changed if conflict introduces new variables
+    // notify listeners that number of variables has changed if a conflict introduces new variables
     int new_num_vars = static_cast<int>(trail().model<bool>(Variable::boolean).num_vars());
     if (num_bool_vars != new_num_vars)
     {
@@ -17,57 +17,145 @@ std::pair<Clause, int> Solver::analyze_conflict(Clause&& conflict)
         }
     }
 
-    // derive clause suitable for backtracking
-    auto [learned, level] =
-        analysis.analyze(trail(), std::move(conflict), [&](auto const& other_clause) {
-            for (auto listener : listeners())
-            {
-                listener->on_conflict_resolved(db(), trail(), other_clause);
-            }
-        });
-
-    if (!learned.empty())
+    std::vector<Clause> learned;
+    int level = std::numeric_limits<int>::max();
+    for (auto&& conflict : conflicts)
     {
         ++total_conflicts;
-        subsumption.minimize(trail(), learned);
+
+        // derive clause suitable for backtracking
+        auto [clause, clause_level] =
+            analysis.analyze(trail(), std::move(conflict), [&](auto const& other_clause) {
+                for (auto listener : listeners())
+                {
+                    listener->on_conflict_resolved(db(), trail(), other_clause);
+                }
+            });
+
+        if (!clause.empty())
+        {
+            subsumption.minimize(trail(), clause);
+        }
+
+        // find all conflict clauses at the lowest decision level
+        if (clause_level < level)
+        {
+            level = clause_level;
+            learned.clear();
+            learned.push_back(std::move(clause));
+        }
+        else if (clause_level == level)
+        {
+            learned.push_back(std::move(clause));
+        }
     }
     return {learned, level};
 }
 
-void Solver::backtrack_with(Clause&& clause, int level)
+Solver::Clause_range Solver::learn(std::vector<Clause>&& clauses)
+{
+    // remove duplicate clauses
+    std::sort(clauses.begin(), clauses.end(), [](auto const& lhs, auto const& rhs) {
+        if (lhs.size() < rhs.size())
+        {
+            return true;
+        }
+        else if (lhs.size() > rhs.size())
+        {
+            return false;
+        }
+        else // lhs.size() == rhs.size()
+        {
+            auto [lhs_it, rhs_it] = std::mismatch(lhs.begin(), lhs.end(), rhs.begin());
+            return lhs_it->var().ord() < rhs_it->var().ord();
+        }
+    });
+    clauses.erase(std::unique(clauses.begin(), clauses.end()), clauses.end());
+
+    // prefer UIP clauses (propagations) over semantic split clauses (decisions)
+    if (std::any_of(clauses.begin(), clauses.end(), [&](auto const& learned) {
+        return !is_semantic_split(learned);
+    }))
+    {
+        clauses.erase(std::remove_if(clauses.begin(), clauses.end(), [&](auto const& learned) {
+            return is_semantic_split(learned);
+        }), clauses.end());
+    }
+
+    for (auto const& clause : clauses)
+    {
+        // add the clause to database
+        auto& learned_ref = db().learn_clause(std::move(clause));
+        // trigger events
+        for (auto listener : listeners())
+        {
+            listener->on_learned_clause(db(), trail(), learned_ref);
+        }
+    }
+    return {db().learned().begin() + (db().learned().size() - clauses.size()), 
+            db().learned().end()};
+}
+
+bool Solver::is_semantic_split(Clause const& clause) const
+{
+    return clause.size() >= 2 && trail().decision_level(clause[0].var()).value() ==
+                                     trail().decision_level(clause[1].var()).value();
+}
+
+void Solver::backtrack_with(Clause_range clauses, int level)
 {
     for (auto listener : listeners())
     {
         listener->on_before_backtrack(db(), trail(), level);
     }
 
-    // add the clause to database
-    auto& learned = db().learn_clause(std::move(clause));
-
-    // trigger events
-    for (auto listener : listeners())
+    auto& model = trail().model<bool>(Variable::boolean);
+    if (is_semantic_split(clauses[0]))
     {
-        listener->on_learned_clause(db(), trail(), learned);
-    }
+        assert(std::all_of(clauses.begin(), clauses.end(), [&](auto const& other_clause) {
+            return is_semantic_split(other_clause);
+        }));
 
-    trail().backtrack(level);
+        // find the best variable to decide
+        auto top_it = clauses[0].begin();
+        auto top_level = trail().decision_level(top_it->var()).value();
+        auto it = top_it + 1;
+        for (; it != clauses[0].end() && trail().decision_level(it->var()) == top_level; ++it)
+        {
+            assert(trail().reason(it->var()) == nullptr);
+            if (variable_order->is_before(it->var(), top_it->var()))
+            {
+                top_it = it;
+            }
+        }
 
-    if (learned.size() >= 2 &&
-        trail().decision_level(learned[0].var()) == trail().decision_level(learned[1].var()))
-    {
-        // decide the first or the second literal in `learned`
-        trail().decide(learned[0].var());
-        trail()
-            .model<bool>(Variable::boolean)
-            .set_value(learned[0].var().ord(), !learned[0].is_negation());
+        // We have to backtrack a semantic decision. Otherwise, the proof of MCSat termination 
+        // does not hold and the solver is not guaranteed to terminate.
+        assert(trail().decision_level() >= level + 1);
+        assert(trail().assigned(level + 1).front().var.type() != Variable::boolean);
+
+        trail().backtrack(level);
+        // decide one of the literals at the highest decision level
+        trail().decide(top_it->var());
+        model.set_value(top_it->var().ord(), !top_it->is_negation());
     }
     else // UIP
     {
-        // propagate the top level literal at assertion level
-        trail().propagate(learned[0].var(), &learned, level);
-        trail()
-            .model<bool>(Variable::boolean)
-            .set_value(learned[0].var().ord(), !learned[0].is_negation());
+        assert(std::all_of(clauses.begin(), clauses.end(), [&](auto const& other_clause) {
+            return !is_semantic_split(other_clause);
+        }));
+
+        trail().backtrack(level);
+
+        // propagate top level literals from all clauses
+        for (auto& clause : clauses)
+        {
+            if (!model.is_defined(clause[0].var().ord()))
+            {
+                trail().propagate(clause[0].var(), &clause, level);
+                model.set_value(clause[0].var().ord(), !clause[0].is_negation());
+            }
+        }
     }
 }
 
@@ -76,7 +164,7 @@ std::optional<Variable> Solver::pick_variable() { return variable_order->pick(db
 void Solver::decide(Variable var)
 {
     ++total_decisions;
-    theory->decide(db(), trail(), var);
+    theory()->decide(db(), trail(), var);
 }
 
 void Solver::init()
@@ -126,27 +214,28 @@ Solver::Result Solver::check()
 
     for (;;)
     {
-        auto conflict = propagate();
-        if (conflict)
+        auto conflicts = propagate();
+        if (!conflicts.empty())
         {
             if (trail().decision_level() == 0)
             {
                 return Result::unsat;
             }
 
-            auto [learned, level] = analyze_conflict(std::move(conflict.value()));
-            if (learned.empty())
+            auto [learned, level] = analyze_conflicts(std::move(conflicts));
+            if (std::any_of(learned.begin(), learned.end(), [](auto const& clause) { return clause.empty(); }))
             {
                 return Result::unsat;
             }
 
+            auto clauses = learn(std::move(learned));
             if (restart_policy->should_restart())
             {
                 restart();
             }
             else // backtrack instead of restarting
             {
-                backtrack_with(std::move(learned), level);
+                backtrack_with(clauses, level);
             }
         }
         else // no conflict

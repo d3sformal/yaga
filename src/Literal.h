@@ -34,14 +34,14 @@ public:
     /** Check whether two literals are equal.
      *
      * @param other other literal
-     * @return true iff this literal is equalivant to @p other
+     * @return true iff this literal is equivalent to @p other
      */
     inline bool operator==(Literal const& other) const { return value == other.value; }
 
     /** Check whether two literals are different.
      *
      * @param other other literal
-     * @return true iff this literal is not equalivant to @p other
+     * @return true iff this literal is not equivalent to @p other
      */
     inline bool operator!=(Literal const& other) const { return !operator==(other); }
 
@@ -49,12 +49,16 @@ public:
      *
      * @return new literal which represents negation of this literal
      */
-    inline Literal negate() const
+    inline Literal operator~() const
     {
         Literal r;
         r.value = -value;
         return r;
     }
+
+    /** Negate this literal.
+     */
+    inline void negate() { value = -value; }
 
     /** Get representation of the boolean variable used in this literal
      *
@@ -98,6 +102,24 @@ public:
 
 private:
     std::hash<int> hash;
+};
+
+/** Comparison functor for literals such that literals are ordered by variable ordinal. 
+ * Negation of a variable is ordered immediately after the literal which represents 
+ * the non-negated variable.
+ */
+class Literal_comparer {
+public:
+    /** Check whether @p lhs is less than @p rhs
+     * 
+     * @param lhs first literal
+     * @param rhs second literal
+     * @return true iff @p lhs is ordered before @p rhs
+     */
+    inline bool operator()(Literal lhs, Literal rhs) const { return idx(lhs) < idx(rhs); }
+private:
+    // map literals to integers
+    inline int idx(Literal lit) const { return lit.var().ord() * 2 + static_cast<int>(lit.is_negation()); }
 };
 
 } // namespace perun

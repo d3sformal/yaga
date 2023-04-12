@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_vector.hpp>
 
 #include "Clause.h"
 #include "Linear_arithmetic.h"
@@ -56,8 +57,9 @@ TEST_CASE("Propagate in an empty trail", "[linear_arithmetic]")
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 10);
     Linear_arithmetic lra;
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(!conflict);
+    lra.on_variable_resize(Variable::rational, 10);
+    auto conflicts = lra.propagate(db, trail);
+    REQUIRE(conflicts.empty());
     REQUIRE(trail.empty());
 }
 
@@ -80,12 +82,12 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
     propagate(trail, lin(x < 10));
     propagate(trail, lin(x >= 0));
 
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(!conflict);
+    auto conflicts = lra.propagate(db, trail);
+    REQUIRE(conflicts.empty());
 
     auto& bounds_x = lra.find_bounds(x.ord());
-    REQUIRE(bounds_x.lower_bound(models).value().value() == 0);
-    REQUIRE(bounds_x.upper_bound(models).value().value() == 10);
+    REQUIRE(bounds_x.lower_bound(models)->value() == 0);
+    REQUIRE(bounds_x.upper_bound(models)->value() == 10);
 }
 
 TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_arithmetic]")
@@ -107,34 +109,34 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
     propagate(trail, linear(x + y <= 8));
     propagate(trail, linear(x <= 16));
     {
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(!conflict);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(conflicts.empty());
 
         auto bounds_x = lra.find_bounds(x.ord());
         REQUIRE(!bounds_x.lower_bound(models));
-        REQUIRE(bounds_x.upper_bound(models).value().value() == 16);
+        REQUIRE(bounds_x.upper_bound(models)->value() == 16);
     }
 
     // make x + y <= 8 unit
     decide(trail, y, 0);
     {
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(!conflict);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(conflicts.empty());
 
         auto bounds_x = lra.find_bounds(x.ord());
         REQUIRE(!bounds_x.lower_bound(models));
-        REQUIRE(bounds_x.upper_bound(models).value().value() == 8);
+        REQUIRE(bounds_x.upper_bound(models)->value() == 8);
     }
 
     // make x + y + z <= 4 unit
     decide(trail, z, 0);
     {
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(!conflict);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(conflicts.empty());
 
         auto& bounds_x = lra.find_bounds(x.ord());
         REQUIRE(!bounds_x.lower_bound(models));
-        REQUIRE(bounds_x.upper_bound(models).value().value() == 4);
+        REQUIRE(bounds_x.upper_bound(models)->value() == 4);
     }
 }
 
@@ -149,7 +151,6 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     trail.set_model<Rational>(Variable::rational, 3);
     Linear_arithmetic lra;
     lra.on_variable_resize(Variable::rational, 3);
-    auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
@@ -159,18 +160,14 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     propagate(trail, linear(x <= 16));
     propagate(trail, linear(z == 0));
 
-    REQUIRE(!lra.propagate(db, trail));
-    REQUIRE(!lra.propagate(db, trail));
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
+    REQUIRE(lra.propagate(db, trail).empty());
+    REQUIRE(lra.propagate(db, trail).empty());
 
     REQUIRE(trail.assigned(trail.decision_level()).size() == 5);
     REQUIRE(!trail.decision_level(x));
     REQUIRE(trail.decision_level(y) == 1);
     REQUIRE(!trail.decision_level(z));
-
-    auto& bounds_x = lra.find_bounds(x.ord());
-    REQUIRE(!bounds_x.lower_bound(models));
-    REQUIRE(bounds_x.upper_bound(models).value().value() == 8);
 }
 
 TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")
@@ -192,16 +189,16 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithme
     linear(x + y + z <= 0);
 
     decide(trail, x, 1);
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
     decide(trail, y, 0);
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
 
     REQUIRE(!perun::eval(models.boolean(), linear(x + y + z <= 0).lit()));
     REQUIRE(!perun::eval(models.owned(), linear(x + y + z <= 0)));
     REQUIRE(!trail.decision_level(linear(x + y + z <= 0).lit().var()));
 
     decide(trail, z, 0);
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
 
     REQUIRE(trail.decision_level(linear(x + y + z <= 0).lit().var()) == 3);
     REQUIRE(perun::eval(models.boolean(), linear(x + y + z <= 0).lit()) == false);
@@ -224,22 +221,23 @@ TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
     auto [x, y, z] = real_vars<3>();
 
     decide(trail, linear(x <= 16));
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
     decide(trail, linear(x <= 8));
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
     decide(trail, linear(x <= 4));
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
 
     auto& bounds_x = lra.find_bounds(x.ord());
     REQUIRE(!bounds_x.lower_bound(models));
-    REQUIRE(bounds_x.upper_bound(models).value().value() == 4);
+    REQUIRE(bounds_x.upper_bound(models)->value() == 4);
 
+    lra.on_before_backtrack(db, trail, 1);
     trail.backtrack(1);
     decide(trail, linear(x <= 12));
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
 
     REQUIRE(!bounds_x.lower_bound(models));
-    REQUIRE(bounds_x.upper_bound(models).value().value() == 12);
+    REQUIRE(bounds_x.upper_bound(models)->value() == 12);
 }
 
 TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
@@ -263,11 +261,12 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         propagate(trail, linear(x == 0));
         propagate(trail, linear(x - y <= 0));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(x == 0), -linear(x - y <= 0), linear(y >= 0)));
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(x == 0), ~linear(x - y <= 0), linear(y >= 0))));
         REQUIRE(perun::eval(models.owned(), linear(y >= 0)) == false);
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with upper bound implied by an equality")
@@ -276,74 +275,79 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         propagate(trail, linear(y == 0));
         propagate(trail, linear(x - y <= 0));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(x - y <= 0), -linear(y == 0), linear(x <= 0)));
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(x - y <= 0), ~linear(y == 0), linear(x <= 0))));
         REQUIRE(perun::eval(models.owned(), linear(x <= 0)) == false);
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with a strict lower bound")
     {
         decide(trail, y, 0);
-        REQUIRE(!lra.propagate(db, trail));
+        REQUIRE(lra.propagate(db, trail).empty());
 
         decide(trail, z, 0);
         propagate(trail, linear(x <= y));
         propagate(trail, linear(z < x));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(z < x), -linear(x <= y), linear(z < y)));
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(z < x), ~linear(x <= y), linear(z < y))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
         REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
     }
 
     SECTION("with strict upper bound")
     {
         decide(trail, y, 0);
-        REQUIRE(!lra.propagate(db, trail));
+        REQUIRE(lra.propagate(db, trail).empty());
 
         decide(trail, z, 0);
         propagate(trail, linear(x < y));
         propagate(trail, linear(z <= x));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(z <= x), -linear(x < y), linear(z < y)));
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(z <= x), ~linear(x < y), linear(z < y))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
         REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
     }
 
     SECTION("with both bounds strict")
     {
         decide(trail, y, 0);
-        REQUIRE(!lra.propagate(db, trail));
+        REQUIRE(lra.propagate(db, trail).empty());
 
         decide(trail, z, 0);
         propagate(trail, linear(x < y));
         propagate(trail, linear(z < x));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(z < x), -linear(x < y), linear(z < y)));
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(z < x), ~linear(x < y), linear(z < y))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
         REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
     }
 
     SECTION("with non-strict bounds")
     {
         decide(trail, y, -1);
-        REQUIRE(!lra.propagate(db, trail));
+        REQUIRE(lra.propagate(db, trail).empty());
 
         decide(trail, z, 1);
         propagate(trail, linear(x <= y));
         propagate(trail, linear(z <= x));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(z <= x), -linear(x <= y), linear(z <= y)));
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(z <= x), ~linear(x <= y), linear(z <= y))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
         REQUIRE(perun::eval(models.owned(), linear(z <= y)) == false);
     }
 
@@ -352,10 +356,11 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         propagate(trail, linear(x < 0));
         propagate(trail, linear(x > 1));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(1 < x), -linear(x < 0)));
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(1 < x), ~linear(x < 0))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with two equalities")
@@ -364,11 +369,12 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         propagate(trail, linear(x + y == 2));
         propagate(trail, linear(2 * x + 4 * y == 4));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(x + y == 2), -linear(2 * x + 4 * y == 4), linear(x == 2)));
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(x + y == 2), ~linear(2 * x + 4 * y == 4), linear(x == 2))));
         REQUIRE(perun::eval(models.owned(), linear(x == 2)) == false);
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
     }
 }
 
@@ -389,9 +395,10 @@ TEST_CASE("Detect trivial bound conflict with several variables", "[linear_arith
     decide(trail, linear(x - y > 1));
     decide(trail, linear(x - y < 1));
     decide(trail, x, 0);
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(conflict);
-    REQUIRE(conflict.value() == clause(-linear(x - y < 1), -linear(x - y > 1)));
+    auto conflicts = lra.propagate(db, trail);
+    REQUIRE(!conflicts.empty());
+    REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+        clause(~linear(x - y < 1), ~linear(x - y > 1))));
 }
 
 TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_arithmetic]")
@@ -412,9 +419,10 @@ TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_
     decide(trail, linear(x - y <= 1));
     decide(trail, linear(x - y != 1));
     decide(trail, x, 0);
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(conflict);
-    REQUIRE(conflict.value() == clause(-linear(x - y <= 1), -linear(x - y >= 1), linear(x - y == 1)));
+    auto conflicts = lra.propagate(db, trail);
+    REQUIRE(!conflicts.empty());
+    REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(clause(
+        ~linear(x - y <= 1), ~linear(x - y >= 1), linear(x - y == 1))));
 }
 
 TEST_CASE("Always choose a new boolean variable for unique derived constraints", "[linear_arithmetic]")
@@ -437,11 +445,12 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
     propagate(trail, linear(x > 0));
     propagate(trail, linear(x + y < 0));
 
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(conflict);
-    REQUIRE(conflict.value() == clause(-linear(x > 0), -linear(x + y < 0), linear(y < 0)));
+    auto conflicts = lra.propagate(db, trail);
+    REQUIRE(!conflicts.empty());
+    REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+        clause(~linear(x > 0), ~linear(x + y < 0), linear(y < 0))));
     REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
-    REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+    REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
     REQUIRE(linear(y < 0).lit().var().ord() == 3);
 }
 
@@ -463,18 +472,18 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
     SECTION("with non-trivial derivations")
     {
         decide(trail, y, 0);
-        REQUIRE(!lra.propagate(db, trail));
+        REQUIRE(lra.propagate(db, trail).empty());
 
         decide(trail, z, 0);
         propagate(trail, linear(y <= x));
         propagate(trail, linear(x <= z));
         propagate(trail, linear(x != 0));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() ==
-                clause(-linear(y <= x), -linear(x <= z), linear(x == 0), linear(y < 0), linear(0 < z)));
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+                clause(~linear(y <= x), ~linear(x <= z), linear(x == 0), linear(y < 0), linear(0 < z))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
         REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
         REQUIRE(perun::eval(models.owned(), linear(0 < z)) == false);
     }
@@ -485,11 +494,11 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
         propagate(trail, linear(x >= 4));
         propagate(trail, linear(x != 4));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() ==
-                clause(-linear(4 <= x), -linear(x <= 4), linear(x == 4)));
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+                clause(~linear(4 <= x), ~linear(x <= 4), linear(x == 4))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with trivial derivation from upper bound")
@@ -499,11 +508,11 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
         propagate(trail, linear(x + y >= 4));
         propagate(trail, linear(x != 4));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() ==
-                clause(-linear(x + y >= 4), -linear(x <= 4), linear(x == 4), linear(y > 0)));
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+                clause(~linear(x + y >= 4), ~linear(x <= 4), linear(x == 4), linear(y > 0))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with trivial derivation from lower bound")
@@ -513,11 +522,24 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
         propagate(trail, linear(x >= 4));
         propagate(trail, linear(x != 4));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() ==
-                clause(-linear(x >= 4), -linear(x + y <= 4), linear(x == 4), linear(y < 0)));
-        REQUIRE(perun::eval(models.boolean(), conflict.value()) == false);
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+                clause(~linear(x >= 4), ~linear(x + y <= 4), linear(x == 4), linear(y < 0))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+    }
+
+    SECTION("with upper bound and lower bound implied by the same equality")
+    {
+        decide(trail, y, 0);
+        propagate(trail, linear(x == 0));
+        propagate(trail, linear(x + y != 0));
+
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(x == 0), ~linear(x + y != 0), linear(y < 0), linear(y > 0))));
+        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
     }
 }
 
@@ -540,17 +562,18 @@ TEST_CASE("Backtrack-decide a constraint", "[linear_arithmetic]")
 
     models.owned().set_value(x.ord(), 0);
     trail.decide(x);
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
 
     models.owned().set_value(y.ord(), 0);
     trail.decide(y);
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
 
+    lra.on_before_backtrack(db, trail, 1);
     trail.backtrack(1);
     trail.propagate(cons.lit().var(), nullptr, trail.decision_level());
     models.boolean().set_value(cons.lit().var().ord(), !cons.lit().is_negation());
 
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
 }
 
 TEST_CASE("Propagate derived bound constraint semantically only if it is not on the trail", "[linear_arithmetic]")
@@ -568,12 +591,13 @@ TEST_CASE("Propagate derived bound constraint semantically only if it is not on 
     auto [x, y] = real_vars<2>();
 
     decide(trail, y, 2);
-    propagate(trail, linear(y == 0).negate());
+    propagate(trail, ~linear(y == 0));
     propagate(trail, linear(x == 0));
     propagate(trail, linear(x - y == 0));
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(conflict);
-    REQUIRE(conflict.value() == clause(-linear(x - y == 0), -linear(x == 0), linear(y == 0)));
+    auto conflicts = lra.propagate(db, trail);
+    REQUIRE(!conflicts.empty());
+    REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+        clause(~linear(x - y == 0), ~linear(x == 0), linear(y == 0))));
 }
 
 TEST_CASE("Propagate derived inequality constraint semantically only if it is not an the trail", "[linear_arithmetic]")
@@ -594,28 +618,30 @@ TEST_CASE("Propagate derived inequality constraint semantically only if it is no
     {
         decide(trail, y, 1);
         propagate(trail, linear(y == 1));
-        propagate(trail, linear(1 < y).negate());
+        propagate(trail, ~linear(1 < y));
         propagate(trail, linear(x <= y));
         propagate(trail, linear(1 <= x));
         propagate(trail, linear(x != 1));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(1 <= x), -linear(x <= y), -linear(x != 1), linear(1 < y)));
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(1 <= x), ~linear(x <= y), ~linear(x != 1), linear(1 < y))));
     }
 
     SECTION("in lower bound")
     {
         decide(trail, y, 1);
-        propagate(trail, linear(y < 1).negate());
+        propagate(trail, ~linear(y < 1));
         propagate(trail, linear(y == 1));
         propagate(trail, linear(x <= 1));
         propagate(trail, linear(y <= x));
         propagate(trail, linear(x != 1));
 
-        auto conflict = lra.propagate(db, trail);
-        REQUIRE(conflict);
-        REQUIRE(conflict.value() == clause(-linear(y <= x), -linear(x <= 1), -linear(x != 1), linear(y < 1)));
+        auto conflicts = lra.propagate(db, trail);
+        REQUIRE(!conflicts.empty());
+        REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
+            clause(~linear(y <= x), ~linear(x <= 1), ~linear(x != 1), linear(y < 1))));
     }
 }
 
@@ -634,20 +660,21 @@ TEST_CASE("The first two unassigned variables in a derived constraint have the h
     auto [x, y, z] = real_vars<3>();
 
     decide(trail, y, 1);
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
 
     decide(trail, z, 1);
     propagate(trail, linear(y < x));
     propagate(trail, linear(x < z));
 
-    auto conflict = lra.propagate(db, trail);
-    REQUIRE(conflict);
-    REQUIRE(conflict.value() == clause(-linear(y < x), -linear(x < z), linear(y < z)));
+    auto conflicts = lra.propagate(db, trail);
+    REQUIRE(!conflicts.empty());
+    REQUIRE(conflicts.front() == clause(~linear(y < x), ~linear(x < z), linear(y < z)));
 
     // backtrack, decide
+    lra.on_before_backtrack(db, trail, 1);
     trail.backtrack(1);
     decide(trail, linear(y >= z));
-    REQUIRE(!lra.propagate(db, trail));
+    REQUIRE(lra.propagate(db, trail).empty());
 }
 
 TEST_CASE("Decide variable", "[linear_arithmetic]")

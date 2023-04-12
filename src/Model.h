@@ -82,7 +82,7 @@ public:
      */
     void resize(int num_vars) override
     {
-        values.resize(num_vars, Value{});
+        values.resize(num_vars, Value{0});
         defined.resize(num_vars, false);
         ts.resize(num_vars, -1);
     }

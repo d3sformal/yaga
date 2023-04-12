@@ -37,7 +37,7 @@ public:
 
     inline Luby_restart() { next(); }
 
-    /** Mark that a conflict has occured.
+    /** Mark that a conflict has occurred.
      *
      * @param db clause database
      * @param trail current solver trail

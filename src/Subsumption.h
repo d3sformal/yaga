@@ -72,7 +72,7 @@ private:
         // clause signature
         std::uint64_t clause_sig;
     };
-    
+
     using Clause_iterator = std::deque<Clause>::iterator;
 
     // map literal -> clauses in which it occurs (set by `index()`)

@@ -4,6 +4,7 @@
 #include <concepts>
 #include <deque>
 #include <memory>
+#include <ranges>
 
 #include "Clause.h"
 #include "Database.h"
@@ -25,7 +26,7 @@ public:
      * @param trail current solver trail
      * @return conflict clause if a conflict is detected by any theory
      */
-    std::optional<Clause> propagate(Database&, Trail&) override;
+    std::vector<Clause> propagate(Database&, Trail&) override;
 
     /** Call decide in all theories
      *
@@ -43,7 +44,7 @@ public:
     void on_init(Database&, Trail&) override;
 
     /** Call the event in all theories
-     * 
+     *
      * @param db clause database
      * @param trail current solver trail before backtracking
      * @param decision_level decision level to backtrack to
@@ -101,12 +102,21 @@ public:
             }
         }
         auto conc_theory_ptr = theory.get();
-        theories.emplace_back(std::move(theory));
+        theory_list.emplace_back(std::move(theory));
         return *conc_theory_ptr;
     }
 
+    /** Get all theories in this object
+     * 
+     * @return range of theory pointers in this object
+     */
+    inline std::ranges::view auto theories()
+    {
+        return theory_list | std::views::transform([](auto& ptr) { return ptr.get(); });
+    }
+
 private:
-    std::deque<std::unique_ptr<Theory>> theories;
+    std::deque<std::unique_ptr<Theory>> theory_list;
     std::vector<int> current_num_vars;
 };
 
