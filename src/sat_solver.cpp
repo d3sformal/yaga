@@ -80,7 +80,7 @@ int main(int argc, char** argv)
                 }
                 else if (num_clauses > 0)
                 {
-                    buffer.emplace_back(var < 0 ? Literal{-var - 1}.negate() : Literal{var - 1});
+                    buffer.emplace_back(var < 0 ? ~Literal{-var - 1} : Literal{var - 1});
                 }
             }
         }

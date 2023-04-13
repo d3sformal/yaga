@@ -32,7 +32,6 @@ public:
     std::pair<Clause, int> analyze(Trail const& trail, Clause&& conflict,
                                    Resolve_callback&& on_resolve)
     {
-        // TODO: handle a semantic split correctly
         auto const& model = trail.model<bool>(Variable::boolean);
         assert(eval(model, conflict) == false);
 
@@ -42,10 +41,11 @@ public:
         for (auto it = assigned.rbegin(); !can_backtrack() && it != assigned.rend(); ++it)
         {
             auto [var, reason] = *it;
-            if (var.type() == Variable::boolean && reason != nullptr)
+            if (var.type() == Variable::boolean && reason != nullptr && 
+                trail.decision_level(var).value() == top_level)
             {
                 auto lit =
-                    model.value(var.ord()) ? Literal{var.ord()}.negate() : Literal{var.ord()};
+                    model.value(var.ord()) ? ~Literal{var.ord()} : Literal{var.ord()};
                 if (can_resolve(lit))
                 {
                     on_resolve(*reason);

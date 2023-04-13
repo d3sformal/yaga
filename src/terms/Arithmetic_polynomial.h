@@ -106,7 +106,7 @@ void Polynomial<TVar>::merge(Polynomial<TVar> const& other, Rational const& coef
     auto myEnd = std::make_move_iterator(poly.end());
     auto otherEnd = other.poly.cend();
     Term_comparator cmp;
-    Rational tmp;
+    Rational tmp{0};
     while (true)
     {
         if (myIt == myEnd)

@@ -43,8 +43,8 @@ private:
 
 struct Variable_hash {
     /** Compute hash of @p var
-     * 
-     * @param var 
+     *
+     * @param var
      * @return hash of @p var
      */
     inline std::size_t operator()(Variable var) const

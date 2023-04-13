@@ -202,10 +202,14 @@ public:
      *
      * @return new linear constraint that represents negation of this constraint
      */
-    inline Linear_constraint negate() const
+    inline Linear_constraint operator~() const
     {
-        return {lit().negate(), pos(), pred(), rhs(), constraints};
+        return {~lit(), pos(), pred(), rhs(), constraints};
     }
+
+    /** Negate this linear constraint.
+     */
+    inline void negate() { literal.negate(); }
 
     /** Check if this linear constraint represents a strict inequality (< or > or !=)
      *
@@ -252,7 +256,7 @@ private:
     // literal that that represents this constraint
     Literal literal;
     // right-hand-side of the constraint
-    Value_type constant;
+    Value_type constant{0};
     // container which contains this constraint
     Linear_constraints<Value_type>* constraints;
 

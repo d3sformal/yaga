@@ -64,7 +64,7 @@ TEST_CASE("pick the most used variable at the start", "[generalized_vsids]")
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
-    db.assert_clause(clause(-linear(x < y), linear(y == 0)));
+    db.assert_clause(clause(~linear(x < y), linear(y == 0)));
     db.assert_clause(clause(linear(x < y), linear(x == 0)));
 
     Generalized_vsids vsids{lra};

@@ -8,6 +8,7 @@ add_subdirectory(parser)
 
 target_sources(perun PRIVATE
     Conflict_analysis.cpp
+    Perun.cpp
     Solver.cpp
     Subsumption.cpp
     Theory.cpp

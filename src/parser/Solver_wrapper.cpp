@@ -34,7 +34,7 @@ namespace{
 struct Linear_polynomial {
     std::vector<int> vars;
     std::vector<Rational> coef;
-    Rational constant;
+    Rational constant = 0;
 
     void negate();
 
@@ -156,7 +156,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         Literal literal = possibly_literal.value();
         if (terms::polarity_of(assertion))
         {
-            literal = literal.negate();
+            literal.negate();
         }
         solver.db().assert_clause(literal);
     }
@@ -196,7 +196,7 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
         Linear_polynomial poly;
         poly.vars.reserve(args.size());
         poly.coef.reserve(args.size());
-        poly.constant = 0;
+        assert(poly.constant == 0);
         for (term_t arg : args)
         {
             auto arg_kind = term_table.get_kind(arg);
@@ -255,7 +255,7 @@ void Internalizer_config::visit(term_t t)
                                         Order_predicate::Type::lt, -internal_poly.constant)
                     : plugin.constraint(trail, internal_poly.vars, internal_poly.coef,
                                         Order_predicate::Type::leq, -internal_poly.constant);
-        Literal lit = negated ? constraint.lit().negate() : constraint.lit();
+        Literal lit = negated ? ~constraint.lit() : constraint.lit();
         term_t positive_term = terms::positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
         internal_bool_vars.insert({positive_term, lit});
@@ -324,17 +324,17 @@ void Internalizer_config::visit(term_t t)
             auto arg_lit = internal_bool_vars.at(pos_arg);
             if (terms::polarity_of(arg))
             {
-                arg_lit = arg_lit.negate();
+                arg_lit.negate();
             }
             arg_literals.push_back(arg_lit);
         }
         // binary clauses
         for (auto arg_lit : arg_literals)
         {
-            database.assert_clause(lit, arg_lit.negate());
+            database.assert_clause(lit, ~arg_lit);
         }
         // big clause
-        arg_literals.push_back(lit.negate());
+        arg_literals.push_back(~lit);
         database.assert_clause(std::move(arg_literals));
         return;
     }
@@ -363,7 +363,7 @@ void Internalizer_config::visit(term_t t)
             assert(internal_bool_vars.find(cond_term) != internal_bool_vars.end());
             Literal l = internal_bool_vars.at(cond_term);
             database.assert_clause(l, false_constraint.lit());
-            database.assert_clause(l.negate(), true_constraint.lit());
+            database.assert_clause(~l, true_constraint.lit());
         }
         return;
     }

@@ -45,7 +45,7 @@ void Generalized_vsids::on_before_backtrack(Database&, Trail& trail, int level)
     {
         for (auto [var, _] : trail.assigned(i))
         {
-            if (!variables.contains(var))
+            if (!variables.contains(var) && trail.decision_level(var).value() > level)
             {
                 variables.push(var, score(var));
             }
@@ -68,6 +68,11 @@ void Generalized_vsids::on_conflict_resolved(Database&, Trail&, Clause const& ot
     {
         bump(lit.var().ord());
     }
+}
+
+bool Generalized_vsids::is_before(Variable lhs, Variable rhs) const
+{
+    return score(lhs) > score(rhs);
 }
 
 std::optional<Variable> Generalized_vsids::pick(Database&, Trail& trail)

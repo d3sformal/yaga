@@ -13,6 +13,7 @@
 #include "Clause.h"
 #include "Linear_constraints.h"
 #include "Linear_arithmetic.h"
+#include "Perun.h"
 
 namespace perun::test {
 
@@ -36,13 +37,13 @@ template<Arithmetic T>
 struct Linear_polynomial {
     std::vector<int> vars;
     std::vector<T> coef;
-    T constant;
+    T constant{0};
 
     // conversion to other type
     template<typename To>
     explicit operator Linear_polynomial<To>() const
     {
-        std::vector<To> new_coef(coef.size());
+        std::vector<To> new_coef(coef.size(), To{0});
         std::copy(coef.begin(), coef.end(), new_coef.begin());
         return {.vars = vars, .coef = new_coef, .constant = static_cast<To>(constant)};
     }
@@ -568,7 +569,18 @@ inline auto factory(Linear_constraints<T>& repository)
         // move right-hand-side to left-hand-side
         auto poly = val.lhs - val.rhs;
         auto cons = rep_ptr->make(poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
-        return val.is_negation ? cons.negate() : cons;
+        return val.is_negation ? ~cons : cons;
+    };
+}
+
+// create a factory functor for linear constraints from solver facade (returns a literal)
+inline auto factory(Perun& smt)
+{
+    return [facade = &smt]<std::convertible_to<Linear_arithmetic::Rational> R>(Linear_predicate<R> const& val)
+    {
+        auto poly = val.lhs - val.rhs;
+        auto lit = facade->linear_constraint(poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
+        return val.is_negation ? ~lit : lit;
     };
 }
 
@@ -580,7 +592,7 @@ inline auto factory(Linear_arithmetic& plugin, Trail& trail)
         // move right-hand-side to left-hand-side
         auto poly = val.lhs - val.rhs;
         auto cons = plugin_ptr->constraint(*trail_ptr, poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
-        return val.is_negation ? cons.negate() : cons;
+        return val.is_negation ? ~cons : cons;
     };
 }
 
