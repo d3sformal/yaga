@@ -9,9 +9,9 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules/")
 find_package(Catch2 3 QUIET)
 find_package(GMP REQUIRED)
 
-if (FOUND_CATCH)
+if(FOUND_CATCH)
     message(STATUS "Using system install of Catch2")
-else ()
+else()
     message(STATUS "Fetching Catch2")
 
     FetchContent_Declare(
@@ -23,7 +23,7 @@ else ()
     FetchContent_MakeAvailable(Catch2)
 
     message(STATUS "Fetching Catch2 - done")
-endif ()
+endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     add_compile_options(-fdiagnostics-color=always)

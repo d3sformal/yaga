@@ -290,7 +290,7 @@ TEST_CASE("Encode true constraint and false constraint uniformly", "[linear_cons
 template<int num_vars, int min_var_per_const, int max_var_per_const, int num_const>
 std::vector<perun::test::Linear_predicate<perun::Rational>> generate()
 {
-    using namespace perun;;
+    using namespace perun;
     using namespace perun::test;
 
     using Value_type = Rational;

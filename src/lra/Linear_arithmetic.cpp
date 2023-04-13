@@ -391,18 +391,6 @@ void Linear_arithmetic::add_variable(Trail& trail, Models const& models, Variabl
 std::optional<Rational> Linear_arithmetic::find_integer(Models const& models,
                                                                            Bounds_type& bounds)
 {
-
-
-/*
-    auto abs = [](Rational val) -> int {
-        if (val == std::numeric_limits<int>::min())
-        {
-            return std::numeric_limits<int>::max();
-        }
-        return int(val >= 0 ? val : -val);
-    };
-*/
-
     Rational lb{std::numeric_limits<int>::lowest()};
     Rational ub{std::numeric_limits<int>::max()};
     if (auto lower_bound = bounds.lower_bound(models))
@@ -421,7 +409,6 @@ std::optional<Rational> Linear_arithmetic::find_integer(Models const& models,
     Rational abs_bound = 0;
     if (lb <= Rational{0} && ub >= Rational{0})
     {
-        abs_bound = abs(lb);
         abs_bound = std::max(abs(lb), ub);
     }
     else if (lb > Rational{0})
