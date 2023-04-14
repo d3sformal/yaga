@@ -1,34 +1,12 @@
 #include "Solver_wrapper.h"
 
-#include "Solver.h"
-#include "Theory_combination.h"
-#include "Bool_theory.h"
-#include "Linear_arithmetic.h"
-#include "Generalized_vsids.h"
 #include "Term_visitor.h"
+#include "Perun.h"
 
 namespace perun::parser
 {
 
 using term_t = terms::term_t;
-
-class Collect_vars_config : public terms::Default_visitor_config
-{
-    terms::Term_table const& term_table;
-public:
-    std::unordered_map<terms::type_t, std::vector<term_t>> vars;
-
-    explicit Collect_vars_config(terms::Term_table const& term_table) : term_table(term_table) {}
-
-    void visit(term_t t) override
-    {
-        if (term_table.get_kind(t) == terms::Kind::UNINTERPRETED_TERM)
-        {
-            terms::type_t type = term_table.get_type(t);
-            vars[type].push_back(terms::positive_term(t));
-        }
-    }
-};
 
 namespace{
 struct Linear_polynomial {
@@ -45,9 +23,7 @@ struct Linear_polynomial {
 class Internalizer_config : public terms::Default_visitor_config
 {
     terms::Term_table const& term_table;
-    Linear_arithmetic& plugin;
-    Trail& trail;
-    Database& database;
+    Perun& solver;
     std::unordered_map<term_t, int> internal_rational_vars;
 
     // HACK: We need to store literals
@@ -63,37 +39,21 @@ class Internalizer_config : public terms::Default_visitor_config
 
     inline Variable new_bool_var()
     {
-        auto num_bool = static_cast<int>(trail.model<bool>(Variable::boolean).num_vars());
-        trail.resize(Variable::boolean, num_bool + 1);
-        plugin.on_variable_resize(Variable::boolean, num_bool + 1);
-        return Variable{num_bool, Variable::boolean};
+        return solver.make(Variable::boolean);
     }
 
     inline Variable new_real_var()
     {
-        auto num_real = static_cast<int>(trail.model<Fraction<int>>(Variable::rational).num_vars());
-        trail.resize(Variable::rational, num_real + 1);
-        plugin.on_variable_resize(Variable::rational, num_real + 1);
-        return Variable{num_real, Variable::rational};
+        return solver.make(Variable::rational);
     }
 
 public:
     Internalizer_config(
         terms::Term_table const& term_table,
-        Linear_arithmetic& la_plugin,
-        Trail& trail,
-        Database& database,
-        std::unordered_map<term_t, int> internal_rational_vars,
-        std::unordered_map<term_t, int> const& internal_bool_vars
+        Perun& solver
         )
-        : term_table(term_table), plugin(la_plugin), trail(trail), database(database),
-          internal_rational_vars(std::move(internal_rational_vars))
-    {
-        for (auto&& [var, index] : internal_bool_vars)
-        {
-            this->internal_bool_vars.insert({var, Literal(index)});
-        }
-    }
+        : term_table(term_table), solver(solver)
+    { }
 
     void visit(term_t) override;
 
@@ -107,43 +67,11 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         return Solver_answer::UNSAT;
     }
     auto const& term_table = term_manager.get_term_table();
-    Collect_vars_config config(term_table);
-    terms::Visitor<Collect_vars_config> visitor(term_table, config);
 
-    visitor.visit(assertions);
-    auto get_var_count = [&](terms::type_t type) {
-        auto it = config.vars.find(type);
-        return it == config.vars.end() ? 0 : it->second.size();
-    };
-    auto bool_vars_count = get_var_count(terms::types::bool_type);
-    auto real_vars_count = get_var_count(terms::types::real_type);
-
-    Solver solver;
-    solver.trail().set_model<bool>(Variable::boolean, bool_vars_count);
-    solver.trail().set_model<Rational>(Variable::rational, real_vars_count);
-    auto& theories = solver.set_theory<Theory_combination>();
-    theories.add_theory<Bool_theory>();
-    auto& lra = theories.add_theory<Linear_arithmetic>();
-
-    solver.set_restart_policy<Glucose_restart>();
-    solver.set_variable_order<Generalized_vsids>(lra);
+    Perun solver{logic::qf_lra};
 
     // Cnfize and assert clauses to the solver
-    auto vars_map = [&config](terms::type_t type){
-       auto it = config.vars.find(type);
-       std::unordered_map<term_t, int> map;
-       if (it != config.vars.end())
-       {
-           auto const& vars = it->second;
-           for (std::size_t i = 0u; i < vars.size(); ++i)
-           {
-               auto [_, inserted] = map.insert({vars[i], i});
-               assert(inserted); (void)inserted;
-           }
-       }
-       return map;
-    };
-    Internalizer_config internalizer_config(term_table, lra, solver.trail(), solver.db(), vars_map(terms::types::real_type), vars_map(terms::types::bool_type));
+    Internalizer_config internalizer_config(term_table, solver);
     terms::Visitor<Internalizer_config> internalizer(term_table, internalizer_config);
     internalizer.visit(assertions);
 
@@ -158,10 +86,10 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         {
             literal.negate();
         }
-        solver.db().assert_clause(literal);
+        solver.assert_clause(literal);
     }
 
-    auto res = solver.check();
+    auto res = solver.solver().check();
     if (res == Solver::Result::sat)
     {
         return Solver_answer::SAT;
@@ -250,12 +178,12 @@ void Internalizer_config::visit(term_t t)
         {
             internal_poly.negate();
         }
-        auto constraint =
-            negated ? plugin.constraint(trail, internal_poly.vars, internal_poly.coef,
+        auto constraint_literal =
+            negated ? solver.linear_constraint(internal_poly.vars, internal_poly.coef,
                                         Order_predicate::Type::lt, -internal_poly.constant)
-                    : plugin.constraint(trail, internal_poly.vars, internal_poly.coef,
+                    : solver.linear_constraint(internal_poly.vars, internal_poly.coef,
                                         Order_predicate::Type::leq, -internal_poly.constant);
-        Literal lit = negated ? ~constraint.lit() : constraint.lit();
+        Literal lit = negated ? ~constraint_literal : constraint_literal;
         term_t positive_term = terms::positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
         internal_bool_vars.insert({positive_term, lit});
@@ -264,8 +192,7 @@ void Internalizer_config::visit(term_t t)
     case terms::Kind::ARITH_EQ_ATOM: {
         auto poly_term = term_table.get_args(t)[0];
         auto internal_poly = internalize_poly(poly_term);
-        auto constraint = plugin.constraint(trail, internal_poly.vars, internal_poly.coef, Order_predicate::Type::eq, -internal_poly.constant);
-        Literal lit = constraint.lit();
+        Literal lit = solver.linear_constraint(internal_poly.vars, internal_poly.coef, Order_predicate::Type::eq, -internal_poly.constant);
         assert(!lit.is_negation());
         term_t positive_term = terms::positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
@@ -288,8 +215,7 @@ void Internalizer_config::visit(term_t t)
                 return {{internal_rational_var(lhs), internal_rational_var(rhs)}, {1, -1}, 0};
             }
         }();
-        auto constraint = plugin.constraint(trail, poly.vars, poly.coef, Order_predicate::Type::eq, -poly.constant);
-        Literal lit = constraint.lit();
+        Literal lit = solver.linear_constraint(poly.vars, poly.coef, Order_predicate::Type::eq, -poly.constant);
         assert(!lit.is_negation());
         term_t positive_term = terms::positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
@@ -299,11 +225,16 @@ void Internalizer_config::visit(term_t t)
     case terms::Kind::UNINTERPRETED_TERM:
         if (term_table.get_type(t) == terms::types::bool_type)
         {
-            assert(internal_bool_vars.find(terms::positive_term(t)) != internal_bool_vars.end());
+            Variable bool_var = solver.make(Variable::boolean);
+            t = terms::positive_term(t);
+            auto [_, inserted] = internal_bool_vars.insert({t, Literal(bool_var.ord())});
+            assert(inserted); (void)(inserted);
         }
         else if (term_table.get_type(t) == terms::types::real_type)
         {
-            assert(internal_rational_vars.find(t) != internal_rational_vars.end());
+            Variable rational_var = solver.make(Variable::rational);
+            auto [_, inserted] = internal_rational_vars.insert({t, rational_var.ord()});
+            assert(inserted); (void)(inserted);
         }
         return;
     case terms::Kind::OR_TERM:
@@ -331,11 +262,11 @@ void Internalizer_config::visit(term_t t)
         // binary clauses
         for (auto arg_lit : arg_literals)
         {
-            database.assert_clause(lit, ~arg_lit);
+            solver.assert_clause(lit, ~arg_lit);
         }
         // big clause
         arg_literals.push_back(~lit);
-        database.assert_clause(std::move(arg_literals));
+        solver.assert_clause(std::move(arg_literals));
         return;
     }
     case terms::Kind::ITE_TERM:
@@ -357,13 +288,13 @@ void Internalizer_config::visit(term_t t)
             true_poly.subtract_var(var);
             false_poly.subtract_var(var);
             // TODO: Must the variables be sorted?
-            auto true_constraint = plugin.constraint(trail, true_poly.vars, true_poly.coef, Order_predicate::Type::eq, -true_poly.constant);;
-            auto false_constraint = plugin.constraint(trail, false_poly.vars, false_poly.coef, Order_predicate::Type::eq, -false_poly.constant);
+            auto true_constraint = solver.linear_constraint(true_poly.vars, true_poly.coef, Order_predicate::Type::eq, -true_poly.constant);;
+            auto false_constraint = solver.linear_constraint(false_poly.vars, false_poly.coef, Order_predicate::Type::eq, -false_poly.constant);
             assert(!terms::polarity_of(cond_term)); // MB: ITE are normalized to have positive condition
             assert(internal_bool_vars.find(cond_term) != internal_bool_vars.end());
             Literal l = internal_bool_vars.at(cond_term);
-            database.assert_clause(l, false_constraint.lit());
-            database.assert_clause(~l, true_constraint.lit());
+            solver.assert_clause(l, false_constraint);
+            solver.assert_clause(~l, true_constraint);
         }
         return;
     }
