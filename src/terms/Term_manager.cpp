@@ -1,6 +1,7 @@
 #include "Term_manager.h"
 
 #include <algorithm>
+#include <numeric>
 
 #include "Arithmetic_polynomial.h"
 #include "Terms.h"

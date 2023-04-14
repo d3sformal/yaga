@@ -4,4 +4,5 @@ target_sources(perun PRIVATE
     Bounds.cpp
     Linear_arithmetic.cpp
     Lra_conflict_analysis.cpp
+    Long_fraction.cpp
 )

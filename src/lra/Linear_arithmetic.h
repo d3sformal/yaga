@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "Bounds.h"
-#include "Fraction.h"
+#include "Rational.h"
 #include "Linear_constraints.h"
 #include "Lra_conflict_analysis.h"
 #include "Model.h"
@@ -22,8 +22,6 @@ namespace perun {
 
 class Linear_arithmetic final : public Theory {
 public:
-    // types of variable values
-    using Rational = Fraction<int>;
     // bounds object which keeps implied bounds of variables
     using Bounds_type = Variable_bounds<Rational>;
     // models relevant to this theory

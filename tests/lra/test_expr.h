@@ -22,11 +22,11 @@ struct Is_arithmetic {
     inline static constexpr bool value = std::is_arithmetic_v<T>;
 };
 
-template<typename T>
-    requires std::is_integral_v<T>
-struct Is_arithmetic<Fraction<T>> {
+template<>
+struct Is_arithmetic<Rational> {
     inline static constexpr bool value = true;
 };
+
 
 template<typename T>
 concept Arithmetic = Is_arithmetic<T>::value;
@@ -58,13 +58,13 @@ struct Linear_predicate {
 };
 
 // create linear polynomial from a variable
-inline Linear_polynomial<Linear_arithmetic::Rational> poly(Variable var)
+inline Linear_polynomial<Rational> poly(Variable var)
 {
     assert(var.type() == Variable::rational);
     return {
         .vars = {var.ord()},
-        .coef = {Linear_arithmetic::Rational{1}},
-        .constant = Linear_arithmetic::Rational{0}
+        .coef = {Rational{1}},
+        .constant = Rational{0}
     };
 }
 
@@ -118,12 +118,12 @@ combine(Linear_polynomial<L> const& lhs, Linear_polynomial<R> const& rhs, Bin_op
 
 // create a linear polynomial from a constant multiple of a variable
 template<Arithmetic T>
-inline Linear_polynomial<Linear_arithmetic::Rational> operator*(T value, Variable var)
+inline Linear_polynomial<Rational> operator*(T value, Variable var)
 {
     return {
         .vars = {var.ord()},
         .coef = {value},
-        .constant = Linear_arithmetic::Rational{0},
+        .constant = Rational{0},
     };
 }
 
@@ -236,10 +236,10 @@ inline auto operator-(Variable lhs, Variable rhs)
 inline auto operator-(Variable var)
 {
     assert(var.type() == Variable::rational);
-    return Linear_polynomial<Linear_arithmetic::Rational>{
+    return Linear_polynomial<Rational>{
         .vars = {var.ord()},
         .coef = {-1},
-        .constant = Linear_arithmetic::Rational{0}
+        .constant = Rational{0}
     };
 }
 
@@ -576,7 +576,7 @@ inline auto factory(Linear_constraints<T>& repository)
 // create a factory functor for linear constraints from solver facade (returns a literal)
 inline auto factory(Perun& smt)
 {
-    return [facade = &smt]<std::convertible_to<Linear_arithmetic::Rational> R>(Linear_predicate<R> const& val)
+    return [facade = &smt]<std::convertible_to<Rational> R>(Linear_predicate<R> const& val)
     {
         auto poly = val.lhs - val.rhs;
         auto lit = facade->linear_constraint(poly.vars, poly.coef, val.pred, val.rhs.constant - val.lhs.constant);
@@ -587,7 +587,7 @@ inline auto factory(Perun& smt)
 // create a factory functor for linear constraints in the LRA plugin
 inline auto factory(Linear_arithmetic& plugin, Trail& trail)
 {
-    return [plugin_ptr = &plugin, trail_ptr = &trail]<std::convertible_to<Linear_arithmetic::Rational> T>(Linear_predicate<T> const& val) 
+    return [plugin_ptr = &plugin, trail_ptr = &trail]<std::convertible_to<Rational> T>(Linear_predicate<T> const& val)
     {
         // move right-hand-side to left-hand-side
         auto poly = val.lhs - val.rhs;

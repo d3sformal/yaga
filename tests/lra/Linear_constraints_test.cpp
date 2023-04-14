@@ -5,7 +5,7 @@
 #include <random>
 
 #include "test.h"
-#include "Fraction.h"
+#include "Rational.h"
 #include "Linear_constraints.h"
 
 TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
@@ -13,7 +13,7 @@ TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
     using namespace perun;
     using namespace perun::test;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -50,7 +50,7 @@ TEST_CASE("Create complicated predicates", "[test_expr]")
     using namespace perun;
     using namespace perun::test;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -81,7 +81,7 @@ TEST_CASE("Combine coefficients of variables", "[test_expr]")
     using namespace perun::test;
     using namespace perun::literals;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -102,7 +102,7 @@ TEST_CASE("Create normalized constraints", "[linear_constraints]")
     using namespace perun::test;
     using namespace perun::literals;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -129,7 +129,7 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
     using namespace perun::test;
     using namespace perun::literals;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -187,7 +187,7 @@ TEST_CASE("Constraints with different right-hand-side are different", "[linear_c
     using namespace perun;
     using namespace perun::test;
     
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -202,7 +202,7 @@ TEST_CASE("Constraints with different predicate are different", "[linear_constra
     using namespace perun;
     using namespace perun::test;
     
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -220,7 +220,7 @@ TEST_CASE("Constraints with different number of variables are different", "[line
     using namespace perun;
     using namespace perun::test;
     
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -238,7 +238,7 @@ TEST_CASE("Evaluate negation of a linear constraint", "[linear_constraints]")
     using namespace perun;
     using namespace perun::test;
     
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -261,7 +261,7 @@ TEST_CASE("Encode true constraint and false constraint uniformly", "[linear_cons
     using namespace perun;
     using namespace perun::test;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Linear_constraints<Value_type> repo;
     auto make = factory(repo);
@@ -288,12 +288,12 @@ TEST_CASE("Encode true constraint and false constraint uniformly", "[linear_cons
 }
 
 template<int num_vars, int min_var_per_const, int max_var_per_const, int num_const>
-std::vector<perun::test::Linear_predicate<perun::Fraction<int>>> generate()
+std::vector<perun::test::Linear_predicate<perun::Rational>> generate()
 {
     using namespace perun;
     using namespace perun::test;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     std::default_random_engine eng{42};
     eng.discard(1 << 12);
@@ -337,7 +337,7 @@ TEST_CASE("Microbenchmark of small constraints", "[.][linear_constraints][bench]
     using namespace perun;
     using namespace perun::test;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     constexpr int num_vars = 100;
     constexpr int num_vars_per_pred = 10;
@@ -360,7 +360,7 @@ TEST_CASE("Microbenchmark of large constraints", "[.][linear_constraints][bench]
     using namespace perun;
     using namespace perun::test;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     constexpr int num_vars = 10000;
     constexpr int num_vars_per_pred = 1000;
@@ -383,7 +383,7 @@ TEST_CASE("Microbenchmark of mixed constraints", "[.][linear_constraints][bench]
     using namespace perun;
     using namespace perun::test;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     constexpr int num_vars = 10000;
     constexpr int min_vars_per_const = 2;

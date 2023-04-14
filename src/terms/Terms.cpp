@@ -24,10 +24,8 @@ uint64_t hash_integer_term(Kind kind, type_t tau, int32_t index) {
 }
 
 uint64_t hash_rational(Rational const& value) {
-    std::hash<int32_t> hasher;
-    uint64_t result = hasher(value.numerator());
-    result = result * 31 + hasher(value.denominator());
-    return result;
+    // TODO: Implement hashing in Rationals to return 64-bit hash
+    return value.getHashValue();
 }
 }
 

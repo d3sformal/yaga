@@ -139,21 +139,6 @@ private:
     T denom;
 };
 
-namespace literals {
-
-/** Convert an integer literal to a rational number (fraction)
- *
- * @param val value to convert
- * @return fraction which represents @p val
- */
-inline constexpr Fraction<int> operator""_r(unsigned long long int val)
-{
-    assert(val <= std::numeric_limits<int>::max());
-    return val;
-}
-
-} // namespace literals
-
 /** Check whether a product of integers of type L and type R fits into type Prod
  *
  * @tparam L type of the first integer

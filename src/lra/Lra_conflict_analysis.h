@@ -10,7 +10,7 @@
 
 #include "Bounds.h"
 #include "Clause.h"
-#include "Fraction.h"
+#include "Rational.h"
 #include "Linear_constraint.h"
 #include "Trail.h"
 #include "Variable_bounds.h"
@@ -121,7 +121,6 @@ class Linear_arithmetic;
 
 class Fm_elimination {
 public:
-    using Rational = Fraction<int>;
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
@@ -242,7 +241,6 @@ private:
  */
 class Lra_conflict_analysis {
 public:
-    using Rational = Fraction<int>;
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
@@ -282,7 +280,6 @@ private:
  */
 class Bound_conflict_analysis {
 public:
-    using Rational = Fraction<int>;
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
@@ -306,7 +303,6 @@ private:
  */
 class Inequality_conflict_analysis {
 public:
-    using Rational = Fraction<int>;
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;

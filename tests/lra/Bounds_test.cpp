@@ -11,8 +11,6 @@ TEST_CASE("Deduce a bound", "[bounds]")
     using namespace perun::test;
     using namespace perun::literals;
 
-    using Rational = Fraction<int>;
-
     constexpr int num_vars = 5;
 
     Model<bool> bool_model;
@@ -130,8 +128,6 @@ TEST_CASE("Check if an unassigned constraint is implied by bounds", "[bounds]")
     using namespace perun;
     using namespace perun::test;
     using namespace perun::literals;
-
-    using Rational = Fraction<int>;
 
     constexpr int num_vars = 5;
 

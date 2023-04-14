@@ -5,7 +5,7 @@
 #include <cassert>
 #include <vector>
 
-#include "Fraction.h"
+#include "Rational.h"
 #include "Linear_constraint.h"
 #include "Trail.h"
 #include "Variable_bounds.h"
@@ -16,7 +16,6 @@ namespace perun {
  */
 class Bounds {
 public:
-    using Rational = Fraction<int>;
     using Bound = Implied_value<Rational>;
     using Models = Theory_models<Rational>;
     using Constraint = Linear_constraint<Rational>;

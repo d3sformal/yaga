@@ -4,13 +4,12 @@
 #include "Lra_conflict_analysis.h"
 #include "Linear_arithmetic.h"
 #include "test.h"
+#include "Rational.h"
 
 TEST_CASE("FM elimination", "[fm]")
 {
     using namespace perun;
     using namespace perun::test;
-
-    using Rational = Fraction<int>;
 
     constexpr int num_reals = 5;
 
@@ -140,8 +139,6 @@ TEST_CASE("Derive bound conflict when some variables are not assigned", "[bound_
     using namespace perun::test;
     using namespace perun::literals;
 
-    using Rational = Fraction<int>;
-
     constexpr int num_reals = 5;
 
     Trail trail;
@@ -203,8 +200,6 @@ TEST_CASE("Derive inequality conflict when some variables are not assigned", "[i
     using namespace perun;
     using namespace perun::test;
     using namespace perun::literals;
-
-    using Rational = Fraction<int>;
 
     constexpr int num_reals = 7;
 

@@ -11,11 +11,6 @@
 namespace perun {
 
 
-inline void multiplication(Rational& dst, Rational const& a, Rational const& b)
-{
-    dst = a * b;
-}
-
 inline bool is_zero(Rational const& r)
 {
     return r == 0;

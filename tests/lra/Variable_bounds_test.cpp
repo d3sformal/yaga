@@ -2,6 +2,7 @@
 
 #include "Variable_bounds.h"
 #include "test.h"
+#include "Rational.h"
 
 // compute inequality implied by a unit linear constraint
 template<typename Value>
@@ -17,7 +18,7 @@ TEST_CASE("Validity of bounds depends on theory models", "[variable_bounds]")
     using namespace perun;
     using namespace perun::test;
 
-    using Value_type = Fraction<int>;
+    using Value_type = Rational;
 
     Model<bool> bool_model;
     Model<Value_type> lra_model;
@@ -289,8 +290,6 @@ TEST_CASE("Detect obsolete bounds", "[variable_bounds]")
     using namespace perun;
     using namespace perun::test;
 
-    using Rational = Fraction<int>;
-
     constexpr int num_vars = 3;
 
     Model<bool> bool_model;
@@ -321,8 +320,6 @@ TEST_CASE("Add deduced bounds", "[variable_bounds]")
 {
     using namespace perun;
     using namespace perun::test;
-
-    using Rational = Fraction<int>;
 
     constexpr int num_vars = 3;
 

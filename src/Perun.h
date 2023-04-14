@@ -15,6 +15,7 @@
 #include "Restart.h"
 #include "Variable_order.h"
 #include "Evsids.h"
+#include "Rational.h"
 
 #include <algorithm>
 #include <cassert>
@@ -49,8 +50,6 @@ public:
  */
 class Qf_lra final : public Initializer {
 public:
-    using Rational = Fraction<int>;
-
     virtual ~Qf_lra() = default;
 
     /** Initialize @p solver with plugins for boolean variables and rational variables.
@@ -89,7 +88,6 @@ struct logic {
  */
 class Perun {
 public:
-    using Rational = Fraction<int>;
 
     /** Initialize the solver based on chosen logic.
      * 
