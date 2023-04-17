@@ -388,59 +388,114 @@ void Linear_arithmetic::add_variable(Trail& trail, Models const& models, Variabl
     }
 }
 
-std::optional<Rational> Linear_arithmetic::find_integer(Models const& models,
-                                                                           Bounds_type& bounds)
+std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bounds_type& bounds)
 {
-    Rational lb{std::numeric_limits<int>::lowest()};
-    Rational ub{std::numeric_limits<int>::max()};
-    if (auto lower_bound = bounds.lower_bound(models))
-    {
-        lb = lower_bound->value();
-    }
-
-    if (auto upper_bound = bounds.upper_bound(models))
-    {
-        ub = upper_bound->value();
-    }
-
-    assert(lb <= ub);
-
-    Rational abs_min_value = 0;
-    Rational abs_bound = 0;
-    if (lb <= Rational{0} && ub >= Rational{0})
-    {
-        abs_bound = std::max(abs(lb), ub);
-    }
-    else if (lb > Rational{0})
-    {
-        abs_min_value = lb;
-        abs_bound = ub;
-    }
-    else // lb <= ub < 0
-    {
-        abs_bound = abs(lb);
-        abs_min_value = abs(ub);
-    }
-    assert(abs_bound >= 0);
-    assert(abs_min_value >= 0);
-
-    Rational value{0};
-    for (auto int_value = abs_min_value; int_value <= abs_bound; int_value = int_value + 1)
-    {
-        value = int_value;
-        if (lb <= value && value <= ub && bounds.is_allowed(models, value))
+    // check values 0, 1, -1, 2, -2, 3, -3, ..., length, -length
+    auto check_around_zero = [&](Rational const& length) -> std::optional<Rational> {
+        for (Rational value{0}; value <= length; value = value + 1)
         {
-            break;
+            if (bounds.is_allowed(models, value))
+            {
+                return value;
+            }
+            else if (bounds.is_allowed(models, -value))
+            {
+                return -value;
+            }
         }
+        return {};
+    };
 
-        value = -int_value;
-        if (lb <= value && value <= ub && bounds.is_allowed(models, value))
+    auto lb = bounds.lower_bound(models);
+    auto ub = bounds.upper_bound(models);
+    if (!lb && !ub)
+    {
+        // examine all integers starting from 0
+        Rational value{0};
+        for (;;)
         {
-            break;
+            if (bounds.is_allowed(models, value))
+            {
+                return value;
+            }
+            else if (bounds.is_allowed(models, -value))
+            {
+                return -value;
+            }
+            value = value + 1;
+        }
+        return value;
+    }
+    else if (!lb)
+    {
+        Rational floor_ub = ub->value().floor();
+        // try small integers in [-floor_ub, floor_ub] first if floor_ub is positive
+        if (auto value = check_around_zero(floor_ub))
+        {
+            return value;
+        }
+        // try all other integers that are <= floor_ub
+        Rational value = floor_ub > 0 ? -floor_ub : floor_ub;
+        while (!bounds.is_allowed(models, value))
+        {
+            value = value - 1;
+        }
+        return value;
+    }
+    else if (!ub)
+    {
+        Rational ceiling_lb = lb->value().ceil();
+        // try small integers in [ceiling_lb, -ceiling_lb] first if ceiling_lb is negative
+        if (auto value = check_around_zero(-ceiling_lb))
+        {
+            return value;
+        }
+        // try all other integers that are >= ceiling_lb
+        Rational value = ceiling_lb < 0 ? -ceiling_lb : ceiling_lb;
+        while (!bounds.is_allowed(models, value))
+        {
+            value = value + 1;
+        }
+        return value;
+    }
+    else // if (lb && ub)
+    {
+        assert(lb);
+        assert(ub);
+
+        if (lb->value() >= 0)
+        {
+            assert(ub->value() >= 0);
+            for (Rational value = lb->value().ceil(); value <= ub->value(); value = value + 1)
+            {
+                if (bounds.is_allowed(models, value))
+                {
+                    return value;
+                }
+            }
+            return {}; // none
+        }
+        else if (ub->value() <= 0)
+        {
+            assert(lb->value() <= 0);
+            for (Rational value = ub->value().floor(); value >= lb->value(); value = value - 1)
+            {
+                if (bounds.is_allowed(models, value))
+                {
+                    return value;
+                }
+            }
+            return {}; // none
+        }
+        else // the interval of allowed values contains 0 in the middle
+        {
+            assert(lb->value() <= 0);
+            assert(ub->value() >= 0);
+            return check_around_zero(ub->value() > -lb->value() ? ub->value() : -lb->value());
         }
     }
 
-    return bounds.is_allowed(models, value) ? value : std::optional<Rational>{};
+    return {};
 }
 
 void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
