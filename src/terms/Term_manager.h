@@ -87,6 +87,9 @@ private:
 
     term_t direct_arithmetic_binary_equality(term_t t1, term_t t2);
 
+    // Helper method for polynomials, determines if a term can be treated as a variable
+    // This includes variables (KIND::UNINTERPRETED_TERM) and ITEs
+    bool is_var_like(term_t t) const;
 
 };
 } // namespace perun::terms

@@ -280,6 +280,13 @@ term_t Term_manager::mk_real_constant(std::string const& str)
     return term_table->arithmetic_constant(num / den);
 }
 
+bool Term_manager::is_var_like(term_t t) const
+{
+    auto kind = get_kind(t);
+    assert(kind != Kind::ITE_TERM or get_type(t) == types::real_type);
+    return kind == Kind::UNINTERPRETED_TERM or kind == Kind::ITE_TERM;
+}
+
 term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
 {
     if (t1 == t2)
@@ -314,15 +321,15 @@ term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
         auto const& mono2 = *(++it);
         // p is c1*x1 + c2*x2
         // Simplify (p = 0) to (x2 = -c1/c2) if x1 is UNDEF
-        // NOTE that x2 can never be UNDEF, because UNDEF (constant monomial) is always the first one
-        // Simplify (p = 0) to (x1 = x2) if c1 + c2 = 0
         if (mono1.var == term_t::Undef)
         {
             assert(mono1.coeff != 0 and mono2.coeff != 0);
             term_t coeff = term_table->arithmetic_constant(-mono1.coeff / mono2.coeff);
             return direct_arithmetic_binary_equality(mono2.var, coeff);
         }
+        // NOTE that x2 can never be UNDEF, because UNDEF (constant monomial) is always the first one
         assert(mono2.var != term_t::Undef);
+        // Simplify (p = 0) to (x1 = x2) if c1 + c2 = 0
         if (mono1.coeff + mono2.coeff == 0)
         {
             return direct_arithmetic_binary_equality(mono1.var, mono2.var);
@@ -336,8 +343,8 @@ term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
 term_t Term_manager::direct_arithmetic_binary_equality(term_t t1, term_t t2)
 {
     assert(t1 != t2);
-    assert(get_kind(t1) == Kind::UNINTERPRETED_TERM or get_kind(t2) == Kind::UNINTERPRETED_TERM);
-    if (get_kind(t1) != Kind::UNINTERPRETED_TERM or ((get_kind(t2) == Kind::UNINTERPRETED_TERM and t2 < t1)))
+    assert(is_var_like(t1) or is_var_like(t2));
+    if (not is_var_like(t1) or (is_var_like(t2) and t2 < t1))
     {
         std::swap(t1, t2);
     }

@@ -132,7 +132,7 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
             {
                 poly.constant = term_table.arithmetic_constant_value(arg);
             }
-            else if (arg_kind == terms::Kind::UNINTERPRETED_TERM)
+            else if (arg_kind == terms::Kind::UNINTERPRETED_TERM or arg_kind == terms::Kind::ITE_TERM)
             {
                 poly.vars.push_back(internal_rational_var(arg));
                 poly.coef.emplace_back(1);
@@ -203,7 +203,7 @@ void Internalizer_config::visit(term_t t)
         auto args = term_table.get_args(t);
         term_t lhs = args[0];
         term_t rhs = args[1];
-        assert(term_table.is_uninterpreted_constant(lhs));
+        assert(term_table.is_uninterpreted_constant(lhs) or term_table.is_ite(lhs));
         assert(term_table.is_uninterpreted_constant(rhs) || term_table.is_ite(rhs) || term_table.is_arithmetic_constant(rhs));
         auto poly = [&]() -> Linear_polynomial {
             if (term_table.is_arithmetic_constant(rhs))
