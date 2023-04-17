@@ -37,6 +37,7 @@ public:
     term_t mk_binary_and(term_t x, term_t y);
     term_t mk_implies(term_t x, term_t y);
     term_t mk_iff(term_t t1, term_t t2);
+    term_t mk_xor(term_t t1, term_t t2);
 
 
     // Arithmetic terms

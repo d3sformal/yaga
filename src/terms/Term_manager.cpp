@@ -157,6 +157,11 @@ term_t Term_manager::mk_term(std::string const& op, std::span<term_t> args)
         assert(args.size() == 3);
         return mk_ite(args[0], args[1], args[2]);
     }
+    else if (op == "xor")
+    {
+        assert(args.size() == 2);
+        return mk_xor(args[0], args[1]);
+    }
     UNIMPLEMENTED;
 }
 
@@ -247,6 +252,13 @@ term_t Term_manager::mk_iff(term_t t1, term_t t2)
     // TODO: handle better?
     return mk_binary_and(mk_implies(t1, t2), mk_implies(t2, t1));
 }
+
+term_t Term_manager::mk_xor(term_t t1, term_t t2)
+{
+    // TODO: handle better?
+    return mk_binary_and(mk_binary_or(t1, t2), opposite_term(mk_binary_and(t1, t2)));
+}
+
 
 term_t Term_manager::mk_integer_constant(std::string const& str)
 {
