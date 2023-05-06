@@ -2,8 +2,7 @@
 
 #include <cassert>
 
-namespace perun {
-namespace terms {
+namespace perun::terms {
 
 namespace { // Hash functions. TODO: Improve
 uint64_t hash_composite_term(Kind kind, std::span<term_t> args) {
@@ -206,10 +205,10 @@ void Term_table::set_term_name(term_t t, std::string const& name)
     }
 }
 
-term_t Term_table::get_term_by_name(std::string const& name) const
+std::optional<term_t> Term_table::get_term_by_name(std::string const& name) const
 {
     auto it = symbol_table.find(name);
-    return it == symbol_table.end() ? null_term : it->second;
+    return it != symbol_table.end() ? std::make_optional(it->second) : std::nullopt;
 }
 
 /*
@@ -279,7 +278,6 @@ std::span<const term_t> Term_table::get_args(term_t t) const
     case Kind::ARITH_CONSTANT:
     case Kind::CONSTANT_TERM:
     case Kind::UNINTERPRETED_TERM:
-    case Kind::VARIABLE:
         return {};
     default:
         term_descriptor_t const& descriptor = get_descriptor(t);
@@ -289,5 +287,4 @@ std::span<const term_t> Term_table::get_args(term_t t) const
     }
 }
 
-} // namespace terms
-} // namespace perun
+} // namespace perun::terms

@@ -41,9 +41,9 @@ term_t Parser_context::get_term_for_symbol(std::string const& symbol)
         assert(defined.signature.args.empty());
         return defined.body;
     }
-    term_t t = term_manager.get_term_by_name(symbol);
-    assert(t != terms::null_term);
-    return t;
+    auto t = term_manager.get_term_by_name(symbol);
+    assert(t.has_value());
+    return t.value();
 }
 
 type_t Parser_context::get_type_for_symbol(std::string const& symbol)
@@ -76,7 +76,7 @@ term_t Parser_context::mk_numeral(std::string const& numeric_string)
 
 term_t Parser_context::mk_decimal(std::string const& decimal_string)
 {
-    return term_manager.mk_real_constant(decimal_string);
+    return term_manager.mk_rational_constant(decimal_string);
 }
 
 term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>&& args)

@@ -22,7 +22,7 @@ void Term_manager::set_term_name(term_t t, std::string const& name)
     term_table->set_term_name(t, name);
 }
 
-term_t Term_manager::get_term_by_name(std::string const& name)
+std::optional<term_t> Term_manager::get_term_by_name(std::string const& name)
 {
     return term_table->get_term_by_name(name);
 }
@@ -267,7 +267,7 @@ term_t Term_manager::mk_integer_constant(std::string const& str)
     return term_table->arithmetic_constant(rat);
 }
 
-term_t Term_manager::mk_real_constant(std::string const& str)
+term_t Term_manager::mk_rational_constant(std::string const& str)
 {
     // TODO: This should be revisited and checked if it can be improved
     auto separator_position = str.find('.');
@@ -615,7 +615,7 @@ term_t Term_manager::mk_bool_ite(term_t c, term_t t, term_t e)
     if (e == false_term) return mk_binary_and(c, t);
     if (e == true_term) return mk_binary_or(opposite_term(c), t);
 
-    if (polarity_of(c))
+    if (is_negated(c))
     {
         c = opposite_term(c);
         std::swap(t,e);
@@ -631,7 +631,7 @@ term_t Term_manager::mk_arithmetic_ite(term_t c, term_t t, term_t e)
     if (c == false_term) return e;
     if (t == e) return t;
 
-    if (polarity_of(c))
+    if (is_negated(c))
     {
         c = opposite_term(c);
         std::swap(t, e);

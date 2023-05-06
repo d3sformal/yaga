@@ -82,7 +82,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         auto possibly_literal = internalizer_config.get_literal_for(terms::positive_term(assertion));
         assert(possibly_literal.has_value());
         Literal literal = possibly_literal.value();
-        if (terms::polarity_of(assertion))
+        if (terms::is_negated(assertion))
         {
             literal.negate();
         }
@@ -173,7 +173,7 @@ void Internalizer_config::visit(term_t t)
         auto poly_term = term_table.get_args(t)[0];
         assert(poly_term != terms::zero_term);
         auto internal_poly = internalize_poly(poly_term);
-        bool negated = terms::polarity_of(t);
+        bool negated = terms::is_negated(t);
         if (!negated) // We need to change "p >= 0" to "-p <= 0"
         {
             internal_poly.negate();
@@ -253,7 +253,7 @@ void Internalizer_config::visit(term_t t)
             term_t pos_arg = terms::positive_term(arg);
             assert(internal_bool_vars.find(pos_arg) != internal_bool_vars.end());
             auto arg_lit = internal_bool_vars.at(pos_arg);
-            if (terms::polarity_of(arg))
+            if (terms::is_negated(arg))
             {
                 arg_lit.negate();
             }
@@ -290,7 +290,7 @@ void Internalizer_config::visit(term_t t)
             // TODO: Must the variables be sorted?
             auto true_constraint = solver.linear_constraint(true_poly.vars, true_poly.coef, Order_predicate::Type::eq, -true_poly.constant);;
             auto false_constraint = solver.linear_constraint(false_poly.vars, false_poly.coef, Order_predicate::Type::eq, -false_poly.constant);
-            assert(!terms::polarity_of(cond_term)); // MB: ITE are normalized to have positive condition
+            assert(!terms::is_negated(cond_term)); // MB: ITE are normalized to have positive condition
             assert(internal_bool_vars.find(cond_term) != internal_bool_vars.end());
             Literal l = internal_bool_vars.at(cond_term);
             solver.assert_clause(l, false_constraint);

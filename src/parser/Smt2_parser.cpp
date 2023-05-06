@@ -237,7 +237,7 @@ bool Smt2_command_context::parse_command()
     lexer.eat_token(Token::RPAREN_TOK);
     return true;
 }
-void Smt2_command_context::parse_error(std::string const& msg)
+void Smt2_command_context::parse_error(std::string const&)
 {
     UNIMPLEMENTED;
 }

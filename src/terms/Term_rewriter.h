@@ -90,7 +90,7 @@ public:
 
     term_t rewrite(term_t term) override
     {
-        if (not polarity_of(term) and tm.get_kind(term) == Kind::UNINTERPRETED_TERM)
+        if (not is_negated(term) and tm.get_kind(term) == Kind::UNINTERPRETED_TERM)
         {
             if (auto it = subst_map.find(term); it != subst_map.end())
             {
