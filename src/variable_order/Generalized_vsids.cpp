@@ -41,6 +41,8 @@ void Generalized_vsids::on_init(Database& db, Trail&)
 
 void Generalized_vsids::on_before_backtrack(Database&, Trail& trail, int level)
 {
+    decay();
+
     for (int i = trail.decision_level(); i > level; --i)
     {
         for (auto [var, _] : trail.assigned(i))
@@ -59,7 +61,6 @@ void Generalized_vsids::on_learned_clause(Database&, Trail&, Clause const& learn
     {
         bump(lit.var().ord());
     }
-    decay();
 }
 
 void Generalized_vsids::on_conflict_resolved(Database&, Trail&, Clause const& other)
