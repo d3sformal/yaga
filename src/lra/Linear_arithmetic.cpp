@@ -487,14 +487,14 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
 void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& trail,
                                                  Models const& models)
 {
-    std::vector<Rational> ub;
-    std::vector<Rational> lb;
+    std::vector<std::optional<Rational>> ub;
+    std::vector<std::optional<Rational>> lb;
     std::vector<Constraint> ub_reason;
     std::vector<Constraint> lb_reason;
-    ub.resize(models.owned().num_vars(), std::numeric_limits<int>::max());
-    lb.resize(models.owned().num_vars(), std::numeric_limits<int>::lowest());
-    ub_reason.reserve(models.owned().num_vars());
-    lb_reason.reserve(models.owned().num_vars());
+    ub.resize(models.owned().num_vars(), {});
+    lb.resize(models.owned().num_vars(), {});
+    ub_reason.resize(models.owned().num_vars());
+    lb_reason.resize(models.owned().num_vars());
 
     // compute actual bounds
     for (auto c : constraints)
@@ -514,7 +514,7 @@ void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& t
             auto bound = cons.implied_value(models.owned()) / cons.coef().front();
             if (bounds.implies_upper_bound(cons))
             {
-                if (bound < ub[var])
+                if (!ub[var] || bound < *ub[var])
                 {
                     ub[var] = bound;
                     ub_reason[var] = cons;
@@ -523,7 +523,7 @@ void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& t
 
             if (bounds.implies_lower_bound(cons))
             {
-                if (bound > lb[var])
+                if (!lb[var] || bound > *lb[var])
                 {
                     lb[var] = bound;
                     lb_reason[var] = cons;
@@ -543,12 +543,12 @@ void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& t
         auto& bnds = bounds[var_ord];
         if ([[maybe_unused]] auto lower_bound = bnds.lower_bound(models))
         {
-            assert(lower_bound->value() >= lb[var_ord]);
+            assert(!lb[var_ord] || lower_bound->value() >= *lb[var_ord]);
         }
 
         if ([[maybe_unused]] auto upper_bound = bnds.upper_bound(models))
         {
-            assert(upper_bound->value() <= ub[var_ord]);
+            assert(!ub[var_ord] || upper_bound->value() <= *ub[var_ord]);
         }
     }
 }
