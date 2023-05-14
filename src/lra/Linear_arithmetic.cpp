@@ -466,13 +466,57 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
             assert(bnds.lower_bound(models) != nullptr);
             assert(bnds.upper_bound(models) != nullptr);
 
-            auto lb = bnds.lower_bound(models)->value();
-            auto ub = bnds.upper_bound(models)->value();
-
-            value = ub;
-            while (!bnds.is_allowed(models, value))
+            auto const& lb = bnds.lower_bound(models)->value();
+            auto const& ub = bnds.upper_bound(models)->value();
+            if (lb == ub)
             {
-                value = lb / Rational{2} + value / Rational{2};
+                value = ub;
+            }
+            else
+            {
+                assert(lb < ub);
+                auto current_lb = lb.floor();
+                auto current_ub = ub.ceil();
+                value = (current_lb + current_ub) / Rational{2};
+
+                // find lower bound and upper bound within [lb, ub] with a small power-of-two denominator
+                while (current_lb < lb || ub < current_ub)
+                {
+                    assert(current_ub >= lb);
+                    assert(current_lb <= ub);
+                    assert(current_lb <= current_ub);
+                    if (lb <= value && value <= ub)
+                    {
+                        if (current_ub > ub && ub - value < value - lb)
+                        {
+                            current_ub = std::move(value);
+                        }
+                        else
+                        {
+                            current_lb = std::move(value);
+                        }
+                    }
+                    else if (ub < current_ub && value >= lb)
+                    {
+                        current_ub = std::move(value);
+                    }
+                    else // if (current_lb < lb && value <= ub)
+                    {
+                        assert(current_lb < lb);
+                        assert(value <= ub);
+                        current_lb = std::move(value);
+                    }
+                    value = (current_lb + current_ub) / Rational{2};
+                }
+
+                assert(lb <= current_lb);
+                assert(current_lb <= current_ub);
+                assert(current_ub <= ub);
+                assert(current_lb <= value && value <= current_ub);
+                while (!bnds.is_allowed(models, value))
+                {
+                    value = (value + current_ub) / Rational{2};
+                }
             }
         }
     }
