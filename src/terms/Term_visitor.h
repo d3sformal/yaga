@@ -3,19 +3,19 @@
 
 #include <unordered_set>
 
-#include "Terms.h"
+#include "Term_manager.h"
 
 namespace perun::terms
 {
 
 template<typename TConfig> class Visitor
 {
-    Term_table const& term_table;
+    Term_manager const& term_manager;
     TConfig& config;
     std::unordered_set<int32_t> processed;
 
 public:
-    Visitor(Term_table const& term_table, TConfig& config) : term_table(term_table), config(config) {}
+    Visitor(Term_manager const& term_manager, TConfig& config) : term_manager(term_manager), config(config) {}
 
     void reset()
     {
@@ -27,7 +27,7 @@ public:
     {
         for (term_t root : roots)
         {
-            if (processed.count(index_of(root)) == 0)
+            if (processed.count(term_manager.index_of(root)) == 0)
             {
                 visit(root);
             }
@@ -49,19 +49,19 @@ public:
         {
             auto& current_entry = worklist.back();
             term_t current = current_entry.term;
-            auto children = term_table.get_args(current);
+            auto children = term_manager.get_args(current);
             if (current_entry.next_child < children.size()) {
                 term_t next_child = children[current_entry.next_child];
                 ++current_entry.next_child;
-                if (processed.find(terms::index_of(next_child)) == processed.end()) {
+                if (processed.find(term_manager.index_of(next_child)) == processed.end()) {
                     worklist.emplace_back(next_child);
                 }
                 continue;
             }
             // If we are here, we have already processed all children
-            assert(processed.count(index_of(current)) == 0);
+            assert(processed.count(term_manager.index_of(current)) == 0);
             config.visit(current);
-            processed.insert(index_of(current));
+            processed.insert(term_manager.index_of(current));
             worklist.pop_back();
         }
     }

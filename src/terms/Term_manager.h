@@ -135,7 +135,27 @@ public:
 
     [[nodiscard]] Kind get_kind(term_t term) const;
 
-    [[nodiscard]] Term_table const& get_term_table() const { return *term_table; }
+    [[nodiscard]] int32_t index_of(term_t term) const;
+
+    [[nodiscard]] term_t positive_term(term_t) const;
+
+    [[nodiscard]] bool is_negated(term_t) const;
+
+    [[nodiscard]] Rational const& arithmetic_constant_value(term_t) const;
+
+    [[nodiscard]] bool is_arithmetic_constant(term_t t) const;
+
+    [[nodiscard]] bool is_uninterpreted_constant(term_t) const;
+
+    [[nodiscard]] bool is_arithmetic_product(term_t) const;
+
+    [[nodiscard]] bool is_arithmetic_polynomial(term_t) const;
+
+    [[nodiscard]] bool is_ite(term_t) const;
+
+    [[nodiscard]] term_t var_of_product(term_t arithmetic_product) const;
+
+    [[nodiscard]] Rational const& coeff_of_product(term_t arithmetic_product) const;
 
 private:
     term_t poly_to_term(poly_t const& poly);

@@ -42,6 +42,61 @@ Kind Term_manager::get_kind(term_t term) const
     return term_table->get_kind(term);
 }
 
+int32_t Term_manager::index_of(term_t term) const
+{
+    return terms::index_of(term);
+}
+
+term_t Term_manager::positive_term(term_t term) const
+{
+    return terms::positive_term(term);
+}
+
+bool Term_manager::is_negated(term_t term) const
+{
+    return terms::is_negated(term);
+}
+
+Rational const& Term_manager::arithmetic_constant_value(term_t term) const
+{
+    return term_table->arithmetic_constant_value(term);
+}
+
+bool Term_manager::is_arithmetic_constant(term_t term) const
+{
+    return term_table->is_arithmetic_constant(term);
+}
+
+bool Term_manager::is_uninterpreted_constant(term_t term) const
+{
+    return term_table->is_uninterpreted_constant(term);
+}
+
+bool Term_manager::is_arithmetic_product(term_t term) const
+{
+    return term_table->is_arithmetic_product(term);
+}
+
+bool Term_manager::is_arithmetic_polynomial(term_t term) const
+{
+    return term_table->is_arithmetic_polynomial(term);
+}
+
+bool Term_manager::is_ite(term_t term) const
+{
+    return term_table->is_ite(term);
+}
+
+term_t Term_manager::var_of_product(term_t arithmetic_product) const
+{
+    return term_table->var_of_product(arithmetic_product);
+}
+
+Rational const& Term_manager::coeff_of_product(term_t arithmetic_product) const
+{
+    return term_table->coeff_of_product(arithmetic_product);
+}
+
 term_t Term_manager::mk_uninterpreted_constant(type_t type)
 {
     return term_table->new_uninterpreted_constant(type);

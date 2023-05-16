@@ -22,7 +22,7 @@ struct Linear_polynomial {
 
 class Internalizer_config : public terms::Default_visitor_config
 {
-    terms::Term_table const& term_table;
+    terms::Term_manager const& term_manager;
     Perun& solver;
     std::unordered_map<term_t, int> internal_rational_vars;
 
@@ -49,10 +49,10 @@ class Internalizer_config : public terms::Default_visitor_config
 
 public:
     Internalizer_config(
-        terms::Term_table const& term_table,
+        terms::Term_manager const& term_manager,
         Perun& solver
         )
-        : term_table(term_table), solver(solver)
+        : term_manager(term_manager), solver(solver)
     { }
 
     void visit(term_t) override;
@@ -66,23 +66,22 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     {
         return Solver_answer::UNSAT;
     }
-    auto const& term_table = term_manager.get_term_table();
 
     Perun solver{logic::qf_lra};
 
     // Cnfize and assert clauses to the solver
-    Internalizer_config internalizer_config(term_table, solver);
-    terms::Visitor<Internalizer_config> internalizer(term_table, internalizer_config);
+    Internalizer_config internalizer_config(term_manager, solver);
+    terms::Visitor<Internalizer_config> internalizer(term_manager, internalizer_config);
     internalizer.visit(assertions);
 
     // add top level assertions to the solver
     for (term_t assertion : assertions)
     {
         if (assertion == terms::true_term) { continue; }
-        auto possibly_literal = internalizer_config.get_literal_for(terms::positive_term(assertion));
+        auto possibly_literal = internalizer_config.get_literal_for(term_manager.positive_term(assertion));
         assert(possibly_literal.has_value());
         Literal literal = possibly_literal.value();
-        if (terms::is_negated(assertion))
+        if (term_manager.is_negated(assertion))
         {
             literal.negate();
         }
@@ -104,10 +103,10 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 
 Linear_polynomial Internalizer_config::internalize_poly(term_t t)
 {
-    auto kind = term_table.get_kind(t);
+    auto kind = term_manager.get_kind(t);
     if (kind == terms::Kind::ARITH_CONSTANT)
     {
-        return {{},{},term_table.arithmetic_constant_value(t)};
+        return {{},{},term_manager.arithmetic_constant_value(t)};
     }
     if (kind == terms::Kind::UNINTERPRETED_TERM || kind == terms::Kind::ITE_TERM)
     {
@@ -115,22 +114,22 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
     }
     if (kind == terms::Kind::ARITH_PRODUCT)
     {
-        return {{internal_rational_var(term_table.var_of_product(t))},{term_table.coeff_of_product(t)}, 0};
+        return {{internal_rational_var(term_manager.var_of_product(t))},{term_manager.coeff_of_product(t)}, 0};
     }
     assert(kind == terms::Kind::ARITH_POLY);
     if (kind == terms::Kind::ARITH_POLY)
     {
-        auto args = term_table.get_args(t);
+        auto args = term_manager.get_args(t);
         Linear_polynomial poly;
         poly.vars.reserve(args.size());
         poly.coef.reserve(args.size());
         assert(poly.constant == 0);
         for (term_t arg : args)
         {
-            auto arg_kind = term_table.get_kind(arg);
+            auto arg_kind = term_manager.get_kind(arg);
             if (arg_kind == terms::Kind::ARITH_CONSTANT)
             {
-                poly.constant = term_table.arithmetic_constant_value(arg);
+                poly.constant = term_manager.arithmetic_constant_value(arg);
             }
             else if (arg_kind == terms::Kind::UNINTERPRETED_TERM or arg_kind == terms::Kind::ITE_TERM)
             {
@@ -140,8 +139,8 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
             else
             {
                 assert(arg_kind == terms::Kind::ARITH_PRODUCT);
-                poly.vars.push_back(internal_rational_var(term_table.var_of_product(arg)));
-                poly.coef.push_back(term_table.coeff_of_product(arg));
+                poly.vars.push_back(internal_rational_var(term_manager.var_of_product(arg)));
+                poly.coef.push_back(term_manager.coeff_of_product(arg));
             }
         }
         return poly;
@@ -167,13 +166,13 @@ void Linear_polynomial::subtract_var(Variable v)
 
 void Internalizer_config::visit(term_t t)
 {
-    auto kind = term_table.get_kind(t);
+    auto kind = term_manager.get_kind(t);
     switch (kind) {
     case terms::Kind::ARITH_GE_ATOM: {
-        auto poly_term = term_table.get_args(t)[0];
+        auto poly_term = term_manager.get_args(t)[0];
         assert(poly_term != terms::zero_term);
         auto internal_poly = internalize_poly(poly_term);
-        bool negated = terms::is_negated(t);
+        bool negated = term_manager.is_negated(t);
         if (!negated) // We need to change "p >= 0" to "-p <= 0"
         {
             internal_poly.negate();
@@ -184,31 +183,31 @@ void Internalizer_config::visit(term_t t)
                     : solver.linear_constraint(internal_poly.vars, internal_poly.coef,
                                         Order_predicate::Type::leq, -internal_poly.constant);
         Literal lit = negated ? ~constraint_literal : constraint_literal;
-        term_t positive_term = terms::positive_term(t);
+        term_t positive_term = term_manager.positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
         internal_bool_vars.insert({positive_term, lit});
         return;
     }
     case terms::Kind::ARITH_EQ_ATOM: {
-        auto poly_term = term_table.get_args(t)[0];
+        auto poly_term = term_manager.get_args(t)[0];
         auto internal_poly = internalize_poly(poly_term);
         Literal lit = solver.linear_constraint(internal_poly.vars, internal_poly.coef, Order_predicate::Type::eq, -internal_poly.constant);
         assert(!lit.is_negation());
-        term_t positive_term = terms::positive_term(t);
+        term_t positive_term = term_manager.positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
         internal_bool_vars.insert({positive_term, lit});
         return;
     }
     case terms::Kind::ARITH_BINEQ_ATOM: {
-        auto args = term_table.get_args(t);
+        auto args = term_manager.get_args(t);
         term_t lhs = args[0];
         term_t rhs = args[1];
-        assert(term_table.is_uninterpreted_constant(lhs) or term_table.is_ite(lhs));
-        assert(term_table.is_uninterpreted_constant(rhs) || term_table.is_ite(rhs) || term_table.is_arithmetic_constant(rhs));
+        assert(term_manager.is_uninterpreted_constant(lhs) or term_manager.is_ite(lhs));
+        assert(term_manager.is_uninterpreted_constant(rhs) || term_manager.is_ite(rhs) || term_manager.is_arithmetic_constant(rhs));
         auto poly = [&]() -> Linear_polynomial {
-            if (term_table.is_arithmetic_constant(rhs))
+            if (term_manager.is_arithmetic_constant(rhs))
             {
-                return {{internal_rational_var(lhs)}, {1}, -term_table.arithmetic_constant_value(rhs)};
+                return {{internal_rational_var(lhs)}, {1}, -term_manager.arithmetic_constant_value(rhs)};
             }
             else
             {
@@ -217,20 +216,20 @@ void Internalizer_config::visit(term_t t)
         }();
         Literal lit = solver.linear_constraint(poly.vars, poly.coef, Order_predicate::Type::eq, -poly.constant);
         assert(!lit.is_negation());
-        term_t positive_term = terms::positive_term(t);
+        term_t positive_term = term_manager.positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
         internal_bool_vars.insert({positive_term, lit});
         return;
     }
     case terms::Kind::UNINTERPRETED_TERM:
-        if (term_table.get_type(t) == terms::types::bool_type)
+        if (term_manager.get_type(t) == terms::types::bool_type)
         {
             Variable bool_var = solver.make(Variable::boolean);
-            t = terms::positive_term(t);
+            t = term_manager.positive_term(t);
             auto [_, inserted] = internal_bool_vars.insert({t, Literal(bool_var.ord())});
             assert(inserted); (void)(inserted);
         }
-        else if (term_table.get_type(t) == terms::types::real_type)
+        else if (term_manager.get_type(t) == terms::types::real_type)
         {
             Variable rational_var = solver.make(Variable::rational);
             auto [_, inserted] = internal_rational_vars.insert({t, rational_var.ord()});
@@ -239,9 +238,9 @@ void Internalizer_config::visit(term_t t)
         return;
     case terms::Kind::OR_TERM:
     {
-        auto args = term_table.get_args(t);
+        auto args = term_manager.get_args(t);
         assert(args.size() >= 2);
-        term_t positive_term = terms::positive_term(t);
+        term_t positive_term = term_manager.positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
         Variable var = new_bool_var();
         Literal lit = Literal(var.ord());
@@ -250,10 +249,10 @@ void Internalizer_config::visit(term_t t)
         arg_literals.reserve(args.size());
         for (term_t arg : args)
         {
-            term_t pos_arg = terms::positive_term(arg);
+            term_t pos_arg = term_manager.positive_term(arg);
             assert(internal_bool_vars.find(pos_arg) != internal_bool_vars.end());
             auto arg_lit = internal_bool_vars.at(pos_arg);
-            if (terms::is_negated(arg))
+            if (term_manager.is_negated(arg))
             {
                 arg_lit.negate();
             }
@@ -272,10 +271,10 @@ void Internalizer_config::visit(term_t t)
     case terms::Kind::ITE_TERM:
     {
         // Extend if we decide to enable boolean ITEs as well
-        assert(term_table.get_type(t) == terms::types::real_type);
-        if (term_table.get_type(t) == terms::types::real_type)
+        assert(term_manager.get_type(t) == terms::types::real_type);
+        if (term_manager.get_type(t) == terms::types::real_type)
         {
-            auto args = term_table.get_args(t);
+            auto args = term_manager.get_args(t);
             term_t cond_term = args[0];
             term_t true_branch = args[1];
             term_t false_branch = args[2];
@@ -290,7 +289,7 @@ void Internalizer_config::visit(term_t t)
             // TODO: Must the variables be sorted?
             auto true_constraint = solver.linear_constraint(true_poly.vars, true_poly.coef, Order_predicate::Type::eq, -true_poly.constant);;
             auto false_constraint = solver.linear_constraint(false_poly.vars, false_poly.coef, Order_predicate::Type::eq, -false_poly.constant);
-            assert(!terms::is_negated(cond_term)); // MB: ITE are normalized to have positive condition
+            assert(!term_manager.is_negated(cond_term)); // MB: ITE are normalized to have positive condition
             assert(internal_bool_vars.find(cond_term) != internal_bool_vars.end());
             Literal l = internal_bool_vars.at(cond_term);
             solver.assert_clause(l, false_constraint);
@@ -323,4 +322,4 @@ std::optional<Literal> Internalizer_config::get_literal_for(term_t t) const
     return it == internal_bool_vars.end() ? std::optional<Literal>{} : it->second;
 }
 
-}
+} // namespace perun::parser
