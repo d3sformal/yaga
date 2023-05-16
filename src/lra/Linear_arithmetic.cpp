@@ -487,7 +487,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
                     assert(current_lb <= current_ub);
                     if (lb <= value && value <= ub)
                     {
-                        if (current_ub > ub && ub - value < value - lb)
+                        if (current_ub > ub && (current_lb >= lb || ub - value < value - lb))
                         {
                             current_ub = std::move(value);
                         }
@@ -500,7 +500,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
                     {
                         current_ub = std::move(value);
                     }
-                    else // if (current_lb < lb && value <= ub)
+                    else
                     {
                         assert(current_lb < lb);
                         assert(value <= ub);

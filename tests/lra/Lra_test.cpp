@@ -137,7 +137,7 @@ TEST_CASE("Check an unsatisfiable formula in LRA", "[lra][unsat][integration]")
     REQUIRE(result == Solver::Result::unsat);
 }
 
-TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][integration]")
+TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][integration][debug]")
 {
     // modified version of the benchmark:
     // https://clc-gitlab.cs.uiowa.edu:2443/SMT-LIB-benchmarks/QF_LRA/-/blob/master/meti-tarski/CMOS/CMOS-opamp-chunk-0016.smt2
