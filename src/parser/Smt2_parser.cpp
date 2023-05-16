@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "Smt2_term_parser.h"
-#include "Solver_wrapper.h"
 #include "Term_manager.h"
 #include "Term_types.h"
 #include "smt2_lexer.h"
@@ -45,7 +44,7 @@ void Smt2_command_context::execute()
 
 bool Smt2_command_context::parse_command()
 {
-    if (lexer.eatTokenChoice(Token::EOF_TOK, Token::LPAREN_TOK))
+    if (lexer.eat_token_choice(Token::EOF_TOK, Token::LPAREN_TOK))
     {
         // EOF
         return false;

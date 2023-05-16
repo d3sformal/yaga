@@ -4,7 +4,7 @@ namespace perun::parser {
 
 void Flex_lexer::parseError(std::string_view msg) { throw std::logic_error(std::string(msg)); }
 
-bool Flex_lexer::eatTokenChoice(Token t, Token f)
+bool Flex_lexer::eat_token_choice(Token t, Token f)
 {
     Token tt = next_token();
     if (tt == t)

@@ -186,7 +186,7 @@ term_t Smt2_term_parser::parse_term() {
                     lexer.eat_token(Token::LPAREN_TOK);
                 }
                 // see if there is another binding
-                if (lexer.eatTokenChoice(Token::LPAREN_TOK, Token::RPAREN_TOK))
+                if (lexer.eat_token_choice(Token::LPAREN_TOK, Token::RPAREN_TOK))
                 {
                     // (, another binding: setup parsing the next term
                     // get the symbol and store in the ParseOp
@@ -286,7 +286,7 @@ std::vector<Sorted_var> Smt2_term_parser::parse_sorted_var_list()
     std::vector<Sorted_var> vars;
     lexer.eat_token(Token::LPAREN_TOK);
     // while the next token is LPAREN, exit if RPAREN
-    while (lexer.eatTokenChoice(Token::LPAREN_TOK, Token::RPAREN_TOK))
+    while (lexer.eat_token_choice(Token::LPAREN_TOK, Token::RPAREN_TOK))
     {
         auto name = parse_symbol();
         auto type = parse_sort();
