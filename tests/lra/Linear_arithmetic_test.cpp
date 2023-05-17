@@ -681,6 +681,7 @@ TEST_CASE("Decide variable", "[linear_arithmetic]")
 {
     using namespace perun;
     using namespace perun::test;
+    using namespace perun::literals;
 
     Database db;
     Trail trail;
@@ -815,5 +816,31 @@ TEST_CASE("Decide variable", "[linear_arithmetic]")
         REQUIRE(trail.decision_level(x) == 1);
         REQUIRE(models.owned().is_defined(x.ord()));
         REQUIRE(models.owned().value(x.ord()) == -2);
+    }
+
+    SECTION("decide value in a small interval close to 0") 
+    {
+        propagate(trail, linear(x > 1_r / 10));
+        propagate(trail, linear(x < 2_r / 10));
+        lra.propagate(db, trail);
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) > 1_r / 10);
+        REQUIRE(models.owned().value(x.ord()) < 2_r / 10);
+    }
+
+    SECTION("decide value in a small interval close to 1") 
+    {
+        propagate(trail, linear(x > 8_r / 10));
+        propagate(trail, linear(x < 9_r / 10));
+        lra.propagate(db, trail);
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) > 8_r / 10);
+        REQUIRE(models.owned().value(x.ord()) < 9_r / 10);
     }
 }
