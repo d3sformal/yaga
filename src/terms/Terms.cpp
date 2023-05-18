@@ -104,9 +104,11 @@ void Term_table::add_primitive_terms()
 
     term_t allocated_true_term = constant_term(types::bool_type, 0);
     assert(allocated_true_term == true_term);
+    (void)allocated_true_term;
 
     term_t allocated_zero = arithmetic_constant(Rational(0));
     assert(allocated_zero == zero_term);
+    (void)allocated_zero;
 }
 
 term_t Term_table::constant_term(type_t tau, int32_t index)

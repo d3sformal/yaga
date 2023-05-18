@@ -553,8 +553,8 @@ term_t Term_manager::mk_arithmetic_times(std::span<term_t> args)
     assert(args.size() == 2);
     auto pit = std::partition(args.begin(), args.end(),[this](term_t arg) { return this->term_table->is_arithmetic_constant(arg); });
     // constants are from begin to it, non-constants are from pit (included) until end
-    auto nonconstants_count = args.end() - pit;
-    assert(nonconstants_count <= 1);
+    assert(args.end() - pit <= 1);
+
     // fold all constants into a single value
     Rational val = 1;
     for (auto it = args.begin(); it != pit; ++it) {
