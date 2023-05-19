@@ -222,7 +222,12 @@ bool Smt2_command_context::parse_command()
     // (set-option <option>)
     case Token::SET_OPTION_TOK:
     {
-        UNIMPLEMENTED;
+        std::string keyword = term_parser.parse_keyword();
+        std::string value = term_parser.parse_sexpr();
+        // TODO: Do something with the values
+        (void)keyword;
+        (void)value;
+        break;
     }
     break;
 
