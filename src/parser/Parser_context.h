@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "Solver_answer.h"
-#include "Term_types.h"
+#include "Solver_wrapper.h"
 
 namespace yaga::terms {
 class Term_manager;
@@ -125,7 +125,7 @@ public:
 
 class Parser_context {
 public:
-    explicit Parser_context(terms::Term_manager& term_manager) : term_manager(term_manager) {}
+    explicit Parser_context(terms::Term_manager& term_manager) : term_manager(term_manager), solver(term_manager) {}
 
     void add_let_bindings(let_bindings_t&& bindings);
 
@@ -138,6 +138,8 @@ public:
     type_t get_type_for_symbol(std::string const& symbol);
 
     Solver_answer check_sat(std::vector<term_t> const& assertions);
+
+    void model(Default_model_visitor& visitor);
 
     term_t declare_uninterpreted_constant(terms::type_t sort, std::string const& name);
 
@@ -161,6 +163,8 @@ private:
     Defined_functions defined_functions;
 
     terms::Term_manager& term_manager;
+
+    Solver_wrapper solver;
 
     term_t resolve_defined_function(std::string const& name, std::span<term_t> args);
 };

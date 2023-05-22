@@ -59,7 +59,12 @@ type_t Parser_context::get_type_for_symbol(std::string const& symbol)
 
 Solver_answer Parser_context::check_sat(std::vector<term_t> const& assertions)
 {
-    return Solver_wrapper(term_manager).check(assertions);
+    return solver.check(assertions);
+}
+
+void Parser_context::model(Default_model_visitor& visitor)
+{
+    solver.model(visitor);
 }
 
 term_t Parser_context::declare_uninterpreted_constant(terms::type_t sort, std::string const& name)

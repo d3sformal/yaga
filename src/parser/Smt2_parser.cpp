@@ -15,13 +15,73 @@ namespace yaga::parser {
 
 using term_t = terms::term_t;
 
+/** Print value of named terms.
+ */
+class Print_model final : public Default_model_visitor {
+    terms::Term_manager& term_manager;
+    // output stream where the model will be printed
+    std::ostream& output;
+public:
+    virtual ~Print_model() = default;
+
+    Print_model(terms::Term_manager& manager, std::ostream& output) 
+        : term_manager(manager), output(output) {}
+
+    /** Print an error message to the output stream
+     * 
+     * @param msg error message
+     */
+    void error(std::string_view msg) { output << "(error \"" << msg << "\")\n"; }
+
+    /** Print beginning of a list of results.
+     */
+    void begin_list() { output << "("; }
+
+    /** Print end of a list of results.
+     */
+    void end_list() { output << ")\n"; }
+
+    /** Print value of a boolean variable in the SMT-LIB format:
+     * 
+     * (define-fun <var-name> () Bool <var-value>)
+     * 
+     * @param term term which represents a boolean variable
+     * @param value value of @p term
+     */
+    void visit(term_t term, bool value) override
+    {
+        if (auto name = term_manager.get_term_name(term))
+        {
+            output << "(define-fun " << *name << " () Bool " 
+                << (value ? "true" : "false") << ")\n";
+        }
+    }
+
+    /** Print value of a rational variable in the SMT-LIB format:
+     * 
+     * (define-fun <var-name> () Real <var-value>)
+     * 
+     * @param term term which represents a rational variable
+     * @param value value of @p term
+     */
+    void visit(term_t term, Rational const& value) override
+    {
+        if (auto name = term_manager.get_term_name(term))
+        {
+            output << "(define-fun " << *name << " () Real " << value << ")\n";
+        }
+    }
+};
+
 class Smt2_command_context {
     std::istream& input;
     smt2_lexer lexer;
 
     Smt2_term_parser term_parser;
     Parser_context parser_context;
+    terms::Term_manager& term_manager;
     std::vector<term_t> assertions;
+    std::optional<Solver_answer> last_answer;
 
     bool parse_command();
 
@@ -31,7 +91,7 @@ class Smt2_command_context {
 
 public:
     Smt2_command_context(std::istream& input, terms::Term_manager& term_manager)
-        : input(input), term_parser(lexer, parser_context), parser_context(term_manager)
+        : input(input), term_parser(lexer, parser_context), parser_context(term_manager), term_manager(term_manager)
     {}
     void execute();
 };
@@ -65,8 +125,8 @@ bool Smt2_command_context::parse_command()
     // (check-sat)
     case Token::CHECK_SAT_TOK:
     {
-        auto res = parser_context.check_sat(assertions);
-        print_answer(res);
+        last_answer = parser_context.check_sat(assertions);
+        print_answer(*last_answer);
     }
     break;
 
@@ -157,7 +217,21 @@ bool Smt2_command_context::parse_command()
     // (get-model)
     case Token::GET_MODEL_TOK:
     {
-        UNIMPLEMENTED;
+        Print_model printer(term_manager, std::cout);
+        if (!last_answer)
+        {
+            printer.error("use (check-sat) before (get-model)");
+        }
+        else if (last_answer != Solver_answer::SAT)
+        {
+            printer.error("(get-model) is only available if (check-sat) returns sat");
+        }
+        else // last_answer == SAT
+        {
+            printer.begin_list();
+            parser_context.model(printer);
+            printer.end_list();
+        }
     }
     break;
     // (get-option <keyword>)

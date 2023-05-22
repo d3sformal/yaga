@@ -1,14 +1,10 @@
 #include "Solver_wrapper.h"
 
-#include "Term_visitor.h"
-#include "Yaga.h"
-
 namespace yaga::parser
 {
 
 using term_t = terms::term_t;
 
-namespace{
 struct Linear_polynomial {
     std::vector<int> vars;
     std::vector<Rational> coef;
@@ -18,47 +14,9 @@ struct Linear_polynomial {
 
     void subtract_var(Variable v);
 };
-}
 
-class Internalizer_config : public terms::Default_visitor_config
-{
-    terms::Term_manager const& term_manager;
-    Yaga& solver;
-    std::unordered_map<term_t, int> internal_rational_vars;
-
-    // HACK: We need to store literals
-    // x >= 0 (positive in term representation) is internalized as ~(x < 0), which is negative
-    std::unordered_map<term_t, Literal> internal_bool_vars; // Only positive terms should be added to this map!
-
-    Linear_polynomial internalize_poly(term_t t);
-    int internal_rational_var(term_t t) const
-    {
-        assert(internal_rational_vars.find(t) != internal_rational_vars.end());
-        return internal_rational_vars.at(t);
-    }
-
-    inline Variable new_bool_var()
-    {
-        return solver.make(Variable::boolean);
-    }
-
-    inline Variable new_real_var()
-    {
-        return solver.make(Variable::rational);
-    }
-
-public:
-    Internalizer_config(
-        terms::Term_manager const& term_manager,
-        Yaga& solver
-        )
-        : term_manager(term_manager), solver(solver)
-    { }
-
-    void visit(term_t) override;
-
-    std::optional<Literal> get_literal_for(term_t t) const;
-};
+Solver_wrapper::Solver_wrapper(terms::Term_manager& term_manager)
+    : term_manager(term_manager), solver(logic::qf_lra), internalizer_config(term_manager, solver) {}
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
@@ -67,10 +25,9 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         return Solver_answer::UNSAT;
     }
 
-    Yaga solver{logic::qf_lra};
-
     // Cnfize and assert clauses to the solver
-    Internalizer_config internalizer_config(term_manager, solver);
+    solver.init(logic::qf_lra);
+    internalizer_config.clear();
     terms::Visitor<Internalizer_config> internalizer(term_manager, internalizer_config);
     internalizer.visit(assertions);
 
@@ -99,6 +56,27 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     }
     assert(false);
     return Solver_answer::UNKNOWN;
+}
+
+void Solver_wrapper::model(Default_model_visitor& visitor)
+{
+    auto& bool_model = solver.solver().trail().model<bool>(Variable::boolean);
+    for (auto& [term, lit] : internalizer_config.bool_vars())
+    {
+        if (bool_model.is_defined(lit.var().ord()))
+        {
+            visitor.visit(term, bool_model.value(lit.var().ord()));
+        }
+    }
+
+    auto& lra_model = solver.solver().trail().model<Rational>(Variable::rational);
+    for (auto& [term, var_ord] : internalizer_config.rational_vars())
+    {
+        if (lra_model.is_defined(var_ord))
+        {
+            visitor.visit(term, lra_model.value(var_ord));
+        }
+    }
 }
 
 Linear_polynomial Internalizer_config::internalize_poly(term_t t)
