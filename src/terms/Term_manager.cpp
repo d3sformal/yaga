@@ -22,6 +22,11 @@ void Term_manager::set_term_name(term_t t, std::string const& name)
     term_table->set_term_name(t, name);
 }
 
+std::optional<std::string_view> Term_manager::get_term_name(term_t t) const
+{
+    return term_table->get_term_name(t);
+}
+
 std::optional<term_t> Term_manager::get_term_by_name(std::string const& name)
 {
     return term_table->get_term_by_name(name);

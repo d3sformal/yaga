@@ -171,6 +171,13 @@ public:
     void set_term_name(term_t, std::string const&);
 
     /**
+     * Get name associated with a term
+     * 
+     * @return name associated with given term or none if no name is associated with the term
+     */
+    std::optional<std::string_view> get_term_name(term_t) const;
+
+    /**
      * Retrieves the term associated to the @p name
      *
      * @return Term associated with the name, or nothing if no term is associated with the name

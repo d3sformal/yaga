@@ -123,6 +123,7 @@ public:
      * term names
      */
     void set_term_name(term_t t, std::string const& name);
+    std::optional<std::string_view> get_term_name(term_t t) const;
     std::optional<term_t> get_term_by_name(std::string const& name);
 
     /*
