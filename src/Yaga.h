@@ -95,6 +95,14 @@ public:
      */
     explicit Yaga(Initializer const& init);
 
+    /** Reinitialize the solver with a different logic.
+     * 
+     * This operation removes all clauses and variables.
+     * 
+     * @param init initializer for a logic
+     */
+    void init(Initializer const& init);
+
     /** Create a new variable
      * 
      * @param type type of the new variable

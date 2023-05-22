@@ -21,8 +21,12 @@ void Qf_lra::setup(Solver& solver) const
     solver.set_variable_order<Generalized_vsids>(lra);
 }
 
-Yaga::Yaga(Initializer const& init)
+Yaga::Yaga(Initializer const& initializer) { init(initializer); }
+
+void Yaga::init(Initializer const& init)
 {
+    smt.db().learned().clear();
+    smt.db().asserted().clear();
     init.setup(smt);
 
     // find the LRA plugin so we can add linear constraints
