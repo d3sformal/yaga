@@ -74,7 +74,7 @@ public:
      * @param cons unit constraint in @p models
      * @param models partial assignment of variables
      */
-    Implied_value(int var, Value val, Constraint cons, Models const& models)
+    Implied_value(int var, Value const& val, Constraint const& cons, Models const& models)
         : bound_var(var), val(val), cons(cons)
     {
         assert(!cons.empty());
@@ -95,7 +95,7 @@ public:
      * @param deps other bounds this bound depends on
      */
     template <std::ranges::range Bound_range>
-    Implied_value(int var, Value val, Constraint cons, Models const& models, Bound_range&& deps)
+    Implied_value(int var, Value const& val, Constraint const& cons, Models const& models, Bound_range&& deps)
         : bound_var(var), val(val), cons(cons), deps(deps.begin(), deps.end())
     {
         assert(!cons.empty());
@@ -106,13 +106,13 @@ public:
      *
      * @return implied value
      */
-    inline Value value() const { return val; }
+    inline Value const& value() const { return val; }
 
     /** Get linear constraint that implied this bound.
      *
      * @return linear constraint that implied this bound
      */
-    inline Constraint reason() const { return cons; }
+    inline Constraint const& reason() const { return cons; }
 
     /** Get variable for which this bound holds
      *
@@ -395,7 +395,7 @@ public:
      * @return true if @p value is > `lower_bound()` and the bound is strict
      * @return true if @p value is >= `lower_bound()` and the bound is not strict
      */
-    inline bool check_lower_bound(Models const& models, Value value)
+    inline bool check_lower_bound(Models const& models, Value const& value)
     {
         if (auto lb = lower_bound(models))
         {
@@ -411,7 +411,7 @@ public:
      * @return true if @p value is < `upper_bound()` and the bound is strict
      * @return true if @p value is <= `upper_bound()` and the bound is not strict
      */
-    inline bool check_upper_bound(Models const& models, Value value)
+    inline bool check_upper_bound(Models const& models, Value const& value)
     {
         if (auto ub = upper_bound(models))
         {
@@ -428,7 +428,7 @@ public:
      * @return true iff @p value is between `lower_bound()` and `upper_bound()` and there is no
      * inequality that would prohibit @p value
      */
-    inline bool is_allowed(Models const& models, Value value)
+    inline bool is_allowed(Models const& models, Value const& value)
     {
         return !inequality(models, value) && check_lower_bound(models, value) &&
                check_upper_bound(models, value);

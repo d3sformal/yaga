@@ -18,7 +18,7 @@ bool Bounds::is_equality(Bound const& bound) const
                        [this](auto const& other) { return is_equality(other); });
 }
 
-void Bounds::deduce_from_equality(Models const& models, Constraint cons)
+void Bounds::deduce_from_equality(Models const& models, Constraint const& cons)
 {
     assert(!cons.lit().is_negation());
     assert(cons.pred() == Order_predicate::eq);
@@ -101,7 +101,7 @@ void Bounds::deduce_from_equality(Models const& models, Constraint cons)
     }
 }
 
-void Bounds::deduce_from_inequality(Models const& models, Constraint cons)
+void Bounds::deduce_from_inequality(Models const& models, Constraint const& cons)
 {
     assert(eval(models.boolean(), cons.lit()) == true);
     assert(cons.pred() != Order_predicate::eq);
@@ -175,7 +175,7 @@ void Bounds::deduce_from_inequality(Models const& models, Constraint cons)
     }
 }
 
-void Bounds::deduce(Models const& models, Constraint cons)
+void Bounds::deduce(Models const& models, Constraint const& cons)
 {
     assert(eval(models.boolean(), cons.lit()) == true);
     if (cons.size() <= 1)
@@ -196,7 +196,7 @@ void Bounds::deduce(Models const& models, Constraint cons)
     }
 }
 
-bool Bounds::is_implied(Models const& models, Constraint cons)
+bool Bounds::is_implied(Models const& models, Constraint const& cons)
 {
     auto val = eval(models.boolean(), cons.lit());
     if (val == true)

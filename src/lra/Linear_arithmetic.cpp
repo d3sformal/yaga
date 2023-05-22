@@ -252,7 +252,7 @@ std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, int var_ord)
     return {}; // no conflict
 }
 
-void Linear_arithmetic::unit(Models const& models, Constraint cons) 
+void Linear_arithmetic::unit(Models const& models, Constraint const& cons) 
 { 
     bounds.update(models, cons); 
 }
@@ -392,7 +392,7 @@ std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bo
 {
     // check values 0, 1, -1, 2, -2, 3, -3, ..., length, -length
     auto check_around_zero = [&](Rational const& length) -> std::optional<Rational> {
-        for (Rational value{0}; value <= length; value = value + 1)
+        for (Rational value{0}; value <= length; value += 1)
         {
             if (bounds.is_allowed(models, value))
             {
@@ -422,7 +422,7 @@ std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bo
             {
                 return -value;
             }
-            value = value + 1;
+            value += 1;
         }
         return value;
     }
@@ -438,7 +438,7 @@ std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bo
         Rational value = floor_ub > 0 ? -floor_ub : floor_ub;
         while (!bounds.is_allowed(models, value))
         {
-            value = value - 1;
+            value -= 1;
         }
         return value;
     }
@@ -454,7 +454,7 @@ std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bo
         Rational value = ceiling_lb < 0 ? -ceiling_lb : ceiling_lb;
         while (!bounds.is_allowed(models, value))
         {
-            value = value + 1;
+            value += 1;
         }
         return value;
     }
@@ -466,7 +466,7 @@ std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bo
         if (lb->value() >= 0)
         {
             assert(ub->value() >= 0);
-            for (Rational value = lb->value().ceil(); value <= ub->value(); value = value + 1)
+            for (Rational value = lb->value().ceil(); value <= ub->value(); value += 1)
             {
                 if (bounds.is_allowed(models, value))
                 {
@@ -478,7 +478,7 @@ std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bo
         else if (ub->value() <= 0)
         {
             assert(lb->value() <= 0);
-            for (Rational value = ub->value().floor(); value >= lb->value(); value = value - 1)
+            for (Rational value = ub->value().floor(); value >= lb->value(); value -= 1)
             {
                 if (bounds.is_allowed(models, value))
                 {

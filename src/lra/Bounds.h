@@ -31,7 +31,7 @@ public:
      * @param models partial assignment of variables
      * @param cons constraint used to deduce new bounds
      */
-    void deduce(Models const& models, Constraint cons);
+    void deduce(Models const& models, Constraint const& cons);
 
     /** Update bounds using the unit constraint @p cons
      *
@@ -52,7 +52,7 @@ public:
      * @param cons checked constraint
      * @return true iff @p cons is true in current trail
      */
-    bool is_implied(Models const& models, Constraint cons);
+    bool is_implied(Models const& models, Constraint const& cons);
 
     /** Check whether the unit constraint @p cons implies an equality for the only unassigned
      * variable (e.g., `x == 5`)
@@ -155,14 +155,14 @@ private:
      * @param models partial assignment of variables
      * @param cons an equality linear constraint (=)
      */
-    void deduce_from_equality(Models const& models, Constraint cons);
+    void deduce_from_equality(Models const& models, Constraint const& cons);
 
     /** Deduce bounds from an inequality @p cons (<, <=, >, >=)
      *
      * @param models partial assignment of variables
      * @param cons an inequality linear constraint (<, <=, >, >=)
      */
-    void deduce_from_inequality(Models const& models, Constraint cons);
+    void deduce_from_inequality(Models const& models, Constraint const& cons);
 
     /** Check whether @p bound depends on a linear constraint whose boolean variable is @p bool_var
      *

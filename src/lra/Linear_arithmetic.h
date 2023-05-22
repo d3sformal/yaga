@@ -106,9 +106,12 @@ public:
         auto models = relevant_models(trail);
         if (is_new(models, cons.lit().var()))
         {
-            for (auto var : cons.vars())
+            if (options.prop_bounds || options.prop_unassigned)
             {
-                occur[var].push_back(cons.lit().is_negation() ? ~cons : cons);
+                for (auto var : cons.vars())
+                {
+                    occur[var].push_back(cons.lit().is_negation() ? ~cons : cons);
+                }
             }
             add_variable(trail, models, cons.lit().var());
             watch(cons, models.owned());
@@ -169,7 +172,7 @@ private:
         // index of the next variable to check in `constraint`
         int index;
 
-        inline Watched_constraint(Constraint cons)
+        inline Watched_constraint(Constraint const& cons)
             : constraint(cons), index(std::min<int>(2, cons.size() - 1))
         {
         }
@@ -240,7 +243,7 @@ private:
      * @param models partial assignment of variables
      * @param cons new unit constraint
      */
-    void unit(Models const& models, Constraint cons);
+    void unit(Models const& models, Constraint const& cons);
 
     /** Deduce new bounds using bounds added at this decision level
      *
