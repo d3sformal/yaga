@@ -1,5 +1,5 @@
-#ifndef PERUN_VARIABLE_ORDER_H
-#define PERUN_VARIABLE_ORDER_H
+#ifndef YAGA_VARIABLE_ORDER_H
+#define YAGA_VARIABLE_ORDER_H
 
 #include "Clause.h"
 #include "Database.h"
@@ -7,7 +7,7 @@
 #include "Trail.h"
 #include "Variable.h"
 
-namespace perun {
+namespace yaga {
 
 class Variable_order : public Event_listener {
 public:
@@ -31,6 +31,6 @@ public:
     virtual bool is_before(Variable lhs, Variable rhs) const = 0;
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_VARIABLE_ORDER_H
+#endif // YAGA_VARIABLE_ORDER_H

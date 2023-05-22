@@ -5,7 +5,7 @@
 #include <tuple>
 #include <vector>
 
-namespace perun::parser
+namespace yaga::parser
 {
 
 #define UNIMPLEMENTED throw std::logic_error("Not implemented yet!")
@@ -296,4 +296,4 @@ std::vector<Sorted_var> Smt2_term_parser::parse_sorted_var_list()
     return vars;
 }
 
-} // namespace perun::parser
+} // namespace yaga::parser

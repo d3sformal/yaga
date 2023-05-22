@@ -1,10 +1,10 @@
-#ifndef PERUN_TERM_TYPES_H
-#define PERUN_TERM_TYPES_H
+#ifndef YAGA_TERM_TYPES_H
+#define YAGA_TERM_TYPES_H
 
 #include <cstdint>
 #include <functional>
 
-namespace perun::terms {
+namespace yaga::terms {
 
 /**
  * A type representing terms which serves as a lightweight handle.
@@ -87,13 +87,13 @@ enum class Kind {
 }
 
 namespace std {
-template <> struct hash<perun::terms::term_t>
+template <> struct hash<yaga::terms::term_t>
 {
-    size_t operator()(perun::terms::term_t t) const
+    size_t operator()(yaga::terms::term_t t) const
     {
         return std::hash<int32_t>()(t.x);
     }
 };
 }
 
-#endif // PERUN_TERM_TYPES_H
+#endif // YAGA_TERM_TYPES_H

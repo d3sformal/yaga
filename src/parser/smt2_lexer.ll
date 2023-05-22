@@ -4,7 +4,7 @@
 #include "smt2_lexer.h"
 
 /* using "token" to make the returns for the tokens shorter to type */
-using Token = perun::parser::Token;
+using Token = yaga::parser::Token;
 
 /* define yyterminate as this instead of NULL */
 #define yyterminate() return( Token::EOF_TOK )
@@ -16,7 +16,7 @@ using Token = perun::parser::Token;
 %option noyywrap
 %option nounput
 %option c++
-%option yyclass="perun::parser::smt2_lexer"
+%option yyclass="yaga::parser::smt2_lexer"
 
 NEW_LINE        [\n]+
 WHITESPACE      [ \t\r\f]+
@@ -32,7 +32,7 @@ QUOTED_SYMBOL   \|[^\|\\]*\|
 
     /* Rules Section */
 %{
-using namespace perun::parser;
+using namespace yaga::parser;
 %}
 
 

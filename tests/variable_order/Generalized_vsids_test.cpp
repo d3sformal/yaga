@@ -5,8 +5,8 @@
 
 TEST_CASE("Pick a variable with empty database", "[generalized_vsids]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
 
@@ -49,8 +49,8 @@ TEST_CASE("Pick a variable with empty database", "[generalized_vsids]")
 
 TEST_CASE("pick the most used variable at the start", "[generalized_vsids]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
 

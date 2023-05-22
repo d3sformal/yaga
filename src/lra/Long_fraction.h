@@ -6,7 +6,7 @@ Copyright (c) 2008, 2009 Centre national de la recherche scientifique (CNRS)
 
 Available under the MIT license.
 
-Modified by Jan Kofron, Charles University, to integrate with the Perun framework.
+Modified by Jan Kofron, Charles University, to integrate with the Yaga framework.
 
 Modifications:
 Antti Hyvarinen (Univerzita Svizzera italiana Lugano)
@@ -22,7 +22,7 @@ Jan Kofron (Charles University, Prague)
 #include <stack>
 #include <vector>
 
-namespace perun {
+namespace yaga {
 
 typedef int32_t  word;
 typedef uint32_t uword;
@@ -1097,8 +1097,8 @@ Long_fraction get_multiplicand(const std::vector<Long_fraction>& reals);
 
 }
 
-template<> struct std::hash<perun::Long_fraction> {
-        inline std::size_t operator()(const perun::Long_fraction& frac) const
+template<> struct std::hash<yaga::Long_fraction> {
+        inline std::size_t operator()(const yaga::Long_fraction& frac) const
         {
             return std::hash<std::uint64_t>{}(frac.getHashValue());
         }

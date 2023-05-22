@@ -1,5 +1,5 @@
-#ifndef PERUN_ARITHMETIC_POLYNOMIAL_H
-#define PERUN_ARITHMETIC_POLYNOMIAL_H
+#ifndef YAGA_ARITHMETIC_POLYNOMIAL_H
+#define YAGA_ARITHMETIC_POLYNOMIAL_H
 
 #include <vector>
 #include <unordered_map>
@@ -8,7 +8,7 @@
 
 #include "Rational.h"
 
-namespace perun {
+namespace yaga {
 
 
 inline bool is_zero(Rational const& r)
@@ -238,4 +238,4 @@ template <typename TVar> void Polynomial<TVar>::print() const
 }
 
 }
-#endif // PERUN_ARITHMETIC_POLYNOMIAL_H
+#endif // YAGA_ARITHMETIC_POLYNOMIAL_H

@@ -1,5 +1,5 @@
-#ifndef PERUN_TEST_EXPR_H
-#define PERUN_TEST_EXPR_H
+#ifndef YAGA_TEST_EXPR_H
+#define YAGA_TEST_EXPR_H
 
 #include <vector>
 #include <algorithm>
@@ -13,9 +13,9 @@
 #include "Clause.h"
 #include "Linear_constraints.h"
 #include "Linear_arithmetic.h"
-#include "Perun.h"
+#include "Yaga.h"
 
-namespace perun::test {
+namespace yaga::test {
 
 template<typename T>
 struct Is_arithmetic {
@@ -574,7 +574,7 @@ inline auto factory(Linear_constraints<T>& repository)
 }
 
 // create a factory functor for linear constraints from solver facade (returns a literal)
-inline auto factory(Perun& smt)
+inline auto factory(Yaga& smt)
 {
     return [facade = &smt]<std::convertible_to<Rational> R>(Linear_predicate<R> const& val)
     {
@@ -598,4 +598,4 @@ inline auto factory(Linear_arithmetic& plugin, Trail& trail)
 
 }
 
-#endif // PERUN_TEST_EXPR_H
+#endif // YAGA_TEST_EXPR_H

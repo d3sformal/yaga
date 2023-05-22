@@ -7,8 +7,8 @@
 
 TEST_CASE("Restart when average of recent LBDs exceeds average of LBDs", "[glucose]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Glucose_restart restart;
     restart.set_min_conflicts(0);
@@ -62,8 +62,8 @@ TEST_CASE("Restart when average of recent LBDs exceeds average of LBDs", "[gluco
 
 TEST_CASE("Wait for a minimum number of conflicts before restart", "[glucose]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Glucose_restart restart;
     restart.set_min_conflicts(2);
@@ -96,8 +96,8 @@ TEST_CASE("Wait for a minimum number of conflicts before restart", "[glucose]")
 
 TEST_CASE("Compute clause LBD if decision levels of literals are not consecutive", "[glucose]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Glucose_restart restart;
     restart.set_min_conflicts(0);

@@ -6,7 +6,7 @@
 
 TEST_CASE("Insert variables to the priority queue", "[variable_priority_queue]")
 {
-    using namespace perun;
+    using namespace yaga;
 
     Variable_priority_queue pq;
     REQUIRE(pq.empty());
@@ -64,7 +64,7 @@ TEST_CASE("Insert variables to the priority queue", "[variable_priority_queue]")
 
 TEST_CASE("Increase score of variables in the priority queue", "[variable_priority_queue]")
 {
-    using namespace perun;
+    using namespace yaga;
 
     Variable_priority_queue pq;
     REQUIRE(pq.empty());
@@ -100,7 +100,7 @@ TEST_CASE("Increase score of variables in the priority queue", "[variable_priori
 
 TEST_CASE("Replace a range of values", "[variable_priority_queue]")
 {
-    using namespace perun;
+    using namespace yaga;
 
     Variable_priority_queue pq;
     REQUIRE(pq.empty());
@@ -138,7 +138,7 @@ TEST_CASE("Replace a range of values", "[variable_priority_queue]")
 
 TEST_CASE("Add a large number of variables to the queue", "[variable_priority_queue]")
 {
-    using namespace perun;
+    using namespace yaga;
 
     Variable_priority_queue pq;
     REQUIRE(pq.empty());
@@ -161,7 +161,7 @@ TEST_CASE("Add a large number of variables to the queue", "[variable_priority_qu
 
 TEST_CASE("Reorder variables after rescale resets scores to 0", "[variable_priority_queue]")
 {
-    using namespace perun;
+    using namespace yaga;
 
     Variable_priority_queue pq;
     REQUIRE(pq.empty());

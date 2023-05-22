@@ -10,7 +10,7 @@
 #include "Restart.h"
 #include "Solver.h"
 
-using namespace perun;
+using namespace yaga;
 
 bool is_satisfying(Trail const& trail, Database const& db)
 {

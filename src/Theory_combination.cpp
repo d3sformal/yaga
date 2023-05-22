@@ -1,6 +1,6 @@
 #include "Theory_combination.h"
 
-namespace perun {
+namespace yaga {
 
 std::vector<Clause> Theory_combination::propagate(Database& db, Trail& trail)
 {
@@ -87,4 +87,4 @@ void Theory_combination::on_restart(Database& db, Trail& trail)
     }
 }
 
-} // namespace perun
+} // namespace yaga

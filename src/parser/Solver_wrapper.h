@@ -1,12 +1,12 @@
-#ifndef PERUN_SOLVER_WRAPPER_H
-#define PERUN_SOLVER_WRAPPER_H
+#ifndef YAGA_SOLVER_WRAPPER_H
+#define YAGA_SOLVER_WRAPPER_H
 
 #include <vector>
 
 #include "Solver_answer.h"
 #include "Term_manager.h"
 
-namespace perun::parser
+namespace yaga::parser
 {
 
 class Solver_wrapper
@@ -21,4 +21,4 @@ public:
 
 }
 
-#endif // PERUN_SOLVER_WRAPPER_H
+#endif // YAGA_SOLVER_WRAPPER_H

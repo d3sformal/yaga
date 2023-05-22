@@ -1,5 +1,5 @@
-#ifndef PERUN_LITERAL_H
-#define PERUN_LITERAL_H
+#ifndef YAGA_LITERAL_H
+#define YAGA_LITERAL_H
 
 #include <cmath>
 #include <functional>
@@ -7,7 +7,7 @@
 
 #include "Variable.h"
 
-namespace perun {
+namespace yaga {
 
 class Literal_hash;
 
@@ -122,6 +122,6 @@ private:
     inline int idx(Literal lit) const { return lit.var().ord() * 2 + static_cast<int>(lit.is_negation()); }
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_LITERAL_H
+#endif // YAGA_LITERAL_H

@@ -1,11 +1,11 @@
-#ifndef PERUN_EVENT_LISTENER_H
-#define PERUN_EVENT_LISTENER_H
+#ifndef YAGA_EVENT_LISTENER_H
+#define YAGA_EVENT_LISTENER_H
 
 #include "Clause.h"
 #include "Database.h"
 #include "Trail.h"
 
-namespace perun {
+namespace yaga {
 
 class Event_listener {
 public:
@@ -58,6 +58,6 @@ public:
     virtual void on_restart(Database&, Trail&) {}
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_EVENT_LISTENER_H
+#endif // YAGA_EVENT_LISTENER_H

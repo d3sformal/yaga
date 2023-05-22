@@ -1,5 +1,5 @@
-#ifndef PERUN_TERMS_H
-#define PERUN_TERMS_H
+#ifndef YAGA_TERMS_H
+#define YAGA_TERMS_H
 
 #include <memory>
 #include <optional>
@@ -12,7 +12,7 @@
 #include "Term_hash_table.h"
 #include "Term_types.h"
 
-namespace perun::terms {
+namespace yaga::terms {
 
 /**
  * Term descriptor contains additional information for different kinds of terms.
@@ -341,5 +341,5 @@ public:
 
 };
 
-} // namespace perun::terms
-#endif // PERUN_TERMS_H
+} // namespace yaga::terms
+#endif // YAGA_TERMS_H

@@ -1,5 +1,5 @@
-#ifndef PERUN_TERM_HASH_TABLE_H
-#define PERUN_TERM_HASH_TABLE_H
+#ifndef YAGA_TERM_HASH_TABLE_H
+#define YAGA_TERM_HASH_TABLE_H
 
 #include "Term_types.h"
 
@@ -8,7 +8,7 @@
 
 #include <Rational.h>
 
-namespace perun::terms {
+namespace yaga::terms {
 
 class Term_table;
 
@@ -76,6 +76,6 @@ private:
     std::unordered_set<Entry, Hash, KeyEqual> terms;
 };
 
-} // namespace perun::terms
+} // namespace yaga::terms
 
-#endif // PERUN_TERM_HASH_TABLE_H
+#endif // YAGA_TERM_HASH_TABLE_H

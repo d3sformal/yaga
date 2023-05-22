@@ -1,5 +1,5 @@
-#ifndef PERUN_LINEAR_CONSTRAINTS_H
-#define PERUN_LINEAR_CONSTRAINTS_H
+#ifndef YAGA_LINEAR_CONSTRAINTS_H
+#define YAGA_LINEAR_CONSTRAINTS_H
 
 #include <algorithm>
 #include <cassert>
@@ -17,7 +17,7 @@
 #include "Model.h"
 #include "Variable.h"
 
-namespace perun {
+namespace yaga {
 
 /** Repository of linear constraints.
  *
@@ -303,6 +303,6 @@ private:
     }
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_LINEAR_CONSTRAINTS_H
+#endif // YAGA_LINEAR_CONSTRAINTS_H

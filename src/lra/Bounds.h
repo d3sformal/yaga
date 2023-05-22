@@ -1,5 +1,5 @@
-#ifndef PERUN_BOUNDS_H
-#define PERUN_BOUNDS_H
+#ifndef YAGA_BOUNDS_H
+#define YAGA_BOUNDS_H
 
 #include <algorithm>
 #include <cassert>
@@ -10,7 +10,7 @@
 #include "Trail.h"
 #include "Variable_bounds.h"
 
-namespace perun {
+namespace yaga {
 
 /** Type responsible for keeping bounds for all rational variables.
  */
@@ -173,6 +173,6 @@ private:
     bool depends_on(Implied_value<Rational> const& bound, int bool_var) const;
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_BOUNDS_H
+#endif // YAGA_BOUNDS_H

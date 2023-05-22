@@ -1,9 +1,9 @@
 #include "Solver_wrapper.h"
 
 #include "Term_visitor.h"
-#include "Perun.h"
+#include "Yaga.h"
 
-namespace perun::parser
+namespace yaga::parser
 {
 
 using term_t = terms::term_t;
@@ -23,7 +23,7 @@ struct Linear_polynomial {
 class Internalizer_config : public terms::Default_visitor_config
 {
     terms::Term_manager const& term_manager;
-    Perun& solver;
+    Yaga& solver;
     std::unordered_map<term_t, int> internal_rational_vars;
 
     // HACK: We need to store literals
@@ -50,7 +50,7 @@ class Internalizer_config : public terms::Default_visitor_config
 public:
     Internalizer_config(
         terms::Term_manager const& term_manager,
-        Perun& solver
+        Yaga& solver
         )
         : term_manager(term_manager), solver(solver)
     { }
@@ -67,7 +67,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         return Solver_answer::UNSAT;
     }
 
-    Perun solver{logic::qf_lra};
+    Yaga solver{logic::qf_lra};
 
     // Cnfize and assert clauses to the solver
     Internalizer_config internalizer_config(term_manager, solver);
@@ -322,4 +322,4 @@ std::optional<Literal> Internalizer_config::get_literal_for(term_t t) const
     return it == internal_bool_vars.end() ? std::optional<Literal>{} : it->second;
 }
 
-} // namespace perun::parser
+} // namespace yaga::parser

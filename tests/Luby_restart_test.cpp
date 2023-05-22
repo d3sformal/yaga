@@ -6,7 +6,7 @@
 
 TEST_CASE("Generate luby sequence", "[luby]")
 {
-    using namespace perun;
+    using namespace yaga;
 
     std::array seq{
         0, 

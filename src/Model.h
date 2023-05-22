@@ -1,5 +1,5 @@
-#ifndef PERUN_MODEL_H
-#define PERUN_MODEL_H
+#ifndef YAGA_MODEL_H
+#define YAGA_MODEL_H
 
 #include <optional>
 #include <vector>
@@ -7,7 +7,7 @@
 #include "Clause.h"
 #include "Literal.h"
 
-namespace perun {
+namespace yaga {
 
 class Model_base {
 public:
@@ -152,6 +152,6 @@ inline std::optional<bool> eval(Model<bool> const& model, Clause const& clause)
     return num_assigned >= static_cast<int>(clause.size()) ? false : std::optional<bool>{};
 }
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_MODEL_H
+#endif // YAGA_MODEL_H

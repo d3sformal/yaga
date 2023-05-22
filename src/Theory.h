@@ -1,5 +1,5 @@
-#ifndef PERUN_THEORY_H
-#define PERUN_THEORY_H
+#ifndef YAGA_THEORY_H
+#define YAGA_THEORY_H
 
 #include <optional>
 #include <ranges>
@@ -10,7 +10,7 @@
 #include "Trail.h"
 #include "Variable.h"
 
-namespace perun {
+namespace yaga {
 
 /** Plugin interface for theory specific functions.
  */
@@ -63,6 +63,6 @@ protected:
     [[nodiscard]] Trail_subrange assigned(Trail const& trail);
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_THEORY_H
+#endif // YAGA_THEORY_H

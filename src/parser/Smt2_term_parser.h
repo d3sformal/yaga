@@ -1,5 +1,5 @@
-#ifndef PERUN_SMT2_TERM_PARSER_H
-#define PERUN_SMT2_TERM_PARSER_H
+#ifndef YAGA_SMT2_TERM_PARSER_H
+#define YAGA_SMT2_TERM_PARSER_H
 
 #include <vector>
 
@@ -7,7 +7,7 @@
 #include "smt2_lexer.h"
 #include "Term_types.h"
 
-namespace perun::parser
+namespace yaga::parser
 {
 
 using term_t = terms::term_t;
@@ -44,5 +44,5 @@ public:
     std::vector<Sorted_var> parse_sorted_var_list();
 };
 
-} // namespace perun::parser
-#endif // PERUN_SMT2_TERM_PARSER_H
+} // namespace yaga::parser
+#endif // YAGA_SMT2_TERM_PARSER_H

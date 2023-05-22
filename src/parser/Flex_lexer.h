@@ -1,5 +1,5 @@
-#ifndef PERUN_FLEX_LEXER_H
-#define PERUN_FLEX_LEXER_H
+#ifndef YAGA_FLEX_LEXER_H
+#define YAGA_FLEX_LEXER_H
 
 // https://stackoverflow.com/a/40665154/4917890
 #if !defined(yyFlexLexerOnce)
@@ -10,7 +10,7 @@
 
 #include <string_view>
 
-namespace perun::parser {
+namespace yaga::parser {
 
 class Flex_lexer : public yyFlexLexer {
 
@@ -49,6 +49,6 @@ public:
 
 };
 
-} // namespace perun::parser
+} // namespace yaga::parser
 
-#endif // PERUN_FLEX_LEXER_H
+#endif // YAGA_FLEX_LEXER_H

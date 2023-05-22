@@ -1,5 +1,5 @@
-#ifndef PERUN_DATABASE_H
-#define PERUN_DATABASE_H
+#ifndef YAGA_DATABASE_H
+#define YAGA_DATABASE_H
 
 #include <deque>
 #include <vector>
@@ -7,7 +7,7 @@
 #include "Clause.h"
 #include "Literal.h"
 
-namespace perun {
+namespace yaga {
 
 class Database {
 public:
@@ -61,6 +61,6 @@ private:
     std::deque<Clause> asserted_clauses;
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_DATABASE_H
+#endif // YAGA_DATABASE_H

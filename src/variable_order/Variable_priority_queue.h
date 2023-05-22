@@ -1,5 +1,5 @@
-#ifndef PERUN_VARIABLE_PRIORITY_QUEUE_H
-#define PERUN_VARIABLE_PRIORITY_QUEUE_H
+#ifndef YAGA_VARIABLE_PRIORITY_QUEUE_H
+#define YAGA_VARIABLE_PRIORITY_QUEUE_H
 
 #include <algorithm>
 #include <cassert>
@@ -9,7 +9,7 @@
 
 #include "Variable.h"
 
-namespace perun {
+namespace yaga {
 
 /** Implementation of a d-ary (max) heap which supports increasing variable scores.
  *
@@ -189,6 +189,6 @@ private:
     void fix_down(Iterator it);
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_VARIABLE_PRIORITY_QUEUE_H
+#endif // YAGA_VARIABLE_PRIORITY_QUEUE_H

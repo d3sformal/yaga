@@ -1,6 +1,6 @@
 #include "Linear_arithmetic.h"
 
-namespace perun {
+namespace yaga {
 
 void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
 {
@@ -682,4 +682,4 @@ void Linear_arithmetic::check_watch_consistency([[maybe_unused]] Models const& m
     }
 }
 
-} // namespace perun
+} // namespace yaga

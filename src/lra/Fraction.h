@@ -1,5 +1,5 @@
-#ifndef PERUN_FRACTION_H
-#define PERUN_FRACTION_H
+#ifndef YAGA_FRACTION_H
+#define YAGA_FRACTION_H
 
 #include <cassert>
 #include <cmath>
@@ -10,7 +10,7 @@
 #include <ostream>
 #include <type_traits>
 
-namespace perun {
+namespace yaga {
 
 class Normalized_tag {};
 
@@ -633,13 +633,13 @@ inline Fraction<std::common_type_t<L, R>> operator/(L lhs, Fraction<R> rhs)
     return lhs * rhs.inv();
 }
 
-} // namespace perun
+} // namespace yaga
 
 namespace std {
 
 template <typename T>
     requires std::is_integral_v<T>
-class numeric_limits<perun::Fraction<T>> {
+class numeric_limits<yaga::Fraction<T>> {
 public:
     inline static constexpr bool is_specialized = true;
     inline static constexpr bool is_signed = std::numeric_limits<T>::is_signed;
@@ -662,10 +662,10 @@ public:
     inline static constexpr bool traps = std::numeric_limits<T>::traps;
     inline static constexpr bool tinyness_before = false;
 
-    inline static constexpr perun::Fraction<T> min() { return std::numeric_limits<T>::min(); }
-    inline static constexpr perun::Fraction<T> lowest() { return std::numeric_limits<T>::lowest(); }
-    inline static constexpr perun::Fraction<T> max() { return std::numeric_limits<T>::max(); }
-    inline static constexpr perun::Fraction<T> epsilon()
+    inline static constexpr yaga::Fraction<T> min() { return std::numeric_limits<T>::min(); }
+    inline static constexpr yaga::Fraction<T> lowest() { return std::numeric_limits<T>::lowest(); }
+    inline static constexpr yaga::Fraction<T> max() { return std::numeric_limits<T>::max(); }
+    inline static constexpr yaga::Fraction<T> epsilon()
     {
         return std::numeric_limits<T>::epsilon();
     }
@@ -673,20 +673,20 @@ public:
 
 template <typename T>
     requires std::is_integral_v<T>
-struct common_type<perun::Fraction<T>, T> {
-    using type = perun::Fraction<T>;
+struct common_type<yaga::Fraction<T>, T> {
+    using type = yaga::Fraction<T>;
 };
 
 template <typename T>
     requires std::is_integral_v<T>
-struct common_type<T, perun::Fraction<T>> {
-    using type = perun::Fraction<T>;
+struct common_type<T, yaga::Fraction<T>> {
+    using type = yaga::Fraction<T>;
 };
 
 template <typename T>
     requires std::is_integral_v<T> && (2 * sizeof(T) <= sizeof(std::uint64_t))
-struct hash<perun::Fraction<T>> {
-    inline std::size_t operator()(perun::Fraction<T> frac) const
+struct hash<yaga::Fraction<T>> {
+    inline std::size_t operator()(yaga::Fraction<T> frac) const
     {
         return std::hash<std::uint64_t>{}((static_cast<std::uint64_t>(frac.numerator()) << 32) |
                                           static_cast<std::uint64_t>(frac.denominator()));
@@ -695,4 +695,4 @@ struct hash<perun::Fraction<T>> {
 
 } // namespace std
 
-#endif // PERUN_FRACTION_H
+#endif // YAGA_FRACTION_H

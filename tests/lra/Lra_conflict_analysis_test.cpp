@@ -8,8 +8,8 @@
 
 TEST_CASE("FM elimination", "[fm]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     constexpr int num_reals = 5;
 
@@ -135,9 +135,9 @@ TEST_CASE("FM elimination", "[fm]")
 
 TEST_CASE("Derive bound conflict when some variables are not assigned", "[bound_conflict]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
 
     constexpr int num_reals = 5;
 
@@ -197,9 +197,9 @@ TEST_CASE("Derive bound conflict when some variables are not assigned", "[bound_
 
 TEST_CASE("Derive inequality conflict when some variables are not assigned", "[inequality_conflict]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
 
     constexpr int num_reals = 7;
 

@@ -1,5 +1,5 @@
-#ifndef PERUN_THEORY_COMBINATION_H
-#define PERUN_THEORY_COMBINATION_H
+#ifndef YAGA_THEORY_COMBINATION_H
+#define YAGA_THEORY_COMBINATION_H
 
 #include <concepts>
 #include <deque>
@@ -12,7 +12,7 @@
 #include "Trail.h"
 #include "Variable.h"
 
-namespace perun {
+namespace yaga {
 
 /** Combination of several theories.
  */
@@ -120,6 +120,6 @@ private:
     std::vector<int> current_num_vars;
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_THEORY_COMBINATION_H
+#endif // YAGA_THEORY_COMBINATION_H

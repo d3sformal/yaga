@@ -7,8 +7,8 @@
 
 TEST_CASE("Pick a variable with empty clause database", "[evsids]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
 
@@ -39,8 +39,8 @@ TEST_CASE("Pick a variable with empty clause database", "[evsids]")
 
 TEST_CASE("Pick the most used variable if there has not been a conflict", "[evsids]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     db.assert_clause(lit(0), lit(1), ~lit(2));
@@ -74,8 +74,8 @@ TEST_CASE("Pick the most used variable if there has not been a conflict", "[evsi
 
 TEST_CASE("Pick a variable after a large number of score decays", "[evsids]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     db.assert_clause(lit(0), lit(1), ~lit(2));

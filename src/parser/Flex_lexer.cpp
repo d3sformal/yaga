@@ -1,6 +1,6 @@
 #include "Flex_lexer.h"
 
-namespace perun::parser {
+namespace yaga::parser {
 
 void Flex_lexer::parseError(std::string_view msg) { throw std::logic_error(std::string(msg)); }
 
@@ -43,4 +43,4 @@ void Flex_lexer::unexpected_token_error(Token)
     throw std::logic_error("Unexpected token encountered: " + val);
 }
 
-} // namespace perun::parser
+} // namespace yaga::parser

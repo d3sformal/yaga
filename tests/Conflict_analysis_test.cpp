@@ -7,8 +7,8 @@
 
 TEST_CASE("Resolve propagated literal", "[conflict_analysis]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     db.assert_clause(lit(0), lit(1), lit(2));
@@ -34,8 +34,8 @@ TEST_CASE("Resolve propagated literal", "[conflict_analysis]")
 
 TEST_CASE("Add literals to conflict during resolution", "[conflict_analysis]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     db.assert_clause(lit(0), lit(1), ~lit(2));
@@ -65,8 +65,8 @@ TEST_CASE("Add literals to conflict during resolution", "[conflict_analysis]")
 
 TEST_CASE("Derive a unit conflict clause", "[conflict_analysis]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     db.assert_clause(lit(0), lit(1));
@@ -93,8 +93,8 @@ TEST_CASE("Derive a unit conflict clause", "[conflict_analysis]")
 
 TEST_CASE("Derive an empty clause", "[conflict_analysis]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     db.assert_clause(lit(0));
@@ -122,8 +122,8 @@ TEST_CASE("Derive an empty clause", "[conflict_analysis]")
 
 TEST_CASE("Derive a semantic split clause", "[conflict_analysis]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     db.assert_clause(~lit(0), ~lit(1), lit(2));

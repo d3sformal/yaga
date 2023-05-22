@@ -1,5 +1,5 @@
-#ifndef PERUN_FIRST_UNASSIGNED_H
-#define PERUN_FIRST_UNASSIGNED_H
+#ifndef YAGA_FIRST_UNASSIGNED_H
+#define YAGA_FIRST_UNASSIGNED_H
 
 #include <optional>
 #include <ranges>
@@ -9,7 +9,7 @@
 #include "Variable.h"
 #include "Variable_order.h"
 
-namespace perun {
+namespace yaga {
 
 /** Pick the first unassigned variable.
  *
@@ -49,6 +49,6 @@ private:
     std::optional<Variable::Type> var_type;
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_FIRST_UNASSIGNED_H
+#endif // YAGA_FIRST_UNASSIGNED_H

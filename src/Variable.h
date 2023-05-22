@@ -1,9 +1,9 @@
-#ifndef PERUN_VARIABLE_H
-#define PERUN_VARIABLE_H
+#ifndef YAGA_VARIABLE_H
+#define YAGA_VARIABLE_H
 
 #include <ostream>
 
-namespace perun {
+namespace yaga {
 
 class Variable {
 public:
@@ -73,6 +73,6 @@ inline std::ostream& operator<<(std::ostream& out, Variable var)
     return out;
 }
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_VARIABLE_H
+#endif // YAGA_VARIABLE_H

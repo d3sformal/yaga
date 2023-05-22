@@ -1,5 +1,5 @@
-#ifndef PERUN_TEST_H
-#define PERUN_TEST_H
+#ifndef YAGA_TEST_H
+#define YAGA_TEST_H
 
 #include <algorithm>
 #include <cassert>
@@ -11,11 +11,11 @@
 #include "Clause.h"
 #include "Linear_constraints.h"
 
-namespace perun::test {
+namespace yaga::test {
 
-inline perun::Literal lit(int ord) 
+inline yaga::Literal lit(int ord)
 {
-    return perun::Literal{ord};
+    return yaga::Literal{ord};
 }
 
 template<typename... Args>
@@ -24,14 +24,14 @@ inline Clause clause(Args&&... args)
     return Clause{std::forward<Args>(args)...};
 }
 
-inline perun::Variable bool_var(int ord)
+inline yaga::Variable bool_var(int ord)
 {
-    return perun::Variable{ord, perun::Variable::boolean};
+    return yaga::Variable{ord, yaga::Variable::boolean};
 }
 
-inline perun::Variable real_var(int ord)
+inline yaga::Variable real_var(int ord)
 {
-    return perun::Variable{ord, perun::Variable::rational};
+    return yaga::Variable{ord, yaga::Variable::rational};
 }
 
 // create a tuple of real variables
@@ -57,4 +57,4 @@ inline Clause clause(Linear_constraint<Value> cons, Linear_constraint<Tail>... t
 
 }
 
-#endif // PERUN_TEST_H
+#endif // YAGA_TEST_H

@@ -1,8 +1,8 @@
-#ifndef PERUN_SOLVER_ANSWER_H
-#define PERUN_SOLVER_ANSWER_H
+#ifndef YAGA_SOLVER_ANSWER_H
+#define YAGA_SOLVER_ANSWER_H
 
-namespace perun
+namespace yaga
 {
 enum class Solver_answer : char { SAT, UNSAT, UNKNOWN, ERROR };
 }
-#endif // PERUN_SOLVER_ANSWER_H
+#endif // YAGA_SOLVER_ANSWER_H

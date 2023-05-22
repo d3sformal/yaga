@@ -1,5 +1,5 @@
-#ifndef PERUN_VARIABLE_BOUNDS_H
-#define PERUN_VARIABLE_BOUNDS_H
+#ifndef YAGA_VARIABLE_BOUNDS_H
+#define YAGA_VARIABLE_BOUNDS_H
 
 #include <algorithm>
 #include <cassert>
@@ -13,7 +13,7 @@
 #include "Linear_constraints.h"
 #include "Model.h"
 
-namespace perun {
+namespace yaga {
 
 /** Reference to models relevant for a theory
  *
@@ -468,6 +468,6 @@ private:
     }
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_VARIABLE_BOUNDS_H
+#endif // YAGA_VARIABLE_BOUNDS_H

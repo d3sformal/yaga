@@ -1,5 +1,5 @@
-#ifndef PERUN_EVSIDS_H
-#define PERUN_EVSIDS_H
+#ifndef YAGA_EVSIDS_H
+#define YAGA_EVSIDS_H
 
 #include <vector>
 
@@ -8,7 +8,7 @@
 #include "Variable.h"
 #include "Variable_order.h"
 
-namespace perun {
+namespace yaga {
 
 class Evsids final : public Variable_order {
 public:
@@ -102,6 +102,6 @@ private:
     }
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_EVSIDS_H
+#endif // YAGA_EVSIDS_H

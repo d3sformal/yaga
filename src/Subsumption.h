@@ -1,5 +1,5 @@
-#ifndef PERUN_SUBSUMPTION_H
-#define PERUN_SUBSUMPTION_H
+#ifndef YAGA_SUBSUMPTION_H
+#define YAGA_SUBSUMPTION_H
 
 #include <algorithm>
 #include <concepts>
@@ -17,7 +17,7 @@
 #include "Trail.h"
 #include "Variable.h"
 
-namespace perun {
+namespace yaga {
 
 /** Periodically (on restart) removes subsumed clauses.
  *
@@ -133,6 +133,6 @@ private:
     void remove_subsumed(Database& db);
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_SUBSUMPTION_H
+#endif // YAGA_SUBSUMPTION_H

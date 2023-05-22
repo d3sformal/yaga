@@ -1,11 +1,11 @@
-#ifndef PERUN_LITERAL_MAP_H_
-#define PERUN_LITERAL_MAP_H_
+#ifndef YAGA_LITERAL_MAP_H_
+#define YAGA_LITERAL_MAP_H_
 
 #include <vector>
 
 #include "Literal.h"
 
-namespace perun {
+namespace yaga {
 
 /** Dense map from literals to values of type T
  *
@@ -110,6 +110,6 @@ private:
     }
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_LITERAL_MAP_H_
+#endif // YAGA_LITERAL_MAP_H_

@@ -1,6 +1,6 @@
 #include "Generalized_vsids.h"
 
-namespace perun {
+namespace yaga {
 
 void Generalized_vsids::on_variable_resize(Variable::Type type, int num_vars)
 {
@@ -91,4 +91,4 @@ std::optional<Variable> Generalized_vsids::pick(Database&, Trail& trail)
     return variables.top();
 }
 
-} // namespace perun
+} // namespace yaga

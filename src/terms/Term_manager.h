@@ -1,5 +1,5 @@
-#ifndef PERUN_TERM_MANAGER_H
-#define PERUN_TERM_MANAGER_H
+#ifndef YAGA_TERM_MANAGER_H
+#define YAGA_TERM_MANAGER_H
 
 #include <memory>
 #include <optional>
@@ -8,7 +8,7 @@
 #include "Arithmetic_polynomial.h"
 #include "Term_types.h"
 
-namespace perun::terms {
+namespace yaga::terms {
 
 using poly_t = Polynomial<term_t>;
 
@@ -171,6 +171,6 @@ private:
     [[nodiscard]] bool is_var_like(term_t t) const;
 
 };
-} // namespace perun::terms
+} // namespace yaga::terms
 
-#endif // PERUN_TERM_MANAGER_H
+#endif // YAGA_TERM_MANAGER_H

@@ -1,6 +1,6 @@
 #include "Evsids.h"
 
-namespace perun {
+namespace yaga {
 
 void Evsids::on_variable_resize(Variable::Type type, int num_vars)
 {
@@ -76,4 +76,4 @@ std::optional<Variable> Evsids::pick(Database&, Trail& trail)
     return Variable{best_var, Variable::boolean};
 }
 
-} // namespace perun
+} // namespace yaga

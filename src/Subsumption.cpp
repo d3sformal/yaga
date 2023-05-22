@@ -1,6 +1,6 @@
 #include "Subsumption.h"
 
-namespace perun {
+namespace yaga {
 
 void Subsumption::minimize(Trail const& trail, Clause& clause)
 {
@@ -157,4 +157,4 @@ void Subsumption::remove_subsumed(Database& db)
     old_size = db.learned().size();
 }
 
-} // namespace perun
+} // namespace yaga

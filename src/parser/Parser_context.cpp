@@ -7,7 +7,7 @@
 
 #define UNIMPLEMENTED throw std::logic_error("Not implemented yet!")
 
-namespace perun::parser {
+namespace yaga::parser {
 
 void Parser_context::add_let_bindings(let_bindings_t&& bindings)
 {
@@ -137,4 +137,4 @@ term_t resolve(Function_template const& function_template, std::span<term_t> arg
     return terms::simultaneous_variable_substitution(term_manager, subst_map, function_template.body);
 }
 
-} // namespace perun::parser
+} // namespace yaga::parser

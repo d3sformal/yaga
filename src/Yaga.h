@@ -1,5 +1,5 @@
-#ifndef PERUN_PERUN_H
-#define PERUN_PERUN_H
+#ifndef YAGA_YAGA_H
+#define YAGA_YAGA_H
 
 #include "Bool_theory.h"
 #include "Clause.h"
@@ -22,7 +22,7 @@
 #include <exception>
 #include <ranges>
 
-namespace perun {
+namespace yaga {
 
 class Initializer {
 public:
@@ -59,7 +59,7 @@ public:
     void setup(Solver& solver) const override;
 };
 
-/** Predefined logic initializers for the Perun facade.
+/** Predefined logic initializers for the Yaga facade.
  */
 struct logic {
     /** Propositional logic
@@ -75,7 +75,7 @@ struct logic {
  * 
  * Typical usage:
  * ~~~~~~~~~~~~~~~{.cpp}
- * Perun smt{logic::qf_lra};
+ * Yaga smt{logic::qf_lra};
  * Variable x = smt.make(Variable::rational);
  * Variable y = smt.make(Variable::rational);
  * Literal a = smt.make_bool();
@@ -86,14 +86,14 @@ struct logic {
  * auto result = smt.solver().check();
  * ~~~~~~~~~~~~~~~
  */
-class Perun {
+class Yaga {
 public:
 
     /** Initialize the solver based on chosen logic.
      * 
      * @param init initializer for a logic
      */
-    explicit Perun(Initializer const& init);
+    explicit Yaga(Initializer const& init);
 
     /** Create a new variable
      * 
@@ -153,7 +153,7 @@ public:
 
     /** Get solver instance
      * 
-     * @return perun solver instance
+     * @return yaga solver instance
      */
     inline Solver& solver() { return smt; }
 private:
@@ -164,4 +164,4 @@ private:
 
 }
 
-#endif // PERUN_PERUN_H
+#endif // YAGA_YAGA_H

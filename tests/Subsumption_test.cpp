@@ -5,8 +5,8 @@
 
 TEST_CASE("Remove subsumed learned clauses", "[subsumption]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Trail trail;
 
@@ -25,8 +25,8 @@ TEST_CASE("Remove subsumed learned clauses", "[subsumption]")
 
 TEST_CASE("Strengthen conflict clause", "[self-subsumption]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     db.learn_clause(~lit(0), ~lit(1), lit(2));

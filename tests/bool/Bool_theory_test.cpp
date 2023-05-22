@@ -5,8 +5,8 @@
 
 TEST_CASE("Propagate unit clauses if the trail is empty", "[bool_theory][bcp]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     db.assert_clause(lit(0), lit(1), lit(2));
@@ -40,8 +40,8 @@ TEST_CASE("Propagate unit clauses if the trail is empty", "[bool_theory][bcp]")
 
 TEST_CASE("Run BCP after a value is decided", "[bool_theory][bcp]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Bool_theory theory;
 
@@ -89,8 +89,8 @@ TEST_CASE("Run BCP after a value is decided", "[bool_theory][bcp]")
 
 TEST_CASE("Run BCP after backtracking", "[bool_theory][bcp]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Bool_theory theory;
 
@@ -131,8 +131,8 @@ TEST_CASE("Run BCP after backtracking", "[bool_theory][bcp]")
 
 TEST_CASE("Skip satisfied clauses", "[bool_theory][bcp]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Bool_theory theory;
 
@@ -174,8 +174,8 @@ TEST_CASE("Skip satisfied clauses", "[bool_theory][bcp]")
 
 TEST_CASE("Maintain watched literals invariants", "[bool_theory][bcp]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Bool_theory theory;
     Database db;

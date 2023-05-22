@@ -13,11 +13,11 @@
 #include "First_unassigned.h"
 #include "Smtlib_parser.h"
 #include "Rational.h"
-#include "Perun.h"
+#include "Yaga.h"
 
-using namespace perun;
-using namespace perun::test;
-using namespace perun::literals;
+using namespace yaga;
+using namespace yaga::test;
+using namespace yaga::literals;
 
 TEST_CASE("Check a satisfiable formula in LRA", "[lra][sat][integration]")
 {
@@ -147,7 +147,7 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
     input << "(declare-fun pi () Real)\n";
     input << "(assert (and (> pi (/ 15707963 5000000)) (and (not (<= (/ 31415927 10000000) pi)) (and (<= skoY (* pi (/ 1 3))) (and (<= (* pi (/ 1 4)) skoY) (and (<= skoX 120) (<= 100 skoX)))))))\n";
 
-    Perun smt{logic::qf_lra};
+    Yaga smt{logic::qf_lra};
     Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 
@@ -176,7 +176,7 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
     input << "(declare-fun pi () Real)\n";
     input << "(assert (and (= skoX 0) (and (not (<= pi (/ 15707963 5000000))) (and (not (<= (/ 31415927 10000000) pi)) (and (<= skoY (* pi (/ 1 3))) (and (<= (* pi (/ 1 4)) skoY) (and (<= skoX 120) (<= 100 skoX))))))))\n";
 
-    Perun smt{logic::qf_lra};
+    Yaga smt{logic::qf_lra};
     Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 

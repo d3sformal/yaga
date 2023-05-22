@@ -1,5 +1,5 @@
-#ifndef PERUN_BOOL_THEORY_H
-#define PERUN_BOOL_THEORY_H
+#ifndef YAGA_BOOL_THEORY_H
+#define YAGA_BOOL_THEORY_H
 
 #include <algorithm>
 #include <optional>
@@ -13,7 +13,7 @@
 #include "Theory.h"
 #include "Trail.h"
 
-namespace perun {
+namespace yaga {
 
 class Bool_theory : public Theory {
 public:
@@ -129,6 +129,6 @@ private:
     bool fix_second_watch(Trail const& trail, Model<bool> const& model, Watched_clause& watch);
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_BOOL_THEORY_H
+#endif // YAGA_BOOL_THEORY_H

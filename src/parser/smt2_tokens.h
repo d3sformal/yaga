@@ -1,7 +1,7 @@
-#ifndef PERUN_SMT2_TOKENS_H
-#define PERUN_SMT2_TOKENS_H
+#ifndef YAGA_SMT2_TOKENS_H
+#define YAGA_SMT2_TOKENS_H
 
-namespace perun::parser {
+namespace yaga::parser {
 
 enum class Token : int
 {
@@ -49,6 +49,6 @@ enum class Token : int
     NONE
 };
 
-} // namespace perun::parser
+} // namespace yaga::parser
 
-#endif // PERUN_SMT2_TOKENS_H
+#endif // YAGA_SMT2_TOKENS_H

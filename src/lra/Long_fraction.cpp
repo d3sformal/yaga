@@ -15,7 +15,7 @@ Jan Kofron (Charles University, Prague)
 #include <sstream>
 #include <algorithm>
 
-namespace perun {
+namespace yaga {
 
     mpq_ptr Long_fraction::mpqPool::alloc() {
         mpq_ptr r;

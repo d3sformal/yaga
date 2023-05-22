@@ -1,5 +1,5 @@
-#ifndef PERUN_LINEAR_ARITHMETIC_H
-#define PERUN_LINEAR_ARITHMETIC_H
+#ifndef YAGA_LINEAR_ARITHMETIC_H
+#define YAGA_LINEAR_ARITHMETIC_H
 
 #include <algorithm>
 #include <cassert>
@@ -18,7 +18,7 @@
 #include "Theory.h"
 #include "Variable_bounds.h"
 
-namespace perun {
+namespace yaga {
 
 class Linear_arithmetic final : public Theory {
 public:
@@ -328,6 +328,6 @@ private:
     void check_watch_consistency(Models const& models);
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_LINEAR_ARITHMETIC_H
+#endif // YAGA_LINEAR_ARITHMETIC_H

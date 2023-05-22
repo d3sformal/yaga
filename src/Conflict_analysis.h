@@ -1,5 +1,5 @@
-#ifndef PERUN_CONFLICT_ANALYSIS_H
-#define PERUN_CONFLICT_ANALYSIS_H
+#ifndef YAGA_CONFLICT_ANALYSIS_H
+#define YAGA_CONFLICT_ANALYSIS_H
 
 #include <algorithm>
 #include <cassert>
@@ -13,7 +13,7 @@
 #include "Clause.h"
 #include "Trail.h"
 
-namespace perun {
+namespace yaga {
 
 class Conflict_analysis {
 public:
@@ -84,6 +84,6 @@ private:
     std::pair<Clause, int> finish(Trail const& trail) const;
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_CONFLICT_ANALYSIS_H
+#endif // YAGA_CONFLICT_ANALYSIS_H

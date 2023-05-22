@@ -1,7 +1,7 @@
 #include "Lra_conflict_analysis.h"
 #include "Linear_arithmetic.h"
 
-namespace perun {
+namespace yaga {
 
 void Fm_elimination::init(Constraint const& cons)
 {
@@ -245,4 +245,4 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds
     return analysis.finish();
 }
 
-} // namespace perun
+} // namespace yaga

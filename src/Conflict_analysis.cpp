@@ -1,6 +1,6 @@
 #include "Conflict_analysis.h"
 
-namespace perun {
+namespace yaga {
 
 void Conflict_analysis::init(Trail const& trail, Clause const& clause)
 {
@@ -65,4 +65,4 @@ std::pair<Clause, int> Conflict_analysis::finish(Trail const& trail) const
     return {clause, clause.size() <= 1 ? 0 : trail.decision_level(clause[1].var()).value()};
 }
 
-} // namespace perun
+} // namespace yaga

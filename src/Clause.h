@@ -1,16 +1,16 @@
-#ifndef PERUN_CLAUSE_H
-#define PERUN_CLAUSE_H
+#ifndef YAGA_CLAUSE_H
+#define YAGA_CLAUSE_H
 
 #include <vector>
 
 #include "Literal.h"
 
-namespace perun {
+namespace yaga {
 
 /** Disjunction of literals
  */
 using Clause = std::vector<Literal>;
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_CLAUSE_H
+#endif // YAGA_CLAUSE_H

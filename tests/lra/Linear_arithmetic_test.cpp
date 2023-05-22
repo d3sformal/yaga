@@ -6,7 +6,7 @@
 #include "Literal.h"
 #include "test.h"
 
-namespace perun::test {
+namespace yaga::test {
 
 // propagate that lit is true in trail at current decision level without reason
 auto propagate(Trail& trail, Literal lit)
@@ -45,12 +45,12 @@ template <typename Value> auto propagate(Trail& trail, Linear_constraint<Value> 
     return propagate(trail, cons.lit());
 }
 
-} // namespace perun::test
+} // namespace yaga::test
 
 TEST_CASE("Propagate in an empty trail", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -65,8 +65,8 @@ TEST_CASE("Propagate in an empty trail", "[linear_arithmetic]")
 
 TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -92,8 +92,8 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
 
 TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -142,8 +142,8 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
 
 TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -172,8 +172,8 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
 
 TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -193,22 +193,22 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithme
     decide(trail, y, 0);
     REQUIRE(lra.propagate(db, trail).empty());
 
-    REQUIRE(!perun::eval(models.boolean(), linear(x + y + z <= 0).lit()));
-    REQUIRE(!perun::eval(models.owned(), linear(x + y + z <= 0)));
+    REQUIRE(!yaga::eval(models.boolean(), linear(x + y + z <= 0).lit()));
+    REQUIRE(!yaga::eval(models.owned(), linear(x + y + z <= 0)));
     REQUIRE(!trail.decision_level(linear(x + y + z <= 0).lit().var()));
 
     decide(trail, z, 0);
     REQUIRE(lra.propagate(db, trail).empty());
 
     REQUIRE(trail.decision_level(linear(x + y + z <= 0).lit().var()) == 3);
-    REQUIRE(perun::eval(models.boolean(), linear(x + y + z <= 0).lit()) == false);
-    REQUIRE(perun::eval(models.owned(), linear(x + y + z <= 0)) == false);
+    REQUIRE(yaga::eval(models.boolean(), linear(x + y + z <= 0).lit()) == false);
+    REQUIRE(yaga::eval(models.owned(), linear(x + y + z <= 0)) == false);
 }
 
 TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -242,8 +242,8 @@ TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
 
 TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -265,8 +265,8 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
             clause(~linear(x == 0), ~linear(x - y <= 0), linear(y >= 0))));
-        REQUIRE(perun::eval(models.owned(), linear(y >= 0)) == false);
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.owned(), linear(y >= 0)) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with upper bound implied by an equality")
@@ -279,8 +279,8 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
             clause(~linear(x - y <= 0), ~linear(y == 0), linear(x <= 0))));
-        REQUIRE(perun::eval(models.owned(), linear(x <= 0)) == false);
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.owned(), linear(x <= 0)) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with a strict lower bound")
@@ -296,8 +296,8 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
             clause(~linear(z < x), ~linear(x <= y), linear(z < y))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
-        REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.owned(), linear(z < y)) == false);
     }
 
     SECTION("with strict upper bound")
@@ -313,8 +313,8 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
             clause(~linear(z <= x), ~linear(x < y), linear(z < y))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
-        REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.owned(), linear(z < y)) == false);
     }
 
     SECTION("with both bounds strict")
@@ -330,8 +330,8 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
             clause(~linear(z < x), ~linear(x < y), linear(z < y))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
-        REQUIRE(perun::eval(models.owned(), linear(z < y)) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.owned(), linear(z < y)) == false);
     }
 
     SECTION("with non-strict bounds")
@@ -347,8 +347,8 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
             clause(~linear(z <= x), ~linear(x <= y), linear(z <= y))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
-        REQUIRE(perun::eval(models.owned(), linear(z <= y)) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.owned(), linear(z <= y)) == false);
     }
 
     SECTION("with only one variable")
@@ -360,7 +360,7 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
             clause(~linear(1 < x), ~linear(x < 0))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with two equalities")
@@ -373,15 +373,15 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
             clause(~linear(x + y == 2), ~linear(2 * x + 4 * y == 4), linear(x == 2))));
-        REQUIRE(perun::eval(models.owned(), linear(x == 2)) == false);
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.owned(), linear(x == 2)) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
     }
 }
 
 TEST_CASE("Detect trivial bound conflict with several variables", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -403,8 +403,8 @@ TEST_CASE("Detect trivial bound conflict with several variables", "[linear_arith
 
 TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -427,8 +427,8 @@ TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_
 
 TEST_CASE("Always choose a new boolean variable for unique derived constraints", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -449,15 +449,15 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
     REQUIRE(!conflicts.empty());
     REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
         clause(~linear(x > 0), ~linear(x + y < 0), linear(y < 0))));
-    REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
-    REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+    REQUIRE(yaga::eval(models.owned(), linear(y < 0)) == false);
+    REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
     REQUIRE(linear(y < 0).lit().var().ord() == 3);
 }
 
 TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -483,9 +483,9 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
                 clause(~linear(y <= x), ~linear(x <= z), linear(x == 0), linear(y < 0), linear(0 < z))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
-        REQUIRE(perun::eval(models.owned(), linear(y < 0)) == false);
-        REQUIRE(perun::eval(models.owned(), linear(0 < z)) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.owned(), linear(y < 0)) == false);
+        REQUIRE(yaga::eval(models.owned(), linear(0 < z)) == false);
     }
 
     SECTION("with both derived constraints trivial")
@@ -498,7 +498,7 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
                 clause(~linear(4 <= x), ~linear(x <= 4), linear(x == 4))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with trivial derivation from upper bound")
@@ -512,7 +512,7 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
                 clause(~linear(x + y >= 4), ~linear(x <= 4), linear(x == 4), linear(y > 0))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with trivial derivation from lower bound")
@@ -526,7 +526,7 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
                 clause(~linear(x >= 4), ~linear(x + y <= 4), linear(x == 4), linear(y < 0))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
     }
 
     SECTION("with upper bound and lower bound implied by the same equality")
@@ -539,14 +539,14 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
         REQUIRE(!conflicts.empty());
         REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(
             clause(~linear(x == 0), ~linear(x + y != 0), linear(y < 0), linear(y > 0))));
-        REQUIRE(perun::eval(models.boolean(), conflicts.front()) == false);
+        REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
     }
 }
 
 TEST_CASE("Backtrack-decide a constraint", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -578,8 +578,8 @@ TEST_CASE("Backtrack-decide a constraint", "[linear_arithmetic]")
 
 TEST_CASE("Propagate derived bound constraint semantically only if it is not on the trail", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -602,8 +602,8 @@ TEST_CASE("Propagate derived bound constraint semantically only if it is not on 
 
 TEST_CASE("Propagate derived inequality constraint semantically only if it is not an the trail", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -647,8 +647,8 @@ TEST_CASE("Propagate derived inequality constraint semantically only if it is no
 
 TEST_CASE("The first two unassigned variables in a derived constraint have the highest decision level", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Database db;
     Trail trail;
@@ -679,9 +679,9 @@ TEST_CASE("The first two unassigned variables in a derived constraint have the h
 
 TEST_CASE("Decide variable", "[linear_arithmetic]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
 
     Database db;
     Trail trail;

@@ -1,11 +1,11 @@
-#ifndef PERUN_RESTART_H
-#define PERUN_RESTART_H
+#ifndef YAGA_RESTART_H
+#define YAGA_RESTART_H
 
 #include "Database.h"
 #include "Event_listener.h"
 #include "Trail.h"
 
-namespace perun {
+namespace yaga {
 
 class Restart : public Event_listener {
 public:
@@ -202,6 +202,6 @@ private:
     }
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_RESTART_H
+#endif // YAGA_RESTART_H

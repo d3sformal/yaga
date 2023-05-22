@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-namespace perun::terms {
+namespace yaga::terms {
 
 namespace { // Hash functions. TODO: Improve
 uint64_t hash_composite_term(Kind kind, std::span<term_t> args) {
@@ -289,4 +289,4 @@ std::span<const term_t> Term_table::get_args(term_t t) const
     }
 }
 
-} // namespace perun::terms
+} // namespace yaga::terms

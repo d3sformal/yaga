@@ -1,6 +1,6 @@
 #include "Theory.h"
 
-namespace perun {
+namespace yaga {
 
 void Theory::on_before_backtrack(Database&, Trail&, int)
 {
@@ -16,4 +16,4 @@ Theory::Trail_subrange Theory::assigned(Trail const& trail)
     return trail.recent() | std::views::drop(skip);
 }
 
-} // namespace perun
+} // namespace yaga

@@ -2,13 +2,13 @@
 // Created by kofron on 5.4.23.
 //
 
-#ifndef PERUN_RATIONAL_H
-#define PERUN_RATIONAL_H
+#ifndef YAGA_RATIONAL_H
+#define YAGA_RATIONAL_H
 
 //#include "Fraction.h"
 #include "Long_fraction.h"
 
-namespace perun {
+namespace yaga {
         using Rational = Long_fraction;
         //using Rational = Fraction<int>;
 
@@ -29,4 +29,4 @@ namespace perun {
 }
 
 
-#endif //PERUN_RATIONAL_H
+#endif //YAGA_RATIONAL_H

@@ -5,14 +5,14 @@
 
 #include "test.h"
 #include "Smtlib_parser.h"
-#include "Perun.h"
+#include "Yaga.h"
 
 TEST_CASE("Parse boolean functions", "[test_parser]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
-    Perun smt{logic::qf_lra};
+    Yaga smt{logic::qf_lra};
     Smtlib_parser<Direct_interpreter> parser{smt};
 
     std::stringstream input;
@@ -130,10 +130,10 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
 
 TEST_CASE("Parse boolean equality", "[test_parser]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
-    Perun smt{logic::qf_lra};
+    Yaga smt{logic::qf_lra};
     Smtlib_parser<Direct_interpreter> parser{smt};
 
     std::stringstream input;
@@ -229,10 +229,10 @@ TEST_CASE("Parse boolean equality", "[test_parser]")
 
 TEST_CASE("Parse linear polynomial", "[test_parser]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
-    Perun smt{logic::qf_lra};
+    Yaga smt{logic::qf_lra};
     Smtlib_parser<Direct_interpreter> parser{smt};
 
     auto linear = factory(smt);
@@ -357,10 +357,10 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
 
 TEST_CASE("Parse if-then-else with real output", "[test_parser]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
-    Perun smt{logic::qf_lra};
+    Yaga smt{logic::qf_lra};
     Smtlib_parser<Direct_interpreter> parser{smt};
 
     auto linear = factory(smt);
@@ -407,10 +407,10 @@ TEST_CASE("Parse if-then-else with real output", "[test_parser]")
 
 TEST_CASE("parse if-then-else with a boolean output", "[test_parser]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
-    Perun smt{logic::qf_lra};
+    Yaga smt{logic::qf_lra};
     Smtlib_parser<Direct_interpreter> parser{smt};
 
     auto linear = factory(smt);

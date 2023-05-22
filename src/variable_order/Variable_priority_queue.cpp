@@ -1,6 +1,6 @@
 #include "Variable_priority_queue.h"
 
-namespace perun {
+namespace yaga {
 
 void Variable_priority_queue::push(Variable var, Score score)
 {
@@ -117,4 +117,4 @@ void Variable_priority_queue::fix_down(Iterator it)
     }
 }
 
-} // namespace perun
+} // namespace yaga

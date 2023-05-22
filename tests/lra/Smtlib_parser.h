@@ -1,5 +1,5 @@
-#ifndef PERUN_TEST_SMTLIB_PARSER_H
-#define PERUN_TEST_SMTLIB_PARSER_H
+#ifndef YAGA_TEST_SMTLIB_PARSER_H
+#define YAGA_TEST_SMTLIB_PARSER_H
 
 #include <array>
 #include <iostream>
@@ -18,9 +18,9 @@
 #include "Literal.h"
 #include "Clause.h"
 #include "Database.h"
-#include "Perun.h"
+#include "Yaga.h"
 
-namespace perun::test {
+namespace yaga::test {
 
 // directly translate smtlib expressions to linear constraints and clauses
 class Direct_interpreter {
@@ -28,8 +28,8 @@ public:
     using Polynomial_type = Linear_polynomial<Rational>;
     using Value_type = Rational;
 
-    inline explicit Direct_interpreter(Perun& perun) 
-        : perun(perun) {}
+    inline explicit Direct_interpreter(Yaga& yaga)
+        : yaga(yaga) {}
 
     // declare a new variable
     inline void declare(std::string const& id, std::string const& type) 
@@ -221,7 +221,7 @@ private:
     // map user-defined variable name -> variable
     std::unordered_map<std::string, Variable> vars;
     // solver facade
-    Perun& perun;
+    Yaga& yaga;
 
     // placeholder for a literal which represents a constant TRUE
     inline static Literal true_lit{std::numeric_limits<int>::max() - 1};
@@ -360,26 +360,26 @@ private:
         Literal cons;
         if (name == "<")
         {
-            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::lt, -norm_poly.constant);
+            cons = yaga.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::lt, -norm_poly.constant);
         }
         else if (name == "<=")
         {
-            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::leq, -norm_poly.constant);
+            cons = yaga.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::leq, -norm_poly.constant);
         }
         else if (name == "=")
         {
-            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::eq, -norm_poly.constant);
+            cons = yaga.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::eq, -norm_poly.constant);
         }
         else if (name == ">")
         {
             norm_poly = rhs - lhs;
-            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::lt, -norm_poly.constant);
+            cons = yaga.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::lt, -norm_poly.constant);
         }
         else // if (name == ">=")
         {
             assert(name == ">=");
             norm_poly = rhs - lhs;
-            cons = perun.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::leq, -norm_poly.constant);
+            cons = yaga.linear_constraint(norm_poly.vars, norm_poly.coef, Order_predicate::leq, -norm_poly.constant);
         }
 
         if (negate)
@@ -457,11 +457,11 @@ private:
         }
         else // !is_constant(cond_lit)
         {
-            push(perun::test::poly(new_real_var()));
+            push(yaga::test::poly(new_real_var()));
             auto true_poly = poly.back() - if_true;
             auto false_poly = poly.back() - if_false;
-            auto true_res = perun.linear_constraint(true_poly.vars, true_poly.coef, Order_predicate::eq, -true_poly.constant);
-            auto false_res = perun.linear_constraint(false_poly.vars, false_poly.coef, Order_predicate::eq, -false_poly.constant);
+            auto true_res = yaga.linear_constraint(true_poly.vars, true_poly.coef, Order_predicate::eq, -true_poly.constant);
+            auto false_res = yaga.linear_constraint(false_poly.vars, false_poly.coef, Order_predicate::eq, -false_poly.constant);
 
             if (negate)
             {
@@ -519,12 +519,12 @@ private:
 
     inline Literal new_bool_var()
     {
-        return perun.make_bool();
+        return yaga.make_bool();
     }
 
     inline Variable new_real_var()
     {
-        return perun.make(Variable::rational);
+        return yaga.make(Variable::rational);
     }
 
     inline void assert_clause(Clause const& clause)
@@ -532,7 +532,7 @@ private:
         assert(std::find_if(clause.begin(), clause.end(), [&](auto lit) {
             return is_constant(lit);
         }) == clause.end());
-        perun.assert_clause(clause);
+        yaga.assert_clause(clause);
     }
 };
 
@@ -766,4 +766,4 @@ private:
 
 }
 
-#endif // PERUN_TEST_SMTLIB_PARSER_H
+#endif // YAGA_TEST_SMTLIB_PARSER_H

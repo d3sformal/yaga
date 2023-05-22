@@ -7,9 +7,9 @@
 
 TEST_CASE("Deduce a bound", "[bounds]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
 
     constexpr int num_vars = 5;
 
@@ -125,9 +125,9 @@ TEST_CASE("Deduce a bound", "[bounds]")
 
 TEST_CASE("Check if an unassigned constraint is implied by bounds", "[bounds]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
 
     constexpr int num_vars = 5;
 

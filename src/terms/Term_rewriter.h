@@ -1,12 +1,12 @@
-#ifndef PERUN_TERM_REWRITER_H
-#define PERUN_TERM_REWRITER_H
+#ifndef YAGA_TERM_REWRITER_H
+#define YAGA_TERM_REWRITER_H
 
 #include <unordered_set>
 #include <unordered_map>
 
 #include "Term_manager.h"
 
-namespace perun::terms {
+namespace yaga::terms {
 
 template<typename TConfig> class Rewriter {
 
@@ -108,6 +108,6 @@ term_t simultaneous_variable_substitution(Term_manager& tm, subst_map_t const& m
     return rewriter.rewrite(term);
 }
 
-} // namespace perun::terms
+} // namespace yaga::terms
 
-#endif // PERUN_TERM_REWRITER_H
+#endif // YAGA_TERM_REWRITER_H

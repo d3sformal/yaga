@@ -9,7 +9,7 @@
 #include "Term_types.h"
 #include "smt2_lexer.h"
 
-namespace perun::parser {
+namespace yaga::parser {
 
 #define UNIMPLEMENTED throw std::logic_error("Not implemented yet!")
 
@@ -276,4 +276,4 @@ void Smt2_parser::parse_file(std::string const& file_name)
     ctx.execute();
 }
 
-} // namespace perun::parser
+} // namespace yaga::parser

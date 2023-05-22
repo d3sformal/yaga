@@ -7,8 +7,8 @@
 
 TEST_CASE("Check a satisfiable boolean formula", "[sat][integration]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Solver solver;
     solver.set_theory<Bool_theory>();
@@ -38,8 +38,8 @@ TEST_CASE("Check a satisfiable boolean formula", "[sat][integration]")
 
 TEST_CASE("Check an unsatisfiable boolean formula", "[unsat][integration]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     Solver solver;
     solver.set_theory<Bool_theory>();

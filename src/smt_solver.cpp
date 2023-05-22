@@ -7,7 +7,7 @@
 
 #include "Smt2_parser.h"
 
-using namespace perun;
+using namespace yaga;
 
 
 int main(int argc, char** argv)

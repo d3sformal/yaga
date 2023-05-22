@@ -1,5 +1,5 @@
-#ifndef PERUN_GENERALIZED_VSIDS_H
-#define PERUN_GENERALIZED_VSIDS_H
+#ifndef YAGA_GENERALIZED_VSIDS_H
+#define YAGA_GENERALIZED_VSIDS_H
 
 #include <array>
 #include <map>
@@ -11,7 +11,7 @@
 #include "Variable_order.h"
 #include "Variable_priority_queue.h"
 
-namespace perun {
+namespace yaga {
 
 /** This class computes scores similar to VSIDS from SAT solvers (`Evsids`). When a score of
  * a boolean function is bumped, all variables which implement the function are also bumped.
@@ -154,6 +154,6 @@ private:
     }
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_GENERALIZED_VSIDS_H
+#endif // YAGA_GENERALIZED_VSIDS_H

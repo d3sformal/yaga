@@ -10,8 +10,8 @@
 
 TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     using Value_type = Rational;
 
@@ -47,8 +47,8 @@ TEST_CASE("Create unit test instances using the test interface", "[test_expr]")
 
 TEST_CASE("Create complicated predicates", "[test_expr]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     using Value_type = Rational;
 
@@ -77,9 +77,9 @@ TEST_CASE("Create complicated predicates", "[test_expr]")
 
 TEST_CASE("Combine coefficients of variables", "[test_expr]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
 
     using Value_type = Rational;
 
@@ -98,9 +98,9 @@ TEST_CASE("Combine coefficients of variables", "[test_expr]")
 
 TEST_CASE("Create normalized constraints", "[linear_constraints]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
 
     using Value_type = Rational;
 
@@ -125,9 +125,9 @@ TEST_CASE("Create normalized constraints", "[linear_constraints]")
 
 TEST_CASE("Deduplicate constraints", "[linear_constraints]")
 {
-    using namespace perun;
-    using namespace perun::test;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
 
     using Value_type = Rational;
 
@@ -184,8 +184,8 @@ TEST_CASE("Deduplicate constraints", "[linear_constraints]")
 
 TEST_CASE("Constraints with different right-hand-side are different", "[linear_constraints]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
     
     using Value_type = Rational;
 
@@ -199,8 +199,8 @@ TEST_CASE("Constraints with different right-hand-side are different", "[linear_c
 
 TEST_CASE("Constraints with different predicate are different", "[linear_constraints]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
     
     using Value_type = Rational;
 
@@ -217,8 +217,8 @@ TEST_CASE("Constraints with different predicate are different", "[linear_constra
 
 TEST_CASE("Constraints with different number of variables are different", "[linear_constraints]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
     
     using Value_type = Rational;
 
@@ -235,8 +235,8 @@ TEST_CASE("Constraints with different number of variables are different", "[line
 
 TEST_CASE("Evaluate negation of a linear constraint", "[linear_constraints]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
     
     using Value_type = Rational;
 
@@ -247,19 +247,19 @@ TEST_CASE("Evaluate negation of a linear constraint", "[linear_constraints]")
 
     Model<Value_type> model;
     model.resize(3);
-    REQUIRE(!perun::eval(model, cons));
+    REQUIRE(!yaga::eval(model, cons));
     model.set_value(x.ord(), 0);
-    REQUIRE(!perun::eval(model, cons));
+    REQUIRE(!yaga::eval(model, cons));
     model.set_value(y.ord(), 0);
-    REQUIRE(perun::eval(model, cons) == false);
+    REQUIRE(yaga::eval(model, cons) == false);
     model.set_value(y.ord(), 1);
-    REQUIRE(perun::eval(model, cons) == true);
+    REQUIRE(yaga::eval(model, cons) == true);
 }
 
 TEST_CASE("Encode true constraint and false constraint uniformly", "[linear_constraints]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     using Value_type = Rational;
 
@@ -288,10 +288,10 @@ TEST_CASE("Encode true constraint and false constraint uniformly", "[linear_cons
 }
 
 template<int num_vars, int min_var_per_const, int max_var_per_const, int num_const>
-std::vector<perun::test::Linear_predicate<perun::Rational>> generate()
+std::vector<yaga::test::Linear_predicate<yaga::Rational>> generate()
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     using Value_type = Rational;
 
@@ -334,8 +334,8 @@ std::vector<perun::test::Linear_predicate<perun::Rational>> generate()
 
 TEST_CASE("Microbenchmark of small constraints", "[.][linear_constraints][bench]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     using Value_type = Rational;
 
@@ -357,8 +357,8 @@ TEST_CASE("Microbenchmark of small constraints", "[.][linear_constraints][bench]
 
 TEST_CASE("Microbenchmark of large constraints", "[.][linear_constraints][bench]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     using Value_type = Rational;
 
@@ -380,8 +380,8 @@ TEST_CASE("Microbenchmark of large constraints", "[.][linear_constraints][bench]
 
 TEST_CASE("Microbenchmark of mixed constraints", "[.][linear_constraints][bench][mixed]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     using Value_type = Rational;
 

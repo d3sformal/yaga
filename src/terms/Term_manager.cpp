@@ -8,7 +8,7 @@
 
 #define UNIMPLEMENTED throw std::logic_error("Not implemented yet!")
 
-namespace perun::terms {
+namespace yaga::terms {
 
 Term_manager::Term_manager()
 {
@@ -695,4 +695,4 @@ term_t Term_manager::mk_arithmetic_ite(term_t c, term_t t, term_t e)
     return term_table->arithmetic_ite(c, t, e);
 }
 
-} // namespace perun::terms
+} // namespace yaga::terms

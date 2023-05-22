@@ -1,5 +1,5 @@
-#ifndef PERUN_LRA_CONFLICT_ANALYSIS_H
-#define PERUN_LRA_CONFLICT_ANALYSIS_H
+#ifndef YAGA_LRA_CONFLICT_ANALYSIS_H
+#define YAGA_LRA_CONFLICT_ANALYSIS_H
 
 #include <algorithm>
 #include <cassert>
@@ -15,7 +15,7 @@
 #include "Trail.h"
 #include "Variable_bounds.h"
 
-namespace perun {
+namespace yaga {
 
 namespace detail {
 
@@ -324,6 +324,6 @@ private:
     Fm_elimination fm;
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_LRA_CONFLICT_ANALYSIS_H
+#endif // YAGA_LRA_CONFLICT_ANALYSIS_H

@@ -4,7 +4,7 @@
 
 #include "Terms.h"
 
-namespace perun::terms {
+namespace yaga::terms {
 
 term_t Term_hash_table::get_composite_term(Composite_term_proxy const& proxy)
 {
@@ -112,4 +112,4 @@ bool Term_hash_table::KeyEqual::operator()(Term_hash_table::Entry const& first,
     return first.hash == second.hash && first.term == second.term;
 }
 
-} // namespace perun::terms
+} // namespace yaga::terms

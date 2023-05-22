@@ -1,6 +1,6 @@
 #include "Solver.h"
 
-namespace perun {
+namespace yaga {
 
 std::vector<Clause> Solver::propagate() { return theory()->propagate(database, solver_trail); }
 
@@ -250,4 +250,4 @@ Solver::Result Solver::check()
     }
 }
 
-} // namespace perun
+} // namespace yaga

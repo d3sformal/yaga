@@ -1,6 +1,6 @@
 #include "First_unassigned.h"
 
-namespace perun {
+namespace yaga {
 
 bool First_unassigned::is_before(Variable lhs, Variable rhs) const
 {
@@ -27,4 +27,4 @@ std::optional<Variable> First_unassigned::pick(Database&, Trail& trail)
     return {};
 }
 
-} // namespace perun
+} // namespace yaga

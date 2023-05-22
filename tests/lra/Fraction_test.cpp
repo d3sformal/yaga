@@ -4,8 +4,8 @@
 
 TEST_CASE("Arithmetic operations with fractions", "[fraction]")
 {
-    using namespace perun;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::literals;
 
     SECTION("Compare fractions")
     {
@@ -59,8 +59,8 @@ TEST_CASE("Arithmetic operations with fractions", "[fraction]")
 
 TEST_CASE("Compare fractions", "[fraction]")
 {
-    using namespace perun;
-    using namespace perun::literals;
+    using namespace yaga;
+    using namespace yaga::literals;
 
     SECTION("with maximal int value")
     {

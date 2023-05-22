@@ -1,6 +1,6 @@
 #include "Bool_theory.h"
 
-namespace perun {
+namespace yaga {
 
 void Bool_theory::decide(Database&, Trail& trail, Variable var)
 {
@@ -255,4 +255,4 @@ Bool_theory::falsified([[maybe_unused]] Trail const& trail, Model<bool> const& m
     return {};
 }
 
-} // namespace perun
+} // namespace yaga

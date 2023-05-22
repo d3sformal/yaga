@@ -1,5 +1,5 @@
-#ifndef PERUN_LINEAR_CONSTRAINT_H
-#define PERUN_LINEAR_CONSTRAINT_H
+#ifndef YAGA_LINEAR_CONSTRAINT_H
+#define YAGA_LINEAR_CONSTRAINT_H
 
 #include <cassert>
 #include <concepts>
@@ -15,7 +15,7 @@
 #include "Model.h"
 #include "Variable.h"
 
-namespace perun {
+namespace yaga {
 
 /** Predicate of the type `x < y`, `x <= y`, or `x = y`.
  */
@@ -477,6 +477,6 @@ public:
     }
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_LINEAR_CONSTRAINT_H
+#endif // YAGA_LINEAR_CONSTRAINT_H

@@ -1,11 +1,11 @@
-#ifndef PERUN_TERM_VISITOR_H
-#define PERUN_TERM_VISITOR_H
+#ifndef YAGA_TERM_VISITOR_H
+#define YAGA_TERM_VISITOR_H
 
 #include <unordered_set>
 
 #include "Term_manager.h"
 
-namespace perun::terms
+namespace yaga::terms
 {
 
 template<typename TConfig> class Visitor
@@ -74,4 +74,4 @@ public:
 };
 
 }
-#endif // PERUN_TERM_VISITOR_H
+#endif // YAGA_TERM_VISITOR_H

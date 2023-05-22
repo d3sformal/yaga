@@ -1,5 +1,5 @@
-#ifndef PERUN_SOLVER_H
-#define PERUN_SOLVER_H
+#ifndef YAGA_SOLVER_H
+#define YAGA_SOLVER_H
 
 #include <algorithm>
 #include <array>
@@ -20,7 +20,7 @@
 #include "Variable.h"
 #include "Variable_order.h"
 
-namespace perun {
+namespace yaga {
 
 class Solver {
 public:
@@ -188,6 +188,6 @@ private:
     void init();
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_SOLVER_H
+#endif // YAGA_SOLVER_H

@@ -1,5 +1,5 @@
-#ifndef PERUN_TRAIL_H_
-#define PERUN_TRAIL_H_
+#ifndef YAGA_TRAIL_H_
+#define YAGA_TRAIL_H_
 
 #include <cassert>
 #include <memory>
@@ -12,7 +12,7 @@
 #include "Model.h"
 #include "Variable.h"
 
-namespace perun {
+namespace yaga {
 
 class Trail {
 public:
@@ -266,6 +266,6 @@ private:
     std::vector<std::unique_ptr<Model_base>> var_models;
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_TRAIL_H_
+#endif // YAGA_TRAIL_H_

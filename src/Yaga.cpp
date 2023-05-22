@@ -1,6 +1,6 @@
-#include "Perun.h"
+#include "Yaga.h"
 
-namespace perun {
+namespace yaga {
 
 void Propositional::setup(Solver& solver) const
 {
@@ -21,7 +21,7 @@ void Qf_lra::setup(Solver& solver) const
     solver.set_variable_order<Generalized_vsids>(lra);
 }
 
-Perun::Perun(Initializer const& init)
+Yaga::Yaga(Initializer const& init)
 {
     init.setup(smt);
 
@@ -40,7 +40,7 @@ Perun::Perun(Initializer const& init)
     }
 }
 
-Variable Perun::make(Variable::Type type)
+Variable Yaga::make(Variable::Type type)
 {
     auto num_vars = static_cast<int>(smt.trail().model(type).num_vars());
     smt.trail().resize(type, num_vars + 1);
@@ -53,7 +53,7 @@ Variable Perun::make(Variable::Type type)
     return Variable{num_vars, type};
 }
 
-Literal Perun::make_bool()
+Literal Yaga::make_bool()
 {
     return Literal{make(Variable::boolean).ord()};
 }

@@ -1,5 +1,5 @@
-#ifndef PERUN_PARSER_CONTEXT_H
-#define PERUN_PARSER_CONTEXT_H
+#ifndef YAGA_PARSER_CONTEXT_H
+#define YAGA_PARSER_CONTEXT_H
 
 #include <cassert>
 #include <optional>
@@ -11,11 +11,11 @@
 #include "Solver_answer.h"
 #include "Term_types.h"
 
-namespace perun::terms {
+namespace yaga::terms {
 class Term_manager;
 }
 
-namespace perun::parser {
+namespace yaga::parser {
 
 using term_t = terms::term_t;
 using type_t = terms::type_t;
@@ -167,4 +167,4 @@ private:
 
 }
 
-#endif // PERUN_PARSER_CONTEXT_H
+#endif // YAGA_PARSER_CONTEXT_H

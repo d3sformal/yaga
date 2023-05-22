@@ -1,5 +1,5 @@
-#ifndef PERUN_COMBINED_ORDER_H
-#define PERUN_COMBINED_ORDER_H
+#ifndef YAGA_COMBINED_ORDER_H
+#define YAGA_COMBINED_ORDER_H
 
 #include <deque>
 #include <memory>
@@ -11,7 +11,7 @@
 #include "Trail.h"
 #include "Variable_order.h"
 
-namespace perun {
+namespace yaga {
 
 /** Uses a sequence of variable order heuristics.
  */
@@ -143,6 +143,6 @@ private:
     std::deque<std::unique_ptr<Variable_order>> heuristics;
 };
 
-} // namespace perun
+} // namespace yaga
 
-#endif // PERUN_COMBINED_ORDER_H
+#endif // YAGA_COMBINED_ORDER_H

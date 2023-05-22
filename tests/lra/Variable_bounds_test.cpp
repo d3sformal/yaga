@@ -6,8 +6,8 @@
 
 // compute inequality implied by a unit linear constraint
 template<typename Value>
-inline perun::Implied_value<Value> implied(perun::Theory_models<Value> const& models, 
-                                           perun::Linear_constraint<Value>& cons)
+inline yaga::Implied_value<Value> implied(yaga::Theory_models<Value> const& models,
+                                           yaga::Linear_constraint<Value>& cons)
 {
     return {cons.vars().front(), cons.implied_value(models.owned()) / cons.coef().front(), 
             cons, models};
@@ -15,8 +15,8 @@ inline perun::Implied_value<Value> implied(perun::Theory_models<Value> const& mo
 
 TEST_CASE("Validity of bounds depends on theory models", "[variable_bounds]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     using Value_type = Rational;
 
@@ -287,8 +287,8 @@ TEST_CASE("Validity of bounds depends on theory models", "[variable_bounds]")
 
 TEST_CASE("Detect obsolete bounds", "[variable_bounds]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     constexpr int num_vars = 3;
 
@@ -318,8 +318,8 @@ TEST_CASE("Detect obsolete bounds", "[variable_bounds]")
 
 TEST_CASE("Add deduced bounds", "[variable_bounds]")
 {
-    using namespace perun;
-    using namespace perun::test;
+    using namespace yaga;
+    using namespace yaga::test;
 
     constexpr int num_vars = 3;
 
