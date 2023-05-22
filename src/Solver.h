@@ -130,6 +130,18 @@ public:
      */
     inline int num_restarts() const { return total_restarts; }
 
+    /** Get total number of generated conflict clauses
+     * 
+     * @return total number of conflict clauses in the last `check()`
+     */
+    inline int num_conflict_clauses() const { return total_conflict_clauses; }
+
+    /** Get total number of learned clauses
+     * 
+     * @return total number of learned clauses in the last `check()`
+     */
+    inline int num_learned_clauses() const { return total_learned_clauses; }
+
     /** Get range of listeners in this solver
      * 
      * @return range with pointers to event listeners
@@ -165,6 +177,8 @@ private:
 
     // statistics
     int total_conflicts = 0;
+    int total_conflict_clauses = 0;
+    int total_learned_clauses = 0;
     int total_restarts = 0;
     int total_decisions = 0;
 

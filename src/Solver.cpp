@@ -17,11 +17,12 @@ std::pair<std::vector<Clause>, int> Solver::analyze_conflicts(std::vector<Clause
         }
     }
 
+    ++total_conflicts;
     std::vector<Clause> learned;
     int level = std::numeric_limits<int>::max();
     for (auto&& conflict : conflicts)
     {
-        ++total_conflicts;
+        ++total_conflict_clauses;
 
         // derive clause suitable for backtracking
         auto [clause, clause_level] =
@@ -84,6 +85,7 @@ Solver::Clause_range Solver::learn(std::vector<Clause>&& clauses)
 
     for (auto const& clause : clauses)
     {
+        ++total_learned_clauses;
         // add the clause to database
         auto& learned_ref = db().learn_clause(std::move(clause));
         // trigger events
