@@ -210,7 +210,7 @@ void Term_table::set_term_name(term_t t, std::string const& name)
 std::optional<std::string_view> Term_table::get_term_name(term_t t) const
 {
     auto it = name_table.find(t);
-    return it != name_table.end() ? std::make_optional(it->second) : std::nullopt;
+    return it != name_table.end() ? std::make_optional(std::string_view{it->second}) : std::nullopt;
 }
 
 std::optional<term_t> Term_table::get_term_by_name(std::string const& name) const
