@@ -150,47 +150,6 @@ bool Bool_theory::replace_second_watch(Model<bool> const& model, Watched_clause&
     return false;
 }
 
-bool Bool_theory::fix_second_watch(Trail const& trail, Model<bool> const& model, 
-                                   Watched_clause& watch)
-{
-    auto& clause = *watch.clause;
-    assert(std::all_of(clause.begin() + 1, clause.end(), [&](auto lit) {
-        return model.is_defined(lit.var().ord());
-    }));
-
-    // Make sure that the false, watched literal has the highest decision level. The second 
-    // watched literal might not be the top level literal at this point because plugins can 
-    // propagate literals retroactively at lower decision levels.
-    auto top_it = clause.begin() + 1;
-    auto top_level = trail.decision_level(top_it->var()).value();
-    for (auto it = top_it + 1; it != clause.end(); ++it) 
-    {
-        auto other_level = trail.decision_level(it->var()).value();
-        if (other_level > top_level)
-        {
-            top_it = it;
-            top_level = other_level;
-        }
-    }
-
-    bool replaced = false;
-    if (*top_it != clause[1])
-    {
-        // start watching `*top_it`
-        watched[*top_it].push_back(watch);
-        std::iter_swap(top_it, clause.begin() + 1);
-        replaced = true;
-    }
-
-    int front_level = trail.decision_level(clause[0].var()).value_or(top_level);
-    if (eval(model, clause[0]) != true && front_level < top_level)
-    {
-        std::swap(clause[0], clause[1]);
-    }
-
-    return replaced;
-}
-
 std::optional<Clause> 
 Bool_theory::falsified([[maybe_unused]] Trail const& trail, Model<bool> const& model, Literal falsified_lit)
 {

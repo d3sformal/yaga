@@ -114,19 +114,6 @@ private:
      * literal in the clause
      */
     bool replace_second_watch(Model<bool> const& model, Watched_clause& watch);
-
-    /** Make sure the second watched variable has the highest decision level in a unit or a false
-     * clause.
-     * 
-     * Precondition: clause of @p watch is unit or false in @p model
-     * 
-     * @param trail current solver trail
-     * @param model partial assignment of boolean variables
-     * @param watch unit or false clause where the second watched variable is false
-     * @return true iff the second watch has been replaced with a literal with higher decision 
-     * level
-     */
-    bool fix_second_watch(Trail const& trail, Model<bool> const& model, Watched_clause& watch);
 };
 
 } // namespace yaga
