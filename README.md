@@ -4,7 +4,12 @@ MCSat SMT solver developed at MFF UK, mainly by M. Blicha, D. Hanák, and J. Kof
 
 ## Build
 
-You will need a C++ compiler (`gcc`, `clang`) with C++20 support and `cmake` version at least 3.17. Run the following commands to build the project:
+### Prerequisities
+* C++ compiler (`gcc`, `clang`) with C++20 support
+* `cmake` version at least 3.17
+* `flex` version at least 2.6
+
+To build Yaga, run the following commands:
 
 1. `mkdir build-release`
 2. `cd build-release`
