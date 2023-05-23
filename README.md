@@ -13,7 +13,11 @@ You will need a C++ compiler (`gcc`, `clang`) with C++20 support and `cmake` ver
 
 You can use a different build system in step `3`. For example, `cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..` creates build files for the [Ninja build system](https://ninja-build.org/) which you can use in the 4th step by running `ninja` instead of `make`.
 
-Building the project creates `test` and `sat` executables. The `sat` utility implements a SAT solver using core of the MCSat framework and a plugin for boolean variables. It has one command line argument which is a path to a CNF formula in the [DIMACS format](https://www.cs.utexas.edu/users/moore/acl2/manuals/current/manual/index-seo.php/SATLINK____DIMACS).
+Building the project creates `test`, `sat` and `smt` executables. The `sat` utility implements a SAT solver using core of the MCSat framework and a plugin for boolean variables. It has one command line argument which is a path to a CNF formula in the [DIMACS format](https://www.cs.utexas.edu/users/moore/acl2/manuals/current/manual/index-seo.php/SATLINK____DIMACS).
+The `smt` utility implements an SMT solver capable of solving problem in quantifier-free linear real arithmetic (QF_LRA logic in SMT-LIB terminology).
+It has one command line argument which is a path to a SMT-LIB2 file.
+Yaga supports a subset of SMT-LIB2 language that covers all non-incremental benchmarks in SMT-LIB for QF_LRA.
+    
 
 # Description
 Yaga is an MCSat based [3] SMT solver. Currently, we implemented plugins for boolean and
@@ -42,8 +46,10 @@ solver backtracks, it lazily removes obsolete bounds from the stack. Bounds comp
 decision level lower than the backtrack level do not have to be recomputed.
 
 ## References
-1. Gilles Audemard and Laurent Simon. On the glucose sat solver. International Journal on Artificial Intelligence Tools, 27(01):1840001, 2018.
-2. Armin Biere. Weaknesses of cdcl solvers. In Fields Institute Workshop on Theoretical Foundations of SAT Solving, 2016.
-3. Leonardo De Moura and Dejan Jovanovi ́c. A model-constructing satisfiability calculus. In Verification, Model Checking, and Abstract Interpretation: 14th International Conference, VMCAI 2013, Rome, Italy, January 20-22, 2013. Proceedings 14, pages 1–12. Springer, 2013.
-4. Niklas E ́en and Armin Biere. Effective preprocessing in sat through variable and clause elimination. SAT, 3569:61–75, 2005.
+1. Gilles Audemard and Laurent Simon. On the Glucose SAT solver. International Journal on Artificial Intelligence Tools, 27(01):1840001, 2018.
+2. Armin Biere. Weaknesses of CDCL solvers. In Fields Institute Workshop on Theoretical Foundations of SAT Solving, 2016.
+3. Leonardo De Moura and Dejan Jovanovic. A model-constructing satisfiability calculus. In Verification, Model Checking, and Abstract Interpretation: 14th International Conference, VMCAI 2013, Rome, Italy, January 20-22, 2013. Proceedings 14, pages 1–12. Springer, 2013.
+4. Niklas Een and Armin Biere. Effective preprocessing in SAT through variable and clause elimination. SAT, 3569:61–75, 2005.
 5. Dejan Jovanovic, Clark Barrett, and Leonardo De Moura. The design and implementation of the model constructing satisfiability calculus. In 2013 Formal Methods in Computer-Aided Design, pages 173–180. IEEE, 2013.
+6. Matthew W Moskewicz, Conor F Madigan, Ying Zhao, Lintao Zhang, and Sharad Malik. Chaff: Engineering an efficient SAT solver. In Proceedings of the 38th annual Design Automation Conference, pages 530–535, 2001.
+7. Knot Pipatsrisawat and Adnan Darwiche. A lightweight component caching scheme for satisfiability solvers. In Theory and Applications of Satisfiability Testing–SAT 2007: 10th International Conference, Lisbon, Portugal, May 28–31, 2007. Proceedings 10, pages 294–299. Springer, 2007.
