@@ -9,6 +9,7 @@
 #include "Term_manager.h"
 #include "Term_types.h"
 #include "Term_visitor.h"
+#include "Variable.h"
 #include "Yaga.h"
 
 namespace yaga::parser
@@ -37,73 +38,11 @@ public:
     virtual void visit(terms::term_t, bool) {}
 };
 
-struct Linear_polynomial;
-
-class Internalizer_config : public terms::Default_visitor_config
-{
-    terms::Term_manager const& term_manager;
-    Yaga& solver;
-    std::unordered_map<terms::term_t, int> internal_rational_vars;
-
-    // HACK: We need to store literals
-    // x >= 0 (positive in term representation) is internalized as ~(x < 0), which is negative
-    std::unordered_map<terms::term_t, Literal> internal_bool_vars; // Only positive terms should be added to this map!
-
-    Linear_polynomial internalize_poly(terms::term_t t);
-    inline int internal_rational_var(terms::term_t t) const
-    {
-        assert(internal_rational_vars.find(t) != internal_rational_vars.end());
-        return internal_rational_vars.at(t);
-    }
-
-    inline Variable new_bool_var()
-    {
-        return solver.make(Variable::boolean);
-    }
-
-    inline Variable new_real_var()
-    {
-        return solver.make(Variable::rational);
-    }
-
-public:
-    Internalizer_config(
-        terms::Term_manager const& term_manager,
-        Yaga& solver
-        )
-        : term_manager(term_manager), solver(solver)
-    { }
-
-    void visit(terms::term_t) override;
-
-    std::optional<Literal> get_literal_for(terms::term_t t) const;
-
-    /** Get a range of boolean variables (pairs of `term_t` and `Literal`)
-     * 
-     * @return range of internalized boolean variables
-     */
-    inline auto bool_vars() const { return std::ranges::views::all(internal_bool_vars); }
-
-    /** Get a range of rational variables (pairs of `term_t` and variable ordinal integer)
-     * 
-     * @return range of internalized rational variables
-     */
-    inline auto rational_vars() const { return std::ranges::views::all(internal_rational_vars); }
-
-    /** Remove variable mapping.
-     */
-    inline void clear() 
-    {
-        internal_bool_vars.clear();
-        internal_rational_vars.clear();
-    }
-};
-
 class Solver_wrapper
 {
     terms::Term_manager& term_manager;
     Yaga solver;
-    Internalizer_config internalizer_config;
+    std::unordered_map<terms::term_t, Variable> variables;
 public:
     explicit Solver_wrapper(terms::Term_manager& term_manager);
 

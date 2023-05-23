@@ -5,6 +5,7 @@ namespace yaga::parser
 
 using term_t = terms::term_t;
 
+namespace {
 struct Linear_polynomial {
     std::vector<int> vars;
     std::vector<Rational> coef;
@@ -14,9 +15,68 @@ struct Linear_polynomial {
 
     void subtract_var(Variable v);
 };
+}
+
+class Internalizer_config : public terms::Default_visitor_config
+{
+    terms::Term_manager const& term_manager;
+    Yaga& solver;
+    std::unordered_map<terms::term_t, int> internal_rational_vars;
+
+    // HACK: We need to store literals
+    // x >= 0 (positive in term representation) is internalized as ~(x < 0), which is negative
+    std::unordered_map<terms::term_t, Literal> internal_bool_vars; // Only positive terms should be added to this map!
+
+    Linear_polynomial internalize_poly(terms::term_t t);
+    inline int internal_rational_var(terms::term_t t) const
+    {
+        assert(internal_rational_vars.find(t) != internal_rational_vars.end());
+        return internal_rational_vars.at(t);
+    }
+
+    inline Variable new_bool_var()
+    {
+        return solver.make(Variable::boolean);
+    }
+
+    inline Variable new_real_var()
+    {
+        return solver.make(Variable::rational);
+    }
+
+public:
+    Internalizer_config(
+        terms::Term_manager const& term_manager,
+        Yaga& solver
+        )
+        : term_manager(term_manager), solver(solver)
+    { }
+
+    void visit(terms::term_t) override;
+
+    std::optional<Literal> get_literal_for(terms::term_t t) const;
+
+    /** Get a range of boolean variables (pairs of `term_t` and `Literal`)
+     * 
+     * @return range of internalized boolean variables
+     */
+    inline std::ranges::view auto bool_vars() const 
+    { 
+        return std::ranges::views::all(internal_bool_vars); 
+    }
+
+    /** Get a range of rational variables (pairs of `term_t` and variable ordinal integer)
+     * 
+     * @return range of internalized rational variables
+     */
+    inline std::ranges::view auto rational_vars() const 
+    { 
+        return std::ranges::views::all(internal_rational_vars); 
+    }
+};
 
 Solver_wrapper::Solver_wrapper(terms::Term_manager& term_manager)
-    : term_manager(term_manager), solver(logic::qf_lra), internalizer_config(term_manager, solver) {}
+    : term_manager(term_manager), solver(logic::qf_lra) {}
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
@@ -27,7 +87,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 
     // Cnfize and assert clauses to the solver
     solver.init(logic::qf_lra);
-    internalizer_config.clear();
+    Internalizer_config internalizer_config{term_manager, solver};
     terms::Visitor<Internalizer_config> internalizer(term_manager, internalizer_config);
     internalizer.visit(assertions);
 
@@ -43,6 +103,23 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
             literal.negate();
         }
         solver.assert_clause(literal);
+    }
+
+    // remember term-variable mapping
+    variables.clear();
+    for (auto& [term, lit] : internalizer_config.bool_vars())
+    {
+        if (term_manager.get_kind(term) == terms::Kind::UNINTERPRETED_TERM)
+        {
+            variables.insert({term, lit.var()});
+        }
+    }
+    for (auto& [term, var_ord] : internalizer_config.rational_vars())
+    {
+        if (term_manager.get_kind(term) == terms::Kind::UNINTERPRETED_TERM)
+        {
+            variables.insert({term, Variable{var_ord, Variable::rational}});
+        }
     }
 
     auto res = solver.solver().check();
@@ -61,20 +138,22 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 void Solver_wrapper::model(Default_model_visitor& visitor)
 {
     auto& bool_model = solver.solver().trail().model<bool>(Variable::boolean);
-    for (auto& [term, lit] : internalizer_config.bool_vars())
-    {
-        if (bool_model.is_defined(lit.var().ord()))
-        {
-            visitor.visit(term, bool_model.value(lit.var().ord()));
-        }
-    }
-
     auto& lra_model = solver.solver().trail().model<Rational>(Variable::rational);
-    for (auto& [term, var_ord] : internalizer_config.rational_vars())
+    for (auto& [term, var] : variables)
     {
-        if (lra_model.is_defined(var_ord))
+        if (var.type() == Variable::boolean)
         {
-            visitor.visit(term, lra_model.value(var_ord));
+            if (bool_model.is_defined(var.ord()))
+            {
+                visitor.visit(term, bool_model.value(var.ord()));
+            }
+        }
+        else if (var.type() == Variable::rational)
+        {
+            if (lra_model.is_defined(var.ord()))
+            {
+                visitor.visit(term, lra_model.value(var.ord()));
+            }
         }
     }
 }
