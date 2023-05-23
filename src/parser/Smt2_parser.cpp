@@ -8,6 +8,7 @@
 #include "Term_manager.h"
 #include "Term_types.h"
 #include "smt2_lexer.h"
+#include "Solver_wrapper.h"
 
 namespace yaga::parser {
 
@@ -75,6 +76,7 @@ public:
 
 class Smt2_command_context {
     std::istream& input;
+    std::ostream& output;
     smt2_lexer lexer;
 
     Smt2_term_parser term_parser;
@@ -90,8 +92,8 @@ class Smt2_command_context {
     void print_answer(Solver_answer answer);
 
 public:
-    Smt2_command_context(std::istream& input, terms::Term_manager& term_manager)
-        : input(input), term_parser(lexer, parser_context), parser_context(term_manager), term_manager(term_manager)
+    Smt2_command_context(std::istream& input, std::ostream& output, terms::Term_manager& term_manager)
+        : input(input), output(output), term_parser(lexer, parser_context), parser_context(term_manager), term_manager(term_manager)
     {}
     void execute();
 };
@@ -217,7 +219,7 @@ bool Smt2_command_context::parse_command()
     // (get-model)
     case Token::GET_MODEL_TOK:
     {
-        Print_model printer(term_manager, std::cout);
+        Print_model printer(term_manager, output);
         if (!last_answer)
         {
             printer.error("use (check-sat) before (get-model)");
@@ -324,16 +326,16 @@ void Smt2_command_context::print_answer(Solver_answer answer)
     switch (answer)
     {
     case Solver_answer::SAT:
-        std::cout << "sat" << std::endl;
+        output << "sat" << std::endl;
         break;
     case Solver_answer::UNSAT:
-        std::cout << "unsat" << std::endl;
+        output << "unsat" << std::endl;
         break;
     case Solver_answer::UNKNOWN:
-        std::cout << "unknown" << std::endl;
+        output << "unknown" << std::endl;
         break;
     case Solver_answer::ERROR:
-        std::cout << "error" << std::endl;
+        output << "error" << std::endl;
         break;
     }
 
@@ -345,8 +347,13 @@ void Smt2_parser::parse_file(std::string const& file_name)
     file_stream.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     file_stream.open(file_name);
 
+    parse(file_stream, std::cout);
+}
+
+void Smt2_parser::parse(std::istream& input, std::ostream& output)
+{
     terms::Term_manager tm;
-    Smt2_command_context ctx(file_stream, tm);
+    Smt2_command_context ctx(input, output, tm);
     ctx.execute();
 }
 
