@@ -2,21 +2,16 @@
 
 namespace yaga {
 
+Solver::Solver() : solver_trail(dispatcher)
+{
+    subsumption = std::make_unique<Subsumption>();
+    dispatcher.add(subsumption.get());
+}
+
 std::vector<Clause> Solver::propagate() { return theory()->propagate(database, solver_trail); }
 
 std::pair<std::vector<Clause>, int> Solver::analyze_conflicts(std::vector<Clause>&& conflicts)
 {
-    // notify listeners that number of variables has changed if a conflict introduces new variables
-    int new_num_vars = static_cast<int>(trail().model<bool>(Variable::boolean).num_vars());
-    if (num_bool_vars != new_num_vars)
-    {
-        num_bool_vars = new_num_vars;
-        for (auto listener : listeners())
-        {
-            listener->on_variable_resize(Variable::boolean, num_bool_vars);
-        }
-    }
-
     ++total_conflicts;
     std::vector<Clause> learned;
     int level = std::numeric_limits<int>::max();
@@ -27,15 +22,12 @@ std::pair<std::vector<Clause>, int> Solver::analyze_conflicts(std::vector<Clause
         // derive clause suitable for backtracking
         auto [clause, clause_level] =
             analysis.analyze(trail(), std::move(conflict), [&](auto const& other_clause) {
-                for (auto listener : listeners())
-                {
-                    listener->on_conflict_resolved(db(), trail(), other_clause);
-                }
+                dispatcher.on_conflict_resolved(db(), trail(), other_clause);
             });
 
         if (!clause.empty())
         {
-            subsumption.minimize(trail(), clause);
+            subsumption->minimize(trail(), clause);
         }
 
         // find all conflict clauses at the lowest decision level
@@ -89,10 +81,7 @@ Solver::Clause_range Solver::learn(std::vector<Clause>&& clauses)
         // add the clause to database
         auto& learned_ref = db().learn_clause(std::move(clause));
         // trigger events
-        for (auto listener : listeners())
-        {
-            listener->on_learned_clause(db(), trail(), learned_ref);
-        }
+        dispatcher.on_learned_clause(db(), trail(), learned_ref);
     }
     return {db().learned().begin() + (db().learned().size() - clauses.size()), 
             db().learned().end()};
@@ -106,10 +95,7 @@ bool Solver::is_semantic_split(Clause const& clause) const
 
 void Solver::backtrack_with(Clause_range clauses, int level)
 {
-    for (auto listener : listeners())
-    {
-        listener->on_before_backtrack(db(), trail(), level);
-    }
+    dispatcher.on_before_backtrack(db(), trail(), level);
 
     auto& model = trail().model<bool>(Variable::boolean);
     if (is_semantic_split(clauses[0]))
@@ -178,36 +164,24 @@ void Solver::init()
         {
             num_bool_vars = model->num_vars();
         }
-        for (auto listener : listeners())
-        {
-            listener->on_variable_resize(type, model->num_vars());
-        }
+        dispatcher.on_variable_resize(type, model->num_vars());
     }
 
     // reset solver state
     total_conflicts = 0;
     total_decisions = 0;
     total_restarts = 0;
-    for (auto listener : listeners())
-    {
-        listener->on_init(db(), trail());
-    }
+    dispatcher.on_init(db(), trail());
 }
 
 void Solver::restart()
 {
-    for (auto listener : listeners())
-    {
-        listener->on_before_backtrack(db(), trail(), /*decision_level=*/0);
-    }
+    dispatcher.on_before_backtrack(db(), trail(), /*decision_level=*/0);
 
     ++total_restarts;
     trail().clear();
 
-    for (auto listener : listeners())
-    {
-        listener->on_restart(db(), trail());
-    }
+    dispatcher.on_restart(db(), trail());
 }
 
 Solver::Result Solver::check()

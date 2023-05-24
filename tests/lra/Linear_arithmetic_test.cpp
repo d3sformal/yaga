@@ -53,11 +53,13 @@ TEST_CASE("Propagate in an empty trail", "[linear_arithmetic]")
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 10);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 10);
+
     auto conflicts = lra.propagate(db, trail);
     REQUIRE(conflicts.empty());
     REQUIRE(trail.empty());
@@ -69,11 +71,13 @@ TEST_CASE("Propagate unit constraints on the trail", "[linear_arithmetic]")
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
+
     auto models = lra.relevant_models(trail);
     auto lin = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
@@ -96,11 +100,13 @@ TEST_CASE("Propagate unit constraints over multiple decision levels", "[linear_a
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
+
     auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
@@ -146,11 +152,13 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
+
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
@@ -176,11 +184,13 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithme
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
+
     auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
@@ -211,11 +221,13 @@ TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
+
     auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
@@ -246,11 +258,13 @@ TEST_CASE("Detect a bound conflict", "[linear_arithmetic]")
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
+
     auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
@@ -384,11 +398,13 @@ TEST_CASE("Detect trivial bound conflict with several variables", "[linear_arith
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 2);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 2);
+
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
@@ -407,11 +423,13 @@ TEST_CASE("Detect trivial inequality conflict with several variables", "[linear_
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 2);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 2);
+
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
@@ -431,12 +449,13 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 1);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
-    lra.on_variable_resize(Variable::boolean, 1);
+
     auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
@@ -460,11 +479,13 @@ TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, 3);
+
     auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
@@ -549,11 +570,13 @@ TEST_CASE("Backtrack-decide a constraint", "[linear_arithmetic]")
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 2);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
+
     auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
@@ -582,11 +605,13 @@ TEST_CASE("Propagate derived bound constraint semantically only if it is not on 
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 2);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
+
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
@@ -606,11 +631,13 @@ TEST_CASE("Propagate derived inequality constraint semantically only if it is no
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 2);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
+
     auto linear = factory(lra, trail);
     auto [x, y] = real_vars<2>();
 
@@ -651,11 +678,13 @@ TEST_CASE("The first two unassigned variables in a derived constraint have the h
     using namespace yaga::test;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
+
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
@@ -684,11 +713,13 @@ TEST_CASE("Decide variable", "[linear_arithmetic]")
     using namespace yaga::literals;
 
     Database db;
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, trail.model<Rational>(Variable::rational).num_vars());
+
     auto linear = factory(lra, trail);
     auto models = lra.relevant_models(trail);
 

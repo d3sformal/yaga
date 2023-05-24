@@ -8,15 +8,17 @@ TEST_CASE("Remove subsumed learned clauses", "[subsumption]")
     using namespace yaga;
     using namespace yaga::test;
 
-    Trail trail;
+    Subsumption s;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&s);
+    Trail trail{dispatcher};
+    trail.set_model<bool>(Variable::boolean, 4);
 
     Database db;
     db.learn_clause(lit(0), lit(1), lit(2));
     db.learn_clause(lit(1), lit(2), lit(3));
     db.learn_clause(lit(1), lit(2));
 
-    Subsumption s;
-    s.on_variable_resize(Variable::boolean, 4);
     s.on_restart(db, trail);
 
     REQUIRE(db.learned().size() == 1);
@@ -32,7 +34,10 @@ TEST_CASE("Strengthen conflict clause", "[self-subsumption]")
     db.learn_clause(~lit(0), ~lit(1), lit(2));
     db.learn_clause(lit(1));
 
-    Trail trail;
+    Subsumption s;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&s);
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 4);
 
     model.set_value(0, false);
@@ -46,8 +51,6 @@ TEST_CASE("Strengthen conflict clause", "[self-subsumption]")
 
     auto conflict = clause(lit(0), ~lit(1), lit(2), lit(3));
 
-    Subsumption s;
-    s.on_variable_resize(Variable::boolean, 4);
     s.minimize(trail, conflict);
     REQUIRE(conflict == clause(lit(2), lit(3)));
 }

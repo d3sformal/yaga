@@ -13,7 +13,8 @@ TEST_CASE("Resolve propagated literal", "[conflict_analysis]")
     Database db;
     db.assert_clause(lit(0), lit(1), lit(2));
 
-    Trail trail;
+    Event_dispatcher dispatcher;
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     trail.decide(bool_var(0));
@@ -41,7 +42,8 @@ TEST_CASE("Add literals to conflict during resolution", "[conflict_analysis]")
     db.assert_clause(lit(0), lit(1), ~lit(2));
     db.assert_clause(lit(0), lit(2), lit(3));
 
-    Trail trail;
+    Event_dispatcher dispatcher;
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     trail.decide(bool_var(0));
@@ -72,7 +74,8 @@ TEST_CASE("Derive a unit conflict clause", "[conflict_analysis]")
     db.assert_clause(lit(0), lit(1));
     db.assert_clause(lit(0), lit(2));
 
-    Trail trail;
+    Event_dispatcher dispatcher;
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     trail.decide(bool_var(0));
@@ -101,7 +104,8 @@ TEST_CASE("Derive an empty clause", "[conflict_analysis]")
     db.assert_clause(~lit(0), lit(1));
     db.assert_clause(~lit(0), ~lit(1), lit(2));
 
-    Trail trail;
+    Event_dispatcher dispatcher;
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     trail.propagate(bool_var(0), &*db.asserted().begin(), trail.decision_level());
@@ -128,7 +132,8 @@ TEST_CASE("Derive a semantic split clause", "[conflict_analysis]")
     Database db;
     db.assert_clause(~lit(0), ~lit(1), lit(2));
 
-    Trail trail;
+    Event_dispatcher dispatcher;
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     trail.decide(bool_var(7));

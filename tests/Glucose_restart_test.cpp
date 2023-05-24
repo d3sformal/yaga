@@ -16,7 +16,9 @@ TEST_CASE("Restart when average of recent LBDs exceeds average of LBDs", "[gluco
     restart.set_fast_exp(2);
 
     Database db;
-    Trail trail;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&restart);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 9);
     trail.decide(bool_var(0));
     trail.propagate(bool_var(1), nullptr, 1);
@@ -71,7 +73,9 @@ TEST_CASE("Wait for a minimum number of conflicts before restart", "[glucose]")
     restart.set_fast_exp(2);
 
     Database db;
-    Trail trail;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&restart);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 9);
     trail.decide(bool_var(0));
     trail.propagate(bool_var(1), nullptr, 1);
@@ -105,7 +109,9 @@ TEST_CASE("Compute clause LBD if decision levels of literals are not consecutive
     restart.set_fast_exp(2);
 
     Database db;
-    Trail trail;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&restart);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 9);
     trail.decide(bool_var(0));
     trail.propagate(bool_var(1), nullptr, 1);

@@ -13,11 +13,12 @@ TEST_CASE("FM elimination", "[fm]")
 
     constexpr int num_reals = 5;
 
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, num_reals);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, num_reals);
     auto [x, y, z, w, a] = real_vars<num_reals>();
     auto make = factory(lra, trail);
     auto models = lra.relevant_models(trail);
@@ -141,11 +142,13 @@ TEST_CASE("Derive bound conflict when some variables are not assigned", "[bound_
 
     constexpr int num_reals = 5;
 
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, num_reals);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, num_reals);
+
     Bounds bounds;
     bounds.resize(num_reals);
     auto [x, y, z, a, b] = real_vars<num_reals>();
@@ -203,11 +206,12 @@ TEST_CASE("Derive inequality conflict when some variables are not assigned", "[i
 
     constexpr int num_reals = 7;
 
-    Trail trail;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, num_reals);
-    Linear_arithmetic lra;
-    lra.on_variable_resize(Variable::rational, num_reals);
     Bounds bounds;
     bounds.resize(num_reals);
     auto [x, y, z, w, a, b, c] = real_vars<num_reals>();

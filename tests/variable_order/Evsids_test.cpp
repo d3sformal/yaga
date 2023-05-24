@@ -11,8 +11,8 @@ TEST_CASE("Pick a variable with empty clause database", "[evsids]")
     using namespace yaga::test;
 
     Database db;
-
-    Trail trail;
+    Event_dispatcher dispatcher;
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 3);
 
     Evsids evsids;
@@ -47,7 +47,8 @@ TEST_CASE("Pick the most used variable if there has not been a conflict", "[evsi
     db.assert_clause(lit(0), ~lit(1));
     db.assert_clause(lit(0));
 
-    Trail trail;
+    Event_dispatcher dispatcher;
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 3);
 
     Evsids evsids;
@@ -82,7 +83,8 @@ TEST_CASE("Pick a variable after a large number of score decays", "[evsids]")
     db.assert_clause(lit(0), ~lit(1));
     db.assert_clause(lit(0));
 
-    Trail trail;
+    Event_dispatcher dispatcher;
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 3);
 
     Evsids evsids;

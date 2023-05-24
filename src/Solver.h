@@ -13,6 +13,8 @@
 #include "Conflict_analysis.h"
 #include "Database.h"
 #include "Evsids.h"
+#include "Event_listener.h"
+#include "Event_dispatcher.h"
 #include "Restart.h"
 #include "Subsumption.h"
 #include "Theory.h"
@@ -25,6 +27,16 @@ namespace yaga {
 class Solver {
 public:
     enum class Result { unsat = 0, sat = 1 };
+
+    Solver();
+
+    // non-copyable
+    Solver(Solver const&) = delete;
+    Solver& operator=(Solver const&) = delete;
+
+    // movable
+    Solver(Solver&&) = default;
+    Solver& operator=(Solver&&) = default;
 
     /** Get current trail (partial model)
      *
@@ -61,6 +73,7 @@ public:
         requires std::is_base_of_v<Theory, T>
     inline T& set_theory(Args&&... args)
     {
+        dispatcher.remove(solver_theory.get());
         auto concrete_theory = std::make_unique<T>(std::forward<Args>(args)...);
         for (auto [type, model] : trail().models())
         {
@@ -69,6 +82,7 @@ public:
 
         auto concrete_theory_ptr = concrete_theory.get();
         solver_theory = std::move(concrete_theory);
+        dispatcher.add(solver_theory.get());
         return *concrete_theory_ptr;
     }
 
@@ -83,9 +97,11 @@ public:
         requires std::is_base_of_v<Variable_order, T>
     inline T& set_variable_order(Args&&... args)
     {
+        dispatcher.remove(variable_order.get());
         auto vo = std::make_unique<T>(std::forward<Args>(args)...);
         auto vo_ptr = vo.get();
         variable_order = std::move(vo);
+        dispatcher.add(variable_order.get());
         return *vo_ptr;
     }
 
@@ -100,9 +116,11 @@ public:
         requires std::is_base_of_v<Restart, T>
     inline T& set_restart_policy(Args&&... args)
     {
+        dispatcher.remove(restart_policy.get());
         auto policy = std::make_unique<T>(std::forward<Args>(args)...);
         auto policy_ptr = policy.get();
         restart_policy = std::move(policy);
+        dispatcher.add(restart_policy.get());
         return *policy_ptr;
     }
 
@@ -142,20 +160,6 @@ public:
      */
     inline int num_learned_clauses() const { return total_learned_clauses; }
 
-    /** Get range of listeners in this solver
-     * 
-     * @return range with pointers to event listeners
-     */
-    inline auto listeners()
-    {
-        return std::array<Event_listener*, 4>{
-            solver_theory.get(),
-            restart_policy.get(),
-            variable_order.get(),
-            &subsumption,
-        };
-    }
-
     /** Get theory used by this solver
      * 
      * @return theory used by this solver or nullptr if no theory was set
@@ -163,10 +167,11 @@ public:
     inline Theory* theory() { return solver_theory.get(); }
 
 private:
+    Event_dispatcher dispatcher;
     Trail solver_trail;
     Database database;
-    Subsumption subsumption;
     Conflict_analysis analysis;
+    std::unique_ptr<Subsumption> subsumption;
     std::unique_ptr<Theory> solver_theory;
     std::unique_ptr<Restart> restart_policy;
     std::unique_ptr<Variable_order> variable_order;

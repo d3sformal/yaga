@@ -48,12 +48,6 @@ Variable Yaga::make(Variable::Type type)
 {
     auto num_vars = static_cast<int>(smt.trail().model(type).num_vars());
     smt.trail().resize(type, num_vars + 1);
-
-    // notify listeners to allocate memory for the new variable
-    for (auto listener : smt.listeners())
-    {
-        listener->on_variable_resize(type, num_vars + 1);
-    }
     return Variable{num_vars, type};
 }
 

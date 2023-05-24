@@ -13,10 +13,12 @@ TEST_CASE("Propagate unit clauses if the trail is empty", "[bool_theory][bcp]")
     db.assert_clause(~lit(0));
     db.assert_clause(~lit(1));
 
-    Trail trail;
+    Bool_theory theory;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&theory);
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
-    Bool_theory theory;
     auto conflicts = theory.propagate(db, trail);
     REQUIRE(conflicts.empty());
     
@@ -43,14 +45,15 @@ TEST_CASE("Run BCP after a value is decided", "[bool_theory][bcp]")
     using namespace yaga;
     using namespace yaga::test;
 
-    Bool_theory theory;
-
     Database db;
     db.assert_clause(lit(0), lit(1));
     db.assert_clause(~lit(0), ~lit(2));
     db.assert_clause(lit(0), lit(3));
 
-    Trail trail;
+    Bool_theory theory;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&theory);
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     // initialize watch lists
@@ -92,14 +95,15 @@ TEST_CASE("Run BCP after backtracking", "[bool_theory][bcp]")
     using namespace yaga;
     using namespace yaga::test;
 
-    Bool_theory theory;
-
     Database db;
     db.assert_clause(lit(0), lit(1));
     db.assert_clause(~lit(0));
     db.assert_clause(~lit(1), ~lit(2), lit(3));
 
-    Trail trail;
+    Bool_theory theory;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&theory);
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     // init
@@ -134,13 +138,14 @@ TEST_CASE("Skip satisfied clauses", "[bool_theory][bcp]")
     using namespace yaga;
     using namespace yaga::test;
 
-    Bool_theory theory;
-
     Database db;
     db.assert_clause(lit(0), lit(1));
     db.assert_clause(~lit(0), lit(1), lit(2));
 
-    Trail trail;
+    Bool_theory theory;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&theory);
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     auto conflicts = theory.propagate(db, trail);
@@ -177,9 +182,11 @@ TEST_CASE("Maintain watched literals invariants", "[bool_theory][bcp]")
     using namespace yaga;
     using namespace yaga::test;
 
-    Bool_theory theory;
     Database db;
-    Trail trail;
+    Bool_theory theory;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&theory);
+    Trail trail{dispatcher};
     auto& model = trail.set_model<bool>(Variable::boolean, 10);
 
     SECTION("move true literals to the front")

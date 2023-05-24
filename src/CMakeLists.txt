@@ -11,6 +11,7 @@ target_sources(yaga PRIVATE
     Yaga.cpp
     Solver.cpp
     Subsumption.cpp
+    Trail.cpp
     Theory.cpp
     Theory_combination.cpp
 )

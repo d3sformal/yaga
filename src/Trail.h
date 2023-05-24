@@ -14,6 +14,34 @@
 
 namespace yaga {
 
+class Event_dispatcher;
+
+/** Trail stores progress of the solver in a form of trail elements:
+ * -# decisions: assignment of a value to a variable
+ * -# propagations: literal derived to be true either due to BCP or by a theory plugin
+ * 
+ * Trail elements only record that a decision or a propagation has been made. Value of a variable 
+ * is stored in a model (`Model`). The following example shows how to decide a rational variable:
+ * ~~~~~{.cpp}
+ * int var_ord = 0;
+ * trail.decide(Variable{var_ord, Variable::rational});
+ * trail.model<Rational>(Variable::rational).set_value(var_ord, Rational{1} / Rational{2});
+ * ~~~~~
+ * 
+ * Similarly, we can propagate a variable:
+ * ~~~~~{.cpp}
+ * Clause reason{...};
+ * int level = ...;
+ * trail.propagate(Variable{var_ord, Variable::boolean}, &reason, level);
+ * trail.model<bool>(Variable::boolean).set_value(var_ord, true);
+ * ~~~~~
+ * 
+ * Trail manages (partial) models of all variable types in the system. Models can be added:
+ * ~~~~~{.cpp}
+ * int num_vars = 120;
+ * trail.set_model<Rational>(Variable::rational, num_vars);
+ * ~~~~~
+ */
 class Trail {
 public:
     struct Assignment {
@@ -27,7 +55,7 @@ public:
         inline operator std::pair<Variable, Clause*>() const { return {var, reason}; }
     };
 
-    inline Trail() : trail(1) {}
+    inline explicit Trail(Event_dispatcher& dispatcher) : dispatcher(dispatcher), trail(1) {}
 
     // get current decision level
     inline int decision_level() const { return static_cast<int>(trail.size()) - 1; }
@@ -137,17 +165,7 @@ public:
      * @param type type of variables
      * @param num_vars new number of variables of type @p type
      */
-    inline void resize(Variable::Type type, int num_vars)
-    {
-        assert(type < var_models.size());
-
-        var_models[type]->resize(num_vars);
-        int num_types = std::max<int>(static_cast<int>(var_reason.size()), type + 1);
-        var_reason.resize(num_types, std::vector<Clause const*>(num_vars, nullptr));
-        var_level.resize(num_types, std::vector<int>(num_vars, unassigned));
-        var_reason[type].resize(num_vars, nullptr);
-        var_level[type].resize(num_vars, unassigned);
-    }
+    void resize(Variable::Type type, int num_vars);
 
     /** Decide variable at a new decision level.
      *
@@ -255,6 +273,8 @@ private:
     // level in `var_level` of unassigned variables
     inline static constexpr int unassigned = -1;
 
+    // all registered event listeners
+    Event_dispatcher& dispatcher;
     // map decision level -> list of decisions/propagations made at that level
     std::vector<std::vector<Assignment>> trail;
     // map variable type -> variable ordinal -> reason clause (redundant data
