@@ -1,0 +1,69 @@
+\documentclass{easychair}
+
+\newcommand{\todo}[1]{$\langle\langle$#1 $\rangle\rangle$}
+\usepackage{hyperref}
+\usepackage{xspace}
+
+\newcommand{\qflra}{QF\_LRA}
+
+
+\newcommand{\yaga}{\textsc{Yaga}\xspace}
+
+\title{The \yaga SMT Solver in SMT-COMP 2023}
+\author{
+Martin Blicha\inst{1,2} \and
+Drahom{\' i}r Han{\' a}k\inst{1} \and
+Jan Kofro{\v n}\inst{1}\\
+}
+\institute{Charles University, Prague, Czech Republic \and Universit{\`a} della Svizzera italiana, Lugano,
+Switzerland}
+\date{}
+\titlerunning{The \yaga SMT Solver}
+\authorrunning{Blicha et al.}
+\begin{document}
+\maketitle
+
+\section{Overview}
+
+\yaga is a new SMT solver developed at Charles University with the goal to investigate alterna-
+tives to the dominant CDCL(T) framework for SMT solving. The solver implements the Model
+Constructing Satisfiability Calculus (MCSAT)~\cite{de_moura_model-constructing_2013,jovanovic_design_2013}.
+It currently has implementation of plugins for Boolean and rational variables which can be used to decide problems in quantifier-free linear real arithmetic. The Boolean plugin uses the typical mechanism of watched literals~\cite{Chaff} to perform Boolean constraint propagation. The plugin for linear real arithmetic uses a similar mechanism of watched variables to keep track of variable bounds~\cite{jovanovic_design_2013}. The last checked variable in each clause or a linear constraint is cached. Search for a non-falsified literal or an unassigned rational variable always starts from the last position. Additionally, we use the following heuristics:
+
+\begin{itemize}
+    \item \emph{Variable order}. \yaga uses a generalization of the VSIDS heuristic implementation from MiniSat~\cite{minisat}. Variable score is increased for each variable involved in conflict derivation. Variables of all types (i.e., Boolean and rational variables) are ranked using this heuristic.
+    \item \emph{Restart scheme}. We use a simplified restart scheme from the Glucose solver~\cite{glucose}. The solver maintains an exponential average of glucose level (LBD) of all learned clauses~\cite{biere_2016} and an exponential LBD average of recently learned clauses. \yaga restarts when the recent LBD average exceeds the global average by some threshold.
+    \item \emph{Clause deletion}. \yaga deletes subsumed learned clauses on restart~\cite{biere_2005}.
+    \item \emph{Clause minimization}. Learned clauses are minimized using self-subsuming resolution introduced in MiniSat~\cite{minisat}.
+    \item \emph{Value caching}. Similarly to phase-saving heuristics used in SAT solvers~\cite{darwiche_2007}, \yaga caches values of decided rational variables~\cite{jovanovic_design_2013}. It preferably uses cached values for rational variables. If a cached value is not available, the solver tries to find a small integer or a fraction with a small denominator which is a power of two.
+    \item \emph{Bound caching}. We keep a stack of variable bounds for each rational variable. When the solver backtracks, it lazily removes obsolete bounds from the stack. Bounds computed at a decision level lower than the backtrack level do not have to be recomputed.
+\end{itemize}
+    
+    
+    
+    
+    
+
+
+
+
+\section{External Code}
+
+The solver uses a custom representation of unbounded rational values from \textsc{OpenSMT}~\cite{hyvarinen_opensmt2_2016}, which
+is itself based on a library written by David Monniaux and uses GMP~\cite{GMP}.
+
+
+\section{Availability}
+The source code repository and more information on the solver is
+available at
+
+\begin{itemize}
+    \item \url{https://github.com/d3sformal/yaga}
+\end{itemize}
+
+
+
+\bibliography{bibliography}
+\bibliographystyle{plain}
+
+\end{document}
