@@ -276,39 +276,21 @@ void Linear_arithmetic::unit(Models const& models, Constraint const& cons)
 
 void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& models)
 {
-    if (!trail.empty() &&
-        trail.assigned(trail.decision_level()).front().var.type() == Variable::rational)
+    for (auto& [var, _] : trail.assigned(trail.decision_level()))
     {
-        auto decided_var = trail.assigned(trail.decision_level()).front().var;
-        to_check.push_back(decided_var.ord());
-        for (auto cons : occur[decided_var.ord()])
+        if (var.type() == Variable::boolean)
         {
-            if (auto val = eval(models.boolean(), cons.lit()))
+            auto cons = constraint(var.ord());
+            if (cons.empty())
             {
-                bounds.deduce(models, val == true ? cons : ~cons);
+                continue; // var does not represent a linear constraint
             }
-        }
-    }
-
-    for (;;)
-    {
-        auto old_size = to_check.size();
-        for (auto var_ord : bounds.changed())
-        {
-            to_check.push_back(var_ord);
-            for (auto cons : occur[var_ord])
+            if (!models.boolean().value(var.ord()))
             {
-                if (auto val = eval(models.boolean(), cons.lit()))
-                {
-                    bounds.deduce(models, val == true ? cons : ~cons);
-                }
+                cons.negate();
             }
-        }
-
-        // if there was no new propagation
-        if (to_check.size() == old_size)
-        {
-            break;
+            assert(models.boolean().value(cons.lit().var().ord()) == !cons.lit().is_negation());
+            bounds.deduce(models, cons);
         }
     }
 }

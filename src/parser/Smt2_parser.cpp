@@ -92,8 +92,8 @@ class Smt2_command_context {
     void print_answer(Solver_answer answer);
 
 public:
-    Smt2_command_context(std::istream& input, std::ostream& output, terms::Term_manager& term_manager)
-        : input(input), output(output), term_parser(lexer, parser_context), parser_context(term_manager), term_manager(term_manager)
+    Smt2_command_context(std::istream& input, std::ostream& output, terms::Term_manager& term_manager, Options const& opts)
+        : input(input), output(output), term_parser(lexer, parser_context), parser_context(term_manager, opts), term_manager(term_manager)
     {}
     void execute();
 };
@@ -353,7 +353,7 @@ void Smt2_parser::parse_file(std::string const& file_name)
 void Smt2_parser::parse(std::istream& input, std::ostream& output)
 {
     terms::Term_manager tm;
-    Smt2_command_context ctx(input, output, tm);
+    Smt2_command_context ctx(input, output, tm, options);
     ctx.execute();
 }
 

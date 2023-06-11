@@ -2,32 +2,42 @@
 
 namespace yaga {
 
-void Propositional::setup(Solver& solver) const
+void Propositional::setup(Solver& solver, Options const& options) const
 {
     solver.trail().set_model<bool>(Variable::boolean, 0);
-    solver.set_theory<Bool_theory>();
+    auto& bcp = solver.set_theory<Bool_theory>();
+    bcp.set_phase(options.phase);
     solver.set_restart_policy<Glucose_restart>();
     solver.set_variable_order<Evsids>();
 }
 
-void Qf_lra::setup(Solver& solver) const
+void Qf_lra::setup(Solver& solver, Options const& options) const
 {
     solver.trail().set_model<bool>(Variable::boolean, 0);
     solver.trail().set_model<Rational>(Variable::rational, 0);
+    // create plugins
     auto& theories = solver.set_theory<Theory_combination>();
-    theories.add_theory<Bool_theory>();
+    auto& bcp = theories.add_theory<Bool_theory>();
+    bcp.set_phase(options.phase);
+
+    Linear_arithmetic::Options lra_options;
+    lra_options.prop_rational = options.prop_rational;
+    lra_options.prop_bounds = options.deduce_bounds;
     auto& lra = theories.add_theory<Linear_arithmetic>();
+    lra.set_options(lra_options);
+
+    // add heuristics
     solver.set_restart_policy<Glucose_restart>();
     solver.set_variable_order<Generalized_vsids>(lra);
 }
 
-Yaga::Yaga(Initializer const& initializer) { init(initializer); }
+Yaga::Yaga(Initializer const& initializer, Options const& options) { init(initializer, options); }
 
-void Yaga::init(Initializer const& init)
+void Yaga::init(Initializer const& init, Options const& options)
 {
     smt.db().learned().clear();
     smt.db().asserted().clear();
-    init.setup(smt);
+    init.setup(smt, options);
 
     // find the LRA plugin so we can add linear constraints
     lra = nullptr;

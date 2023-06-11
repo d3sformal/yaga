@@ -100,7 +100,7 @@ private:
     std::vector<int> updated_read;
     std::vector<int> updated_write;
     // maximum number of dependencies of a bound (as a percentage of the number of variables)
-    float threshold = 0.8;
+    float threshold = 1.0;
 
     // properties deduced from a linear constraint
     struct Deduced_properties {

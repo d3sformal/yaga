@@ -16,6 +16,7 @@
 #include "Variable_order.h"
 #include "Evsids.h"
 #include "Rational.h"
+#include "Options.h"
 
 #include <algorithm>
 #include <cassert>
@@ -31,8 +32,9 @@ public:
     /** Initialize solver with the default configuration for a specific logic
      * 
      * @param solver solver to setup
+     * @param options command line options
      */
-    virtual void setup(Solver& solver) const = 0;
+    virtual void setup(Solver& solver, Options const& options) const = 0;
 };
 
 class Propositional final : public Initializer {
@@ -42,8 +44,9 @@ public:
     /** Initialize @p solver with only the plugin for boolean variables
      * 
      * @param solver solver to initializer
+     * @param options command line options
      */
-    void setup(Solver& solver) const override;
+    void setup(Solver& solver, Options const& options) const override;
 };
 
 /** Initializer for quantifier-free linear real arithmetic.
@@ -55,8 +58,9 @@ public:
     /** Initialize @p solver with plugins for boolean variables and rational variables.
      * 
      * @param solver solver to initialize
+     * @param options command line options
      */
-    void setup(Solver& solver) const override;
+    void setup(Solver& solver, Options const& options) const override;
 };
 
 /** Predefined logic initializers for the Yaga facade.
@@ -92,16 +96,18 @@ public:
     /** Initialize the solver based on chosen logic.
      * 
      * @param init initializer for a logic
+     * @param options solver options
      */
-    explicit Yaga(Initializer const& init);
+    Yaga(Initializer const& init, Options const& options);
 
     /** Reinitialize the solver with a different logic.
      * 
      * This operation removes all clauses and variables.
      * 
      * @param init initializer for a logic
+     * @param options solver options
      */
-    void init(Initializer const& init);
+    void init(Initializer const& init, Options const& options);
 
     /** Create a new variable
      * 

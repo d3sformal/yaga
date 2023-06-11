@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Options.h"
 #include "Solver_answer.h"
 #include "Solver_wrapper.h"
 
@@ -125,7 +126,8 @@ public:
 
 class Parser_context {
 public:
-    explicit Parser_context(terms::Term_manager& term_manager) : term_manager(term_manager), solver(term_manager) {}
+    Parser_context(terms::Term_manager& term_manager, Options const& options) 
+        : term_manager(term_manager), solver(term_manager, options) {}
 
     void add_let_bindings(let_bindings_t&& bindings);
 

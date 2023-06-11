@@ -75,8 +75,8 @@ public:
     }
 };
 
-Solver_wrapper::Solver_wrapper(terms::Term_manager& term_manager)
-    : term_manager(term_manager), solver(logic::qf_lra) {}
+Solver_wrapper::Solver_wrapper(terms::Term_manager& term_manager, Options const& opts)
+    : term_manager(term_manager), options(opts), solver(logic::qf_lra, options) {}
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
@@ -86,7 +86,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     }
 
     // Cnfize and assert clauses to the solver
-    solver.init(logic::qf_lra);
+    solver.init(logic::qf_lra, options);
     Internalizer_config internalizer_config{term_manager, solver};
     terms::Visitor<Internalizer_config> internalizer(term_manager, internalizer_config);
     internalizer.visit(assertions);
@@ -123,6 +123,16 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     }
 
     auto res = solver.solver().check();
+
+    if (options.print_stats)
+    {
+        std::cout << "Conflicts = " << solver.solver().num_conflicts() << "\n";
+        std::cout << "Conflict clauses = " << solver.solver().num_conflict_clauses() << "\n";
+        std::cout << "Learned clauses = " << solver.solver().num_learned_clauses() << "\n";
+        std::cout << "Decisions = " << solver.solver().num_decisions() << "\n";
+        std::cout << "Restarts = " << solver.solver().num_restarts() << "\n";
+    }
+
     if (res == Solver::Result::sat)
     {
         return Solver_answer::SAT;

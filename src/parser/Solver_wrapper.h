@@ -41,10 +41,11 @@ public:
 class Solver_wrapper
 {
     terms::Term_manager& term_manager;
+    Options const& options;
     Yaga solver;
     std::unordered_map<terms::term_t, Variable> variables;
 public:
-    explicit Solver_wrapper(terms::Term_manager& term_manager);
+    Solver_wrapper(terms::Term_manager& term_manager, Options const& options);
 
     Solver_answer check(std::vector<terms::term_t> const& assertions);
 
