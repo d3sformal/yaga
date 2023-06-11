@@ -312,7 +312,7 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
         REQUIRE(test.answer() == Solver_answer::SAT);
         REQUIRE(test.boolean("b1").has_value());
         REQUIRE(test.boolean("b2").has_value());
-        REQUIRE((*test.boolean("b1") || *test.boolean("b2")));
+        REQUIRE(!(*test.boolean("b1") && *test.boolean("b2")));
     }
 
     SECTION("non-negated binary or")
