@@ -100,6 +100,8 @@ private:
     std::vector<std::vector<Score>> vsids;
     // priority queue of variables sorted by VSIDS score
     Variable_priority_queue variables;
+    // priority queue of effectively decided variables sorted by the VSIDS score
+    Variable_priority_queue effectively_decided;
     // score grow factor (inverse decay factor)
     Score grow = 1.05;
     // current amount by which a variable VSIDS is increased in `bump()`
@@ -109,6 +111,21 @@ private:
 
     // when a score exceeds this threshold, all scores are rescaled
     inline static Score const score_threshold = 1e35;
+
+    /** Pick the variable with the highest VSIDS score
+     * 
+     * @param trail the current solver trail
+     * @return the unassigned variable with the highest VSIDS score or none if all variables are 
+     * assigned
+     */
+    std::optional<Variable> pick_top(Trail& trail);
+
+    /** Try to pick a rational variable with only one allowed value.
+     * 
+     * @param trail the current solver trail
+     * @return effectively decided variable or none if no variable is effectively decided
+     */
+    std::optional<Variable> pick_effectively_decided(Trail& trail);
 
     // get VSIDS score of a variable
     inline Score& score(Variable var) { return vsids[var.type()][var.ord()]; }
@@ -125,6 +142,7 @@ private:
         }
         inc /= score_threshold;
         variables.rescale(score_threshold);
+        effectively_decided.rescale(score_threshold);
     }
 
     // decay all VSIDS scores (by increasing the amount by which VSIDS scores are increased)
@@ -150,6 +168,7 @@ private:
         else
         {
             variables.update(var, score(var));
+            effectively_decided.update(var, score(var));
         }
     }
 };

@@ -75,7 +75,32 @@ bool Generalized_vsids::is_before(Variable lhs, Variable rhs) const
     return score(lhs) > score(rhs);
 }
 
-std::optional<Variable> Generalized_vsids::pick(Database&, Trail& trail)
+std::optional<Variable> Generalized_vsids::pick_effectively_decided(Trail& trail)
+{
+    // add new effectively decided variables to the priority queue
+    auto models = lra->relevant_models(trail);
+    for (int var_ord : lra->effectively_decided())
+    {
+        Variable var{var_ord, Variable::rational};
+        effectively_decided.push(var, score(var));
+    }
+
+    // decide effectively decided variables first
+    while (!effectively_decided.empty() && 
+                (trail.decision_level(effectively_decided.top()) || 
+                !lra->is_effectively_decided(models, effectively_decided.top().ord())))
+    {
+        effectively_decided.pop();
+    }
+
+    if (!effectively_decided.empty())
+    {
+        return effectively_decided.top();
+    }
+    return {};
+}
+
+std::optional<Variable> Generalized_vsids::pick_top(Trail& trail)
 {
     // remove assigned variables from the top of the variables priority queue
     while (!variables.empty() && trail.decision_level(variables.top()))
@@ -88,6 +113,15 @@ std::optional<Variable> Generalized_vsids::pick(Database&, Trail& trail)
         return {}; // none, all variables are assigned
     }
     return variables.top();
+}
+
+std::optional<Variable> Generalized_vsids::pick(Database&, Trail& trail)
+{
+    if (auto var = pick_effectively_decided(trail))
+    {
+        return var;
+    }
+    return pick_top(trail);
 }
 
 } // namespace yaga

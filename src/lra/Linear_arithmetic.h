@@ -45,6 +45,12 @@ public:
          * Otherwise, only the first conflict is returned.
          */
         bool return_all_conflicts = true;
+
+        /** If true, the plugin will track effectively decided variables.
+         * 
+         * A rational variable is effectively decided if it can only be assigned one value.
+         */
+        bool prop_rational = false;
     };
 
     virtual ~Linear_arithmetic() = default;
@@ -165,6 +171,24 @@ public:
      */
     inline void set_options(Options const& opts) { options = opts; }
 
+    /** Check whether @p lra_var_ord can be assigned exactly one value.
+     * 
+     * @param models current (partial) assignment of variables
+     * @param lra_var_ord ordinal number of a variable
+     * @return true iff @p lra_var_ord is unassigned and it can be assigned exactly one value
+     */
+    [[nodiscard]] bool is_effectively_decided(Models const& models, int lra_var_ord);
+
+    /** Get all rational variables with only one allowed value since the last call.
+     * 
+     * @return list of rational variables that can only be assigned one value.
+     */
+    inline std::vector<int> effectively_decided()
+    {
+        auto result = std::move(decided);
+        decided.clear();
+        return result;
+    }
 private:
     struct Watched_constraint {
         // watched constraint
@@ -192,6 +216,8 @@ private:
     std::vector<std::vector<Constraint>> occur;
     // parameters of optional features
     Options options;
+    // unassigned rational variables with only one allowed value
+    std::vector<int> decided;
 
     /** Start watching LRA variables in @p cons
      *

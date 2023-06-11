@@ -17,6 +17,23 @@ void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
     }
 }
 
+bool Linear_arithmetic::is_effectively_decided(Models const& models, int lra_var_ord)
+{
+    if (models.owned().is_defined(lra_var_ord))
+    {
+        return false;
+    }
+
+    if (auto lb = bounds[lra_var_ord].lower_bound(models))
+    {
+        if (auto ub = bounds[lra_var_ord].upper_bound(models))
+        {
+            return lb->value() == ub->value() && !lb->is_strict() && !ub->is_strict();
+        }
+    }
+    return false;
+}
+
 std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 {
     auto models = relevant_models(trail);
@@ -332,6 +349,7 @@ std::vector<Clause> Linear_arithmetic::finish(Trail& trail)
     to_check.insert(to_check.end(), changed.begin(), changed.end());
 
     // check for conflict
+    auto models = relevant_models(trail);
     std::unordered_set<int> checked;
     std::vector<Clause> result;
     for (auto var_ord : to_check)
@@ -346,6 +364,10 @@ std::vector<Clause> Linear_arithmetic::finish(Trail& trail)
                 {
                     break;
                 }
+            }
+            else if (options.prop_rational && is_effectively_decided(models, var_ord))
+            {
+                decided.push_back(var_ord);
             }
         }
     }

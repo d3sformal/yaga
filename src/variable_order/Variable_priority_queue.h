@@ -80,6 +80,21 @@ public:
      */
     inline bool empty() const { return pq.empty(); }
 
+    /** Get number of variables in the priority queue.
+     * 
+     * @return number of variables in the priority queue.
+     */
+    inline std::size_t size() const { return pq.size(); }
+
+    /** Get view of all variables in the priority queue
+     * 
+     * @return range of all variables in the priority queue
+     */
+    inline std::ranges::view auto vars() { 
+        return pq | std::views::transform([](auto&& node) { 
+            return node.first; 
+        }); 
+    }
 private:
     using Node = std::pair<Variable, Score>;
     using Iterator = std::vector<Node>::iterator;
