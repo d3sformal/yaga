@@ -177,6 +177,20 @@ public:
         return *this;
     }
 
+    /** Set by how much does the fast average have to exceed the slow average in order to restart.
+     * 
+     * Percentage in the interval [1, inf). For example, 1.3 means we restart when the fast average
+     * exceeds the slow average by 30%.
+     * 
+     * @param value new threshold value >= 1
+     * @return this
+     */
+    inline Glucose_restart& set_threshold(float value)
+    {
+        threshold = value;
+        return *this;
+    }
+
 private:
     int countdown = 0;
     // slow moving exponential average
@@ -189,10 +203,9 @@ private:
     int fast_exp = 5;
     // minimal number of conflicts before a restart
     int min_num_conflicts = 50;
-
     // by how much does the fast average have to exceed the slow average in
     // order to restart
-    inline static float const threshold = 1.3f;
+    float threshold = 1.3f;
 
     // recompute slow/fast averages of LDBs
     inline void add_glucose(int lbd)
