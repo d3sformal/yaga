@@ -15,6 +15,20 @@
 
 namespace yaga {
 
+enum class Phase {
+    /** Always decide true for boolean variables.
+     */
+    positive,
+
+    /** Always decide false for boolean variables.
+     */
+    negative,
+
+    /** Cache values of boolean variables.
+     */
+    cache,
+};
+
 class Bool_theory : public Theory {
 public:
     virtual ~Bool_theory() = default;
@@ -43,12 +57,26 @@ public:
      */
     void on_learned_clause(Database& db, Trail& trail, Clause const& learned) override;
 
+    /** Cache variable polarity
+     * 
+     * @param db clause database
+     * @param trail current solver trail
+     * @param level decision level to backtrack to
+     */
+    void on_before_backtrack(Database&, Trail&, int) override;
+
     /** Allocates memory for @p num_vars watch lists if @p type is boolean
      *
      * @param type variable type
      * @param num_vars new number of variables of type @p type
      */
     void on_variable_resize(Variable::Type, int) override;
+
+    /** Set phase of variables decided in `decide()`
+     * 
+     * @param phase phase of boolean variables decided in `decide()`
+     */
+    inline void set_phase(Phase phase) { var_phase = phase; }
 
 private:
     // we move the watched literals to the first two position in each clause
@@ -83,6 +111,10 @@ private:
     Literal_map<std::vector<Watched_clause>> watched;
     // stack of true literals to propagate with a pointer to the reason clause
     std::vector<Satisfied_literal> satisfied;
+    // cached variable phase
+    std::vector<bool> phase;
+    // phase strategy
+    Phase var_phase{Phase::positive};
 
     /** Propagate assigned literals at current decision level in @p trail
      *

@@ -7,7 +7,21 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
     if (var.type() == Variable::boolean)
     {
         auto& model = trail.model<bool>(Variable::boolean);
-        model.set_value(var.ord(), true);
+        switch (var_phase)
+        {
+            case Phase::positive:
+                model.set_value(var.ord(), true);
+                break;
+            case Phase::negative:
+                model.set_value(var.ord(), false);
+                break;
+            case Phase::cache:
+                model.set_value(var.ord(), phase[var.ord()]);
+                break;
+            default:
+                assert(false && "unreachable");
+                break;
+        }
         trail.decide(var);
     }
 }
@@ -17,6 +31,24 @@ void Bool_theory::on_variable_resize(Variable::Type type, int num_vars)
     if (type == Variable::boolean)
     {
         watched.resize(num_vars);
+        phase.resize(num_vars, true);
+    }
+}
+
+void Bool_theory::on_before_backtrack(Database& db, Trail& trail, int level)
+{
+    Theory::on_before_backtrack(db, trail, level);
+
+    auto& model = trail.model<bool>(Variable::boolean);
+    for (int i = trail.decision_level(); i > level; --i)
+    {
+        for (auto [var, _] : trail.assigned(i))
+        {
+            if (var.type() == Variable::boolean)
+            {
+                phase[var.ord()] = model.value(var.ord());
+            }
+        }
     }
 }
 
