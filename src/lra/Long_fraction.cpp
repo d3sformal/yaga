@@ -90,7 +90,7 @@ namespace yaga {
             assert(mpqPartValid());
             mpq_class mpq_c(mpq);
             if (sign) mpq_c = -mpq_c;
-            out << (sign ? "(- " : "") << mpq_c << (sign ? ")" : "");
+            out << "(/ " << (sign ? "(- " : "") << mpq_c.get_num() << (sign ? ") " : " ") << mpq_c.get_den() << ")";
         }
     }
 
