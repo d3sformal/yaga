@@ -2,6 +2,7 @@
 #define YAGA_VARIABLE_H
 
 #include <ostream>
+#include <tuple>
 
 namespace yaga {
 
@@ -46,20 +47,9 @@ public:
      * @return value > 0 if this variable is greater than @p other
      * @return value == 0 if this variable is equal to @p other
      */
-    inline int operator<=>(Variable const& other) const
+    inline auto operator<=>(Variable const& other) const
     {
-        if (type() < other.type())
-        {
-            return -1;
-        }
-        else if (type() > other.type())
-        {
-            return 1;
-        }
-        else // type() == other.type()
-        {
-            return ord() - other.ord();
-        }
+        return std::pair{type(), ord()} <=> std::pair{other.type(), other.ord()};
     }
 
     // get 0-based ordinal number of this variable
