@@ -52,7 +52,10 @@ public:
      * @return value > 0 if this literal is greater than @p other
      * @return value == 0 if this literal is equal to @p other
      */
-    inline int operator<=>(Literal const& other) const { return value - other.value; }
+    inline int operator<=>(Literal const& other) const 
+    { 
+        return index() - other.index(); 
+    }
 
     /** Get negation of this literal
      *
@@ -84,6 +87,12 @@ public:
 private:
     // `variable ordinal + 1`, negative value indicates negative literal
     int value;
+
+    /** Generate an index of this literal s.t. literal and its negation are next to each other.
+     * 
+     * @return a positive integer identifying this literal
+     */
+    inline int index() const { return var().ord() * 2 + (is_negation() ? 1 : 0); }
 };
 
 inline std::ostream& operator<<(std::ostream& out, Literal lit)
