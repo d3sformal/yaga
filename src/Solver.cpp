@@ -59,8 +59,7 @@ Solver::Clause_range Solver::learn(std::vector<Clause>&& clauses)
         }
         else // lhs.size() == rhs.size()
         {
-            auto [lhs_it, rhs_it] = std::mismatch(lhs.begin(), lhs.end(), rhs.begin());
-            return lhs_it->var().ord() < rhs_it->var().ord();
+            return lhs < rhs;
         }
     });
     clauses.erase(std::unique(clauses.begin(), clauses.end()), clauses.end());

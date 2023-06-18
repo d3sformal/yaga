@@ -22,12 +22,45 @@ public:
      */
     inline Variable(int ord, Type type) : number(ord), var_type(type) {}
 
-    // comparable
+    /** Check whether this variable is equal to @p other
+     * 
+     * @param other other variable
+     * @return true if this variable is equal to @p other
+     */
     inline bool operator==(Variable const& other) const
     {
         return var_type == other.var_type && number == other.number;
     }
+
+    /** Check whether this variable is equal to @p other
+     * 
+     * @param other other variable
+     * @return true if this variable is not equal to @p other
+     */
     inline bool operator!=(Variable const& other) const { return !operator==(other); }
+
+    /** Three-way comparison of two variables
+     * 
+     * @param other other variable
+     * @return value < 0 if this variable is less than @p other
+     * @return value > 0 if this variable is greater than @p other
+     * @return value == 0 if this variable is equal to @p other
+     */
+    inline int operator<=>(Variable const& other) const
+    {
+        if (type() < other.type())
+        {
+            return -1;
+        }
+        else if (type() > other.type())
+        {
+            return 1;
+        }
+        else // type() == other.type()
+        {
+            return ord() - other.ord();
+        }
+    }
 
     // get 0-based ordinal number of this variable
     inline int ord() const { return number; }

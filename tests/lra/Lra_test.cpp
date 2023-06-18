@@ -185,3 +185,32 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
     auto result = smt.solver().check();
     REQUIRE(result == Solver::Result::unsat);
 }
+
+TEST_CASE("Formula which forces the solver to generate duplicate constraints and clauses", "[lra][sat][integration]")
+{
+    Yaga_test test;
+    test.input() << "(declare-fun x () Real)\n";
+    test.input() << "(declare-fun y () Real)\n";
+    test.input() << "(declare-fun z () Real)\n";
+    test.input() << "(declare-fun b () Bool)\n";
+    test.input() << "(assert (or (not b) (< (+ x y) 0)))\n";
+    test.input() << "(assert (or (not b) (> x 0)))\n";
+    test.input() << "(assert (or (not b) (< (+ z y) 0)))\n";
+    test.input() << "(assert (or (not b) (> z 0)))\n";
+    // make sure that y is decided first and then b
+    test.input() << "(assert (< y 1000))\n";
+    test.input() << "(assert (< y 1001))\n";
+    test.input() << "(assert (< y 1002))\n";
+    test.input() << "(assert (< y 1003))\n";
+    test.input() << "(assert (< y 1004))\n";
+    test.run();
+
+    REQUIRE(test.answer() == Solver_answer::SAT);
+    if (*test.boolean("b"))
+    {
+        REQUIRE(*test.real("x") + *test.real("y") < 0);
+        REQUIRE(*test.real("x") > 0);
+        REQUIRE(*test.real("z") + *test.real("y") < 0);
+        REQUIRE(*test.real("z") > 0);
+    }
+}

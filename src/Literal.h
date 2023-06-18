@@ -45,6 +45,15 @@ public:
      */
     inline bool operator!=(Literal const& other) const { return !operator==(other); }
 
+    /** Three-way comparison of two literals.
+     * 
+     * @param other other literal
+     * @return value < 0 if this literal is less than @p other
+     * @return value > 0 if this literal is greater than @p other
+     * @return value == 0 if this literal is equal to @p other
+     */
+    inline int operator<=>(Literal const& other) const { return value - other.value; }
+
     /** Get negation of this literal
      *
      * @return new literal which represents negation of this literal
