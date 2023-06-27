@@ -76,7 +76,18 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    parser::Smt2_parser parser;
-    parser.set_options(options);
-    parser.parse_file(input_path);
+    try
+    {
+        parser::Smt2_parser parser;
+        parser.set_options(options);
+        parser.parse_file(input_path);
+    }
+    catch (std::ifstream::failure& e)
+    {
+        std::cout << "Error: failed to open the input file '" << input_path << "'\n";
+    }
+    catch (std::exception& e) 
+    {
+        std::cout << "Error: " << e.what() << "\n";
+    }
 }
