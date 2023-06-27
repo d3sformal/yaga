@@ -84,10 +84,10 @@ int main(int argc, char** argv)
     }
     catch (std::ifstream::failure& e)
     {
-        std::cout << "Error: failed to open the input file '" << input_path << "'\n";
+        std::cerr << "Error: failed to open the input file '" << input_path << "'\n";
     }
     catch (std::exception& e) 
     {
-        std::cout << "Error: " << e.what() << "\n";
+        std::cerr << "Error: " << e.what() << "\n";
     }
 }
