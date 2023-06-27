@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <cctype>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -38,52 +39,89 @@ int main(int argc, char** argv)
 
     std::string path{argv[1]};
     std::ifstream input{path};
+    bool is_initialized = false;
     int num_vars = 0;
     int num_clauses = 0;
     Clause buffer;
-    for (;;)
+    std::string line;
+    while (std::getline(input, line))
     {
-        std::string line;
-        std::getline(input, line);
-        if (input.fail() || input.eof())
-        {
-            break;
-        }
+        line.erase(line.begin(), std::find_if(line.begin(), line.end(), [](auto c) {
+            return !std::isspace(c);
+        }));
 
-        std::stringstream stream{line};
+        std::istringstream stream{line};
         if (line.starts_with('c'))
         {
             continue;
         }
         else if (line.starts_with("p cnf"))
         {
+            if (is_initialized)
+            {
+                std::cerr << "Error: duplicate DIMACS problem line 'p cnf ...'\n";
+                return -1;
+            }
+            is_initialized = true;
             stream.seekg(5);
-            stream >> num_vars >> num_clauses;
+            if (!(stream >> num_vars >> num_clauses))
+            {
+                std::cerr << "Error: failed to parse the DIMACS problem line." 
+                    << " Expected: 'p cnf [num_vars] [num_clauses]'\n";
+                return -1;
+            }
             solver.trail().set_model<bool>(Variable::boolean, num_vars);
         }
         else
         {
-            for (;;)
+            int var;
+            while (stream >> var)
             {
-                int var;
-                stream >> var;
-                if (stream.fail())
+                if (!is_initialized)
                 {
-                    break;
+                    std::cerr << "Error: clause before DIMACS problem line.\n";
+                    return -1;
+                }
+                else if (var > num_vars || var < -num_vars)
+                {
+                    std::cerr << "Error: unkown literal " << var << "\n";
+                    return -1;
                 }
 
-                if (!buffer.empty() && var == 0)
+                if (var == 0)
                 {
-                    solver.db().assert_clause(std::move(buffer));
+                    if (num_clauses > 0 && buffer.empty())
+                    {
+                        std::cout << "UNSAT\n";
+                        return 0;
+                    }
+
+                    if (num_clauses > 0)
+                    {
+                        solver.db().assert_clause(std::move(buffer));
+                    }
                     buffer.clear();
                     --num_clauses;
                 }
-                else if (num_clauses > 0)
+                else
                 {
                     buffer.emplace_back(var < 0 ? ~Literal{-var - 1} : Literal{var - 1});
                 }
             }
         }
+    }
+
+    if (!is_initialized)
+    {
+        std::cerr << "Error: missing DIMANCS problem line. " 
+            << "Expected 'p cnf [num_vars] [num_clauses]'\n";
+        return -1;
+    }
+
+    if (num_clauses > 0)
+    {
+        std::cerr << "Error: insufficient number of clauses.\n";
+        return -1;
     }
 
     auto begin = std::chrono::steady_clock::now();
