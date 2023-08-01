@@ -21,6 +21,7 @@ Jan Kofron (Charles University, Prague)
 #include <climits>
 #include <stack>
 #include <vector>
+#include <cstdint>
 
 namespace yaga {
 

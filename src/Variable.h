@@ -72,9 +72,9 @@ struct Variable_hash {
      */
     inline std::size_t operator()(Variable var) const
     {
-        auto var_ord = static_cast<std::int64_t>(var.ord());
-        auto type = static_cast<std::int64_t>(var.type());
-        return std::hash<std::int64_t>{}((type << 32) | var_ord);
+        auto var_ord = static_cast<int64_t>(var.ord());
+        auto type = static_cast<int64_t>(var.type());
+        return std::hash<int64_t>{}((type << 32) | var_ord);
     }
 };
 

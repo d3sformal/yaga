@@ -6,7 +6,7 @@ include(FetchContent)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules/")
 
-find_package(Catch2 3 QUIET)
+find_package(Catch2 3.4 QUIET)
 find_package(GMP REQUIRED)
 
 if(FOUND_CATCH)
@@ -17,7 +17,7 @@ else()
     FetchContent_Declare(
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG v3.2.1
+            GIT_TAG v3.4.0
     )
 
     FetchContent_MakeAvailable(Catch2)
