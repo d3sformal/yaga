@@ -18,16 +18,16 @@ To build Yaga, run the following commands:
 
 You can use a different build system in step `3`. For example, `cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..` creates build files for the [Ninja build system](https://ninja-build.org/) which you can use in the 4th step by running `ninja` instead of `make`.
 
-Building the project creates `test`, `sat` and `smt` executables. The `sat` utility implements a SAT solver using core of the MCSat framework and a plugin for boolean variables. It has one command line argument which is a path to a CNF formula in the [DIMACS format](https://www.cs.utexas.edu/users/moore/acl2/manuals/current/manual/index-seo.php/SATLINK____DIMACS).
+Building the project creates `test`, `sat` and `smt` executables. The `sat` utility implements a SAT solver using core of the MCSat framework and a plugin for Boolean variables. It has one command line argument which is a path to a CNF formula in the [DIMACS format](https://www.cs.utexas.edu/users/moore/acl2/manuals/current/manual/index-seo.php/SATLINK____DIMACS).
 The `smt` utility implements an SMT solver capable of solving problem in quantifier-free linear real arithmetic (QF_LRA logic in SMT-LIB terminology).
 It has one command line argument which is a path to a SMT-LIB2 file.
 Yaga supports a subset of SMT-LIB2 language that covers all non-incremental benchmarks in SMT-LIB for QF_LRA.
     
 
 # Description
-Yaga is an MCSat based [3] SMT solver. Currently, we implemented plugins for boolean and
+Yaga is an MCSat based [3] SMT solver. Currently, we implemented plugins for Boolean and
 rational variables which can be used to decide problems in quantifier-free linear real arithmetic.
-The boolean plugin uses the typical mechanism of watched literals [6] to perform boolean constraint
+The Boolean plugin uses the typical mechanism of watched literals [6] to perform Boolean constraint
 propagation. The plugin for linear real arithmetic uses a similar mechanism of watched variables
 to keep track of variable bounds [5]. The last checked variable in each clause or a linear constraint
 is cached. Search for a non-falsified literal or an unassigned rational variable always starts from the
@@ -35,7 +35,7 @@ last position. Additionally, we use the following heuristics:
 
 * Variable order. Yaga uses a generalization of the VSIDS heuristic implementation from
 MiniSat [8]. Variable score is increased for each variable involved in conflict derivation. 
-Variables of all types (i.e., boolean and rational variables) are ranked using this heuristic.
+Variables of all types (i.e., Boolean and rational variables) are ranked using this heuristic.
 * Restart scheme. We use a simplified restart scheme from the Glucose solver [1]. The solver
 maintains an exponential average of glucose level (LBD) of all learned clauses [2] and an
 exponential LBD average of recently learned clauses. Yaga restarts when the recent LBD
