@@ -1,6 +1,6 @@
 # Yaga
 
-MCSat SMT solver developed at Department of Distributed and Dependable Systems, Charles University, Czech Republic, mainly by M. Blicha, D. Hanák, and J. Kofroň (in alphabetic order).
+MCSat SMT solver developed at [Department of Distributed and Dependable Systems](https://d3s.mff.cuni.cz), [Charles University](https://cuni.cz), Czech Republic, mainly by M. Blicha, D. Hanák, and J. Kofroň (in alphabetic order).
 
 ## Build
 
