@@ -12,6 +12,7 @@
 #include "Variable.h"
 #include "Theory.h"
 #include "Theory_combination.h"
+#include "uf/Uninterpreted_functions.h"
 #include "Restart.h"
 #include "Variable_order.h"
 #include "Evsids.h"

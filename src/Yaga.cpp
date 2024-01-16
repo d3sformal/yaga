@@ -26,6 +26,8 @@ void Qf_lra::setup(Solver& solver, Options const& options) const
     auto& lra = theories.add_theory<Linear_arithmetic>();
     lra.set_options(lra_options);
 
+    theories.add_theory<Uninterpreted_functions>();
+
     // add heuristics
     solver.set_restart_policy<Glucose_restart>();
     solver.set_variable_order<Generalized_vsids>(lra);
