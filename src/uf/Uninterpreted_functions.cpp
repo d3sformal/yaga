@@ -6,7 +6,6 @@
 namespace yaga {
 
 std::vector<Clause> yaga::Uninterpreted_functions::propagate(Database&, Trail&) {
-    printf("uf::propagate\n");
     return {};
 }
 

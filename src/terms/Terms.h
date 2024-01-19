@@ -304,6 +304,8 @@ public:
      */
     term_t arithmetic_ite(term_t c, term_t t, term_t e);
 
+    term_t app_term(type_t ret_type, std::span<term_t> args);
+
     /*
      * Queries on terms
      */
@@ -317,6 +319,8 @@ public:
     bool is_arithmetic_polynomial(term_t) const;
 
     bool is_ite(term_t) const;
+
+    bool is_app(term_t) const;
 
     Rational const& arithmetic_constant_value(term_t) const;
 

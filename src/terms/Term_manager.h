@@ -75,6 +75,8 @@ public:
      */
     term_t mk_uninterpreted_constant(type_t type);
 
+    term_t mk_app(std::string const& name, type_t ret_type, std::span<term_t> args);
+
     /*
      * Boolean terms
      */

@@ -182,6 +182,11 @@ term_t Term_table::arithmetic_ite(term_t c, term_t t, term_t e)
     return known_terms.get_composite_term(proxy);
 }
 
+term_t Term_table::app_term(type_t ret_type, std::span<term_t> args) {
+    Composite_term_proxy proxy{Kind::APP_TERM, ret_type, hash_composite_term(Kind::APP_TERM, args), *this, args};
+    return known_terms.get_composite_term(proxy);
+}
+
 /*
  * Declare a new uninterpreted constant of the given type.
  * Always creates a fresh term!
@@ -253,6 +258,11 @@ bool Term_table::is_arithmetic_polynomial(term_t t) const
 bool Term_table::is_ite(term_t t) const
 {
     return get_kind(t) == Kind::ITE_TERM;
+}
+
+bool Term_table::is_app(term_t t) const
+{
+    return get_kind(t) == Kind::APP_TERM;
 }
 
 term_t Term_table::var_of_product(term_t t) const

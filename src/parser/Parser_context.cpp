@@ -74,6 +74,14 @@ term_t Parser_context::declare_uninterpreted_constant(terms::type_t sort, std::s
     return term;
 }
 
+void Parser_context::declare_uninterpreted_function(terms::type_t ret_type, std::vector<terms::type_t> && arg_sorts, std::string const& name)
+{
+    term_t fnc_term = term_manager.mk_uninterpreted_constant(ret_type);
+    term_manager.set_term_name(fnc_term, name);
+
+    declared_functions.insert(name, Function_declaration(name, std::move(arg_sorts), ret_type));
+}
+
 term_t Parser_context::mk_numeral(std::string const& numeric_string)
 {
     return term_manager.mk_integer_constant(numeric_string);
@@ -89,6 +97,19 @@ term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>
     if (defined_functions.has(name))
     {
         return resolve_defined_function(name, args);
+    } else if (declared_functions.has(name))
+    {
+        auto declared_function = declared_functions.get(name);
+        auto expected_count = declared_function.arg_types.size();
+        assert(expected_count == args.size());
+
+        for (size_t i = 0; i < args.size(); ++i)
+        {
+            type_t expected_type = declared_function.arg_types[i];
+            assert(expected_type == term_manager.get_type(args[i]));
+        }
+
+        return term_manager.mk_app(name, declared_function.return_type, args);
     }
     return term_manager.mk_term(name, args);
 }

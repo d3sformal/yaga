@@ -225,6 +225,22 @@ term_t Term_manager::mk_term(std::string const& op, std::span<term_t> args)
     UNIMPLEMENTED;
 }
 
+term_t Term_manager::mk_app(std::string const& name, type_t ret_type, std::span<term_t> args)
+{
+    auto fnc_symbol = get_term_by_name(name);
+    assert(fnc_symbol.has_value());
+
+    std::vector<term_t> args_with_symbol = std::vector<term_t>();
+    args_with_symbol.push_back(fnc_symbol.value());
+
+    for (auto arg : args)
+    {
+        args_with_symbol.push_back(arg);
+    }
+
+    return term_table->app_term(ret_type, args_with_symbol);
+}
+
 term_t Term_manager::mk_eq(std::span<term_t> args)
 {
     if (args.size() == 2)
@@ -479,7 +495,7 @@ poly_t Term_manager::term_to_poly(term_t term)
         }
         return poly;
     }
-    if (term_table->is_uninterpreted_constant(term) || term_table->is_ite(term))
+    if (term_table->is_uninterpreted_constant(term) || term_table->is_ite(term) || term_table->is_app(term))
     {
         poly.add_term(term, Rational(1));
         return poly;

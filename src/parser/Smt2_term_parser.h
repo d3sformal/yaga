@@ -38,6 +38,8 @@ public:
 
     type_t parse_sort();
 
+    std::vector<type_t> parse_sort_list();
+
     std::string parse_keyword();
     std::string parse_sexpr();
 

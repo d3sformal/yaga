@@ -132,22 +132,26 @@ bool Smt2_command_context::parse_command()
     }
     break;
 
-    // (declare-fun <symbol> (<sort>∗) <sort>)
     // (declare-const <symbol> <sort>)
     case Token::DECLARE_CONST_TOK:
+    {
+        std::string name = term_parser.parse_symbol();
+        terms::type_t t = term_parser.parse_sort();
+        parser_context.declare_uninterpreted_constant(t, name);
+    }
+    break;
+
+    // (declare-fun <symbol> (<sort>∗) <sort>)
     case Token::DECLARE_FUN_TOK:
     {
         std::string name = term_parser.parse_symbol();
         std::vector<terms::type_t> sorts;
-        if (tok == Token::DECLARE_FUN_TOK)
-        {
-            // FIXME: Support function symbol
-            // HACK: For now only empty sort list
-            lexer.eat_token(Token::LPAREN_TOK);
-            lexer.eat_token(Token::RPAREN_TOK);
-        }
-        terms::type_t t = term_parser.parse_sort();
-        parser_context.declare_uninterpreted_constant(t, name);
+
+        lexer.eat_token(Token::LPAREN_TOK);
+        sorts = term_parser.parse_sort_list();
+
+        terms::type_t ret_type = term_parser.parse_sort();
+        parser_context.declare_uninterpreted_function(ret_type, std::move(sorts), name);
     }
     break;
 
