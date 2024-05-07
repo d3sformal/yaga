@@ -42,6 +42,11 @@ std::span<const term_t> Term_manager::get_args(term_t term) const
     return term_table->get_args(term);
 }
 
+term_t Term_manager::get_fnc_symbol(term_t term) const
+{
+    return term_table-> get_fnc_symbol(term);
+}
+
 Kind Term_manager::get_kind(term_t term) const
 {
     return term_table->get_kind(term);
@@ -77,6 +82,11 @@ bool Term_manager::is_uninterpreted_constant(term_t term) const
     return term_table->is_uninterpreted_constant(term);
 }
 
+bool Term_manager::is_uninterpreted(yaga::terms::term_t term) const
+{
+    return is_uninterpreted_constant(term) || is_app(term);
+}
+
 bool Term_manager::is_arithmetic_product(term_t term) const
 {
     return term_table->is_arithmetic_product(term);
@@ -90,6 +100,11 @@ bool Term_manager::is_arithmetic_polynomial(term_t term) const
 bool Term_manager::is_ite(term_t term) const
 {
     return term_table->is_ite(term);
+}
+
+bool Term_manager::is_app(term_t term) const
+{
+    return term_table->is_app(term);
 }
 
 term_t Term_manager::var_of_product(term_t arithmetic_product) const
@@ -133,7 +148,8 @@ term_t Term_manager::mk_term(Kind kind, std::span<term_t> args)
     case Kind::ITE_TERM:
         assert(args.size() == 3);
         return mk_ite(args[0], args[1], args[2]);
-
+    case Kind::APP_TERM:
+        return mk_app(args);
     case Kind::UNINTERPRETED_TERM:
     case Kind::ARITH_CONSTANT:
         assert(false);
@@ -222,6 +238,10 @@ term_t Term_manager::mk_term(std::string const& op, std::span<term_t> args)
         assert(args.size() == 2);
         return mk_xor(args[0], args[1]);
     }
+    else
+    {
+        return mk_app(args);
+    }
     UNIMPLEMENTED;
 }
 
@@ -239,6 +259,11 @@ term_t Term_manager::mk_app(std::string const& name, type_t ret_type, std::span<
     }
 
     return term_table->app_term(ret_type, args_with_symbol);
+}
+
+term_t Term_manager::mk_app(std::span<term_t> args)
+{
+    return term_table->app_term(get_type(args[0]), args);
 }
 
 term_t Term_manager::mk_eq(std::span<term_t> args)
@@ -372,7 +397,7 @@ bool Term_manager::is_var_like(term_t t) const
 {
     auto kind = get_kind(t);
     assert(kind != Kind::ITE_TERM or get_type(t) == types::real_type);
-    return kind == Kind::UNINTERPRETED_TERM or kind == Kind::ITE_TERM;
+    return kind == Kind::UNINTERPRETED_TERM or kind == Kind::ITE_TERM or kind == Kind::APP_TERM;
 }
 
 term_t Term_manager::mk_arithmetic_eq(term_t t1, term_t t2)
@@ -600,6 +625,7 @@ term_t Term_manager::mk_arithmetic_times(std::span<term_t> args)
     {
     case Kind::UNINTERPRETED_TERM:
     case Kind::ITE_TERM:
+    case Kind::APP_TERM:
         assert(get_type(poly_term) == types::real_type);
         return term_table->arithmetic_product(val, *pit);
     case Kind::ARITH_PRODUCT: {
