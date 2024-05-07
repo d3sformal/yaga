@@ -47,10 +47,11 @@ void Yaga::init(Initializer const& init, Options const& options)
     {
         for (auto theory : combination->theories())
         {
-            if (auto plugin = dynamic_cast<Linear_arithmetic*>(theory))
+            if (auto lraPlugin = dynamic_cast<Linear_arithmetic*>(theory))
             {
-                lra = plugin;
-                break;
+                lra = lraPlugin;
+            } else if (auto ufPlugin = dynamic_cast<Uninterpreted_functions*>(theory)) {
+                uf = ufPlugin;
             }
         }
     }

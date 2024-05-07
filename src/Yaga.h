@@ -173,8 +173,12 @@ public:
     inline Solver& solver() { return smt; }
 private:
     Solver smt;
+
     // pointer to the LRA plugin or nullptr if this solver does not support LRA
     Linear_arithmetic* lra;
+
+    // pointer to the UF plugin or nullptr if this solver does not support UF
+    Uninterpreted_functions* uf;
 };
 
 }
