@@ -1,7 +1,3 @@
-//
-// Created by milan on 16.01.24.
-//
-
 #ifndef YAGA_UNINTERPRETED_FUNCTIONS_H
 #define YAGA_UNINTERPRETED_FUNCTIONS_H
 
