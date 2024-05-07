@@ -1,5 +1,6 @@
+.idea
 .vscode
 deps/install
-build-debug
+*build-debug
 build-release
 data

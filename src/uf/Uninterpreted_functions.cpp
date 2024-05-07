@@ -1,6 +1,3 @@
-//
-// Created by milan on 16.01.24.
-//
 #include "Uninterpreted_functions.h"
 
 namespace yaga {
