@@ -22,6 +22,26 @@ class Print_model final : public Default_model_visitor {
     terms::Term_manager& term_manager;
     // output stream where the model will be printed
     std::ostream& output;
+
+    void print_variable(Variable_type var) {
+        if (std::holds_alternative<bool>(var))
+            output << (std::get<bool>(var) ? "true" : "false");
+        else if (std::holds_alternative<Rational>(var))
+            output << std::get<Rational>(var);
+    }
+
+    void print_type(type_t type) {
+        switch (type) {
+        default:
+        case terms::types::bool_type:
+            output << "Bool";
+            break;
+        case terms::types::real_type:
+            output << "Real";
+            break;
+        }
+    }
+
 public:
     virtual ~Print_model() = default;
 
@@ -42,34 +62,90 @@ public:
      */
     void end_list() { output << ")\n"; }
 
-    /** Print value of a boolean variable in the SMT-LIB format:
+    /** Print value of a variable in the SMT-LIB format:
      * 
-     * (define-fun <var-name> () Bool <var-value>)
-     * 
-     * @param term term which represents a boolean variable
-     * @param value value of @p term
-     */
-    void visit(term_t term, bool value) override
-    {
-        if (auto name = term_manager.get_term_name(term))
-        {
-            output << "(define-fun " << *name << " () Bool " 
-                << (value ? "true" : "false") << ")\n";
-        }
-    }
-
-    /** Print value of a rational variable in the SMT-LIB format:
-     * 
-     * (define-fun <var-name> () Real <var-value>)
+     * (define-fun <var-name> () <sort> <var-value>)
      * 
      * @param term term which represents a rational variable
      * @param value value of @p term
      */
-    void visit(term_t term, Rational const& value) override
+    void visit(term_t term, Variable_type const& value) override
     {
         if (auto name = term_manager.get_term_name(term))
         {
-            output << "(define-fun " << *name << " () Real " << value << ")\n";
+            output << "(define-fun " << *name << " () ";
+            print_type(value.index());
+            output << " ";
+            print_variable(value);
+            output << ")\n";
+        }
+    }
+
+    /** Print value of a function in the SMT-LIB format:
+     *
+     * (define-fun <fun-name> (<sorted-var>*) <sort> <fun-value>)
+     *
+     * @param term term which represents a function symbol
+     * @param values function values of @p term
+     */
+    void visit_fnc(terms::term_t term, std::map<std::vector<Variable_type>, Variable_type> const& values) override
+    {
+        if (auto name = term_manager.get_term_name(term))
+        {
+            output << "(define-fun " << *name << " (";
+
+            std::vector<std::string> arg_names;
+            auto arg_vector = values.begin()->first;
+            for (size_t i = 0; i < arg_vector.size(); ++i)
+            {
+                std::string arg_name = "x" + std::to_string(i);
+                arg_names.push_back(arg_name);
+                output << (i > 0 ? " (" : "(") << arg_name << " "
+                       << (std::holds_alternative<bool>(arg_vector[i]) ? "Bool" : "Real") << ")";
+            }
+
+            output << ") ";
+
+            auto it = values.begin();
+            auto else_value = it->second;
+            it++;
+
+            print_type(else_value.index());
+
+            output << "\n";
+
+            int parentheses = (int)values.size();
+            for (; it != values.end(); it++)
+            {
+                output << "  (ite";
+
+                if (arg_names.size() > 1)
+                    output << " (and";
+
+                auto arg_values = it->first;
+                for (size_t j = 0; j < arg_values.size(); ++j)
+                {
+                    output << " (= " << arg_names[j] + " ";
+                    print_variable(arg_values[j]);
+                    output << ")";
+                }
+
+                if (arg_names.size() > 1)
+                    output << ")";
+
+                output << " ";
+                print_variable(it->second);
+                output << "\n";
+            }
+
+            output << "       ";
+            print_variable(else_value);
+            output << " ";
+            for (; parentheses > 0; parentheses--)
+            {
+                output << ")";
+            }
+            output << "\n";
         }
     }
 };
