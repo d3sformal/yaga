@@ -209,6 +209,8 @@ public:
      */
     std::span<const term_t> get_args(term_t) const;
 
+    term_t get_fnc_symbol(term_t) const;
+
     /**
      * @param args Arguments of the disjunction
      * @return Term handle to the disjunction of the given terms
