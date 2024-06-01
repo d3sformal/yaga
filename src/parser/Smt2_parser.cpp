@@ -23,7 +23,7 @@ class Print_model final : public Default_model_visitor {
     // output stream where the model will be printed
     std::ostream& output;
 
-    void print_variable(Variable_type var) {
+    void print_variable(terms::var_value_t var) {
         if (std::holds_alternative<bool>(var))
             output << (std::get<bool>(var) ? "true" : "false");
         else if (std::holds_alternative<Rational>(var))
@@ -69,26 +69,26 @@ public:
      * @param term term which represents a rational variable
      * @param value value of @p term
      */
-    void visit(term_t term, Variable_type const& value) override
+    void visit(term_t term, terms::var_value_t const& value) override
     {
         if (auto name = term_manager.get_term_name(term))
         {
             output << "(define-fun " << *name << " () ";
-            print_type(value.index());
+            print_type((int) value.index());
             output << " ";
             print_variable(value);
             output << ")\n";
         }
     }
 
-    /** Print value of a function in the SMT-LIB format:
+    /** Print values of a function in the SMT-LIB format:
      *
      * (define-fun <fun-name> (<sorted-var>*) <sort> <fun-value>)
      *
      * @param term term which represents a function symbol
      * @param values function values of @p term
      */
-    void visit_fnc(terms::term_t term, std::map<std::vector<Variable_type>, Variable_type> const& values) override
+    void visit_fnc(terms::term_t term, std::map<std::vector<terms::var_value_t>, terms::var_value_t> const& values) override
     {
         if (auto name = term_manager.get_term_name(term))
         {
@@ -100,8 +100,9 @@ public:
             {
                 std::string arg_name = "x" + std::to_string(i);
                 arg_names.push_back(arg_name);
-                output << (i > 0 ? " (" : "(") << arg_name << " "
-                       << (std::holds_alternative<bool>(arg_vector[i]) ? "Bool" : "Real") << ")";
+                output << (i > 0 ? " (" : "(") << arg_name << " ";
+                print_type((int) arg_vector[i].index());
+                output << ")";
             }
 
             output << ") ";
@@ -110,7 +111,7 @@ public:
             auto else_value = it->second;
             it++;
 
-            print_type(else_value.index());
+            print_type((int) else_value.index());
 
             output << "\n";
 
@@ -368,7 +369,7 @@ bool Smt2_command_context::parse_command()
     case Token::SET_LOGIC_TOK:
     {
         std::string name = term_parser.parse_symbol();
-        if (name != "QF_LRA")
+        if (name != "QF_UFLRA")
         {
             std::cerr << "Unsupported logic " << name << std::endl;
             return false;

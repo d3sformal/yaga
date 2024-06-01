@@ -3,6 +3,9 @@
 
 #include <cstdint>
 #include <functional>
+#include <variant>
+
+#include "Rational.h"
 
 namespace yaga::terms {
 
@@ -26,6 +29,7 @@ struct term_t {
 };
 
 using type_t = int32_t;
+using var_value_t = std::variant<bool, Rational>;
 
 namespace types {
 // Predefined types

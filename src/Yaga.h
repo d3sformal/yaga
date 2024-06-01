@@ -3,21 +3,23 @@
 
 #include "Bool_theory.h"
 #include "Clause.h"
+#include "Evsids.h"
 #include "Fraction.h"
 #include "Generalized_vsids.h"
 #include "Linear_constraint.h"
 #include "Linear_arithmetic.h"
 #include "Literal.h"
+#include "Options.h"
+#include "Rational.h"
+#include "Restart.h"
 #include "Solver.h"
-#include "Variable.h"
+#include "Term_manager.h"
+#include "Term_types.h"
 #include "Theory.h"
 #include "Theory_combination.h"
-#include "uf/Uninterpreted_functions.h"
-#include "Restart.h"
+#include "Uninterpreted_functions.h"
+#include "Variable.h"
 #include "Variable_order.h"
-#include "Evsids.h"
-#include "Rational.h"
-#include "Options.h"
 
 #include <algorithm>
 #include <cassert>
@@ -52,11 +54,11 @@ public:
 
 /** Initializer for quantifier-free linear real arithmetic.
  */
-class Qf_lra final : public Initializer {
+class Qf_uflra final : public Initializer {
 public:
-    virtual ~Qf_lra() = default;
+    virtual ~Qf_uflra() = default;
 
-    /** Initialize @p solver with plugins for boolean variables and rational variables.
+    /** Initialize @p solver with plugins for boolean variables, rational variables and uninterpreted functions.
      * 
      * @param solver solver to initialize
      * @param options command line options
@@ -73,7 +75,7 @@ struct logic {
 
     /** Quantifier-free linear real arithmetic
      */
-    inline static Qf_lra const qf_lra{};
+    inline static Qf_uflra const qf_uflra{};
 };
 
 /** A facade for the SMT solver.
@@ -98,8 +100,9 @@ public:
      * 
      * @param init initializer for a logic
      * @param options solver options
+     * @param tm term manager object from the parser
      */
-    Yaga(Initializer const& init, Options const& options);
+    Yaga(Initializer const& init, Options const& options, terms::Term_manager const& tm);
 
     /** Reinitialize the solver with a different logic.
      * 
@@ -116,6 +119,13 @@ public:
      * @return object which represents the new variable
      */
     Variable make(Variable::Type type);
+
+    /** Create a new variable representing a function application term
+     *
+     * @param type return type of the function
+     * @return object which represents the function return value
+     */
+    Variable make_function_application(Variable::Type, terms::term_t);
 
     /** Convenience method to create new boolean variable and return a literal.
      * 
@@ -155,6 +165,11 @@ public:
         return lra->constraint(smt.trail(), std::forward<Var_range>(vars), 
                                std::forward<Coef_range>(coef), pred, rhs).lit();
     }
+
+    void propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > mapping);
+    void propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > mapping);
+
+    std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>& get_function_model();
 
     /** Assert a new clause to the solver (range of literals)
      * 

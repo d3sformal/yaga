@@ -23,19 +23,19 @@ class Default_model_visitor {
 public:
     virtual ~Default_model_visitor() {}
 
-    /** Visit value of a rational variable
+    /** Visit value of a variable
      * 
-     * @param term term representing a rational variable
+     * @param term term representing a variable
      * @param value value of @p term
      */
-    virtual void visit(terms::term_t, Rational const&) {}
+    virtual void visit(terms::term_t, terms::var_value_t const&) {}
 
-    /** Visit value of a boolean variable
-     * 
-     * @param term term representing a boolean variable
-     * @param value value of @p term
+    /** Visit values of a function
+     *
+     * @param term term representing a function symbol
+     * @param values values of @p term for a tuple of argument values
      */
-    virtual void visit(terms::term_t, bool) {}
+    virtual void visit_fnc(terms::term_t, std::map<std::vector<terms::var_value_t>, terms::var_value_t> const&) {}
 };
 
 class Solver_wrapper
@@ -44,6 +44,7 @@ class Solver_wrapper
     Options const& options;
     Yaga solver;
     std::unordered_map<terms::term_t, Variable> variables;
+
 public:
     Solver_wrapper(terms::Term_manager& term_manager, Options const& options);
 
