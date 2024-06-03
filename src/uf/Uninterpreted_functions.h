@@ -63,6 +63,16 @@ private:
         bool all_assigned();
     };
 
+    class Linear_polynomial {
+    public:
+        std::vector<int> vars;
+        std::vector<Rational> coef;
+        Rational constant;
+
+        void add(Linear_polynomial &&);
+        void sub(Linear_polynomial &&);
+    };
+
     terms::Term_manager const& term_manager;
     std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int>>  rational_vars;
     std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal>>  bool_vars;
@@ -75,6 +85,8 @@ private:
     std::vector<Variable> vars_to_watch(terms::term_t);
     std::optional<Variable> term_to_var(terms::term_t);
     std::vector<Clause> add_function_value(terms::term_t, Trail&);
+    Literal assert_equality(terms::term_t, terms::term_t, Trail&, bool);
+    Linear_polynomial term_to_poly(terms::term_t);
 };
 
 } // namespace yaga

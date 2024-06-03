@@ -53,7 +53,7 @@ void Uninterpreted_functions::Assignment_watchlist::assign(Trail const& trail) {
 
 Uninterpreted_functions::Uninterpreted_functions(terms::Term_manager const& tm) : term_manager(tm) {}
 
-std::vector<Clause> Uninterpreted_functions::propagate(Database&, Trail& trail) {
+std::vector<Clause> Uninterpreted_functions::propagate(Database& db, Trail& trail) {
     printf("\n---Assignments---:\n");
     std::vector<Clause> result;
 
@@ -186,7 +186,17 @@ void Uninterpreted_functions::on_before_backtrack(Database&, Trail&, int new_lvl
     for (Assignment_watchlist& w : watchlists) {
         w.backtrack_to(new_lvl);
     }
-
+    for (auto & [_, function] : functions) {
+        std::vector<std::vector<terms::var_value_t>> to_erase;
+        for (auto & [arg_values, application] : function) {
+            if (application.decision_level > new_lvl) {
+                to_erase.push_back(arg_values);
+            }
+        }
+        for (auto const& arg_values : to_erase) {
+            function.erase(arg_values);
+        }
+    }
 }
 
 Uninterpreted_functions::Term_evaluation Uninterpreted_functions::evaluate(const terms::term_t t, Trail& trail) {
@@ -221,7 +231,7 @@ Uninterpreted_functions::Term_evaluation Uninterpreted_functions::evaluate(const
         result.decision_level = 0;
         break;
     case terms::Kind::CONSTANT_TERM:
-        result.value = true;
+        result.value = (t == terms::true_term);
         result.decision_level = 0;
         break;
     case terms::Kind::ARITH_PRODUCT: {
@@ -259,8 +269,113 @@ Uninterpreted_functions::Term_evaluation Uninterpreted_functions::evaluate(const
     return result;
 }
 
-// returns: a conflict clause
-std::vector<Clause> Uninterpreted_functions::add_function_value(terms::term_t t, yaga::Trail& trail) {
+void Uninterpreted_functions::Linear_polynomial::add(Uninterpreted_functions::Linear_polynomial && x) {
+    for (std::size_t i = 0; i < x.vars.size(); ++i)
+    {
+        int var = x.vars[i];
+        auto found = std::find(vars.begin(), vars.end(), var);
+        if (found != vars.end()) {
+            auto ix = std::distance(vars.begin(), found);
+            coef[ix] += x.coef[i];
+        } else {
+            vars.push_back(var);
+            coef.push_back(x.coef[i]);
+        }
+    }
+
+    constant += x.constant;
+}
+
+void Uninterpreted_functions::Linear_polynomial::sub(Uninterpreted_functions::Linear_polynomial&& x) {
+    // Negate the other polynomial ( *= -1 ).
+    for (std::size_t i = 0; i < x.coef.size(); ++i)
+    {
+        x.coef[i] *= (-1);
+    }
+    x.constant *= (-1);
+
+    // Then add it.
+    add(std::move(x));
+}
+
+Uninterpreted_functions::Linear_polynomial Uninterpreted_functions::term_to_poly(terms::term_t t) {
+    assert(term_manager.get_type(t) == terms::types::real_type);
+
+    std::optional<Variable> maybe_var = term_to_var(t);
+    if (maybe_var.has_value()) {
+        return {{maybe_var.value().ord()}, {1}, 0};
+    }
+
+    switch (term_manager.get_kind(t)) {
+    case terms::Kind::ARITH_CONSTANT:
+        return {{}, {}, term_manager.arithmetic_constant_value(t)};
+    case terms::Kind::ARITH_PRODUCT: {
+        Variable var = term_to_var(term_manager.var_of_product(t)).value();
+        return {{var.ord()}, {term_manager.coeff_of_product(t)}, 0};
+    }
+    case terms::Kind::ARITH_POLY: {
+        Linear_polynomial p;
+        auto args = term_manager.get_args(t);
+        for (auto arg : args)
+        {
+            maybe_var = term_to_var(t);
+            if (maybe_var.has_value())
+            {
+                p.vars.push_back(maybe_var.value().ord());
+                p.coef.emplace_back(1);
+            }
+            else if (term_manager.get_kind(arg) == terms::Kind::ARITH_CONSTANT)
+            {
+                p.constant = term_manager.arithmetic_constant_value(arg);
+            }
+            else
+            {
+                assert(term_manager.get_kind(arg) == terms::Kind::ARITH_PRODUCT);
+                Variable var = term_to_var(term_manager.var_of_product(arg)).value();
+                p.vars.push_back(var.ord());
+                p.coef.push_back(term_manager.coeff_of_product(arg));
+            }
+        }
+        return p;
+    }
+    default:
+        throw std::logic_error("Unhandled 'term to polynomial' conversion case");
+    }
+}
+
+Literal Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, Trail& trail, bool equal = true) {
+    assert(term_manager.get_type(t) == term_manager.get_type(u));
+    switch(term_manager.get_type(t)) {
+    case terms::types::real_type:
+        Linear_polynomial p = term_to_poly(t);
+        p.sub(term_to_poly(u));
+
+        Literal lit = solver->linear_constraint(p.vars, p.coef, Order_predicate::Type::eq, -p.constant);
+        if (!equal)
+            lit.negate();
+
+        auto& trail_model = trail.model<bool>(Variable::boolean);
+
+        if ((int)trail_model.num_vars() <= lit.var().ord())
+            trail_model.resize(lit.var().ord() + 1);
+
+        if (!trail_model.is_defined(lit.var().ord())) {
+            Term_evaluation t_eval = evaluate(t, trail);
+            Term_evaluation u_eval = evaluate(u, trail);
+            int propagation_level = std::max<int>(t_eval.decision_level, u_eval.decision_level);
+            trail.propagate(lit.var(), nullptr, propagation_level);
+            trail_model.set_value(lit.var().ord(), lit.is_negation());
+        } else {
+            assert(trail_model.value(lit.var().ord()) == lit.is_negation());
+        }
+
+
+        return lit;
+    }
+}
+
+// returns: a conflict clause (or more)
+std::vector<Clause> Uninterpreted_functions::add_function_value(terms::term_t t, Trail& trail) {
     std::vector<terms::var_value_t> argument_values;
     int max_level = 0;
     for (terms::term_t arg_term : term_manager.get_args(t)) {
@@ -300,7 +415,34 @@ std::vector<Clause> Uninterpreted_functions::add_function_value(terms::term_t t,
     // - negation (Aarg2 == Barg2)
     // - valA == valB
 
-    return {};
+    /*
+     * "conflict clause": -(x0 == y0) or -(x1 == y1) or (xv == yv)
+     *                         ^              ^
+     * - for real args:        |              |__ literal (solver->linear_constraint)
+     * - for bool args:        |__
+     */
+
+    terms::term_t current_app_term = current_applications[argument_values].app_term;
+    std::span<const terms::term_t> const& current_args = term_manager.get_args(current_app_term);
+    std::span<const terms::term_t> const& conflict_args = term_manager.get_args(t);
+
+    std::vector<Clause> result;
+    for (std::size_t i = 0; i < current_args.size(); ++i)
+    {
+        Literal eq_lit = assert_equality(current_args[i], conflict_args[i], trail, false);
+        if (result.empty())
+            result.push_back({eq_lit});
+        else
+            result[0].push_back(eq_lit);
+    }
+
+    Literal eq_lit = assert_equality(t, current_app_term, trail);
+    if (result.empty())
+        result.push_back({eq_lit});
+    else
+        result[0].push_back(eq_lit);
+
+    return result;
 }
 
 std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>& Uninterpreted_functions::get_model() {
@@ -320,8 +462,6 @@ std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>
  *
  * we need -
  * - a function that takes two arguments (terms) and returns a Literal that represents their (in)equality
- * - to represent the decision level when storing a function value in the function value map
- *   (and when backtracking, remove this function value, if the decision level is too high)
  *
  */
 

@@ -58,17 +58,17 @@ public:
      */
     inline Database& db() { return database; }
 
-    /** Get term manager
-     *
-     * @return term manager owned by this solver
-     */
-    inline const terms::Term_manager& tm() { return term_manager; }
-
     /** Get clause database used in `check()`
      *
      * @return clause database owned by this solver
      */
     inline Database const& db() const { return database; }
+
+    /** Get term manager
+     *
+     * @return term manager owned by this solver
+     */
+    inline const terms::Term_manager& tm() { return term_manager; }
 
     /** Create a new theory for this solver.
      *
