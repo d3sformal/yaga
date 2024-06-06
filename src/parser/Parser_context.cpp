@@ -62,6 +62,10 @@ Solver_answer Parser_context::check_sat(std::vector<term_t> const& assertions)
     return solver.check(assertions);
 }
 
+void Parser_context::set_logic(Initializer const& init) {
+    solver.set_logic(init);
+}
+
 void Parser_context::model(Default_model_visitor& visitor)
 {
     solver.model(visitor);

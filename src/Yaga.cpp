@@ -13,6 +13,26 @@ void Propositional::setup(Solver& solver, Options const& options) const
     solver.set_variable_order<Evsids>();
 }
 
+void Qf_lra::setup(Solver& solver, Options const& options) const
+{
+    solver.trail().set_model<bool>(Variable::boolean, 0);
+    solver.trail().set_model<Rational>(Variable::rational, 0);
+    // create plugins
+    auto& theories = solver.set_theory<Theory_combination>();
+    auto& bcp = theories.add_theory<Bool_theory>();
+    bcp.set_phase(options.phase);
+
+    Linear_arithmetic::Options lra_options;
+    lra_options.prop_rational = options.prop_rational;
+    lra_options.prop_bounds = options.deduce_bounds;
+    auto& lra = theories.add_theory<Linear_arithmetic>();
+    lra.set_options(lra_options);
+
+    // add heuristics
+    solver.set_restart_policy<Glucose_restart>();
+    solver.set_variable_order<Generalized_vsids>(lra);
+}
+
 void Qf_uflra::setup(Solver& solver, Options const& options) const
 {
     solver.trail().set_model<bool>(Variable::boolean, 0);
@@ -35,16 +55,20 @@ void Qf_uflra::setup(Solver& solver, Options const& options) const
     solver.set_variable_order<Generalized_vsids>(lra);
 }
 
-Yaga::Yaga(Initializer const& initializer, Options const& options, terms::Term_manager const& tm) : smt(tm) { init(initializer, options); }
+Yaga::Yaga(terms::Term_manager const& tm) : smt(tm) { init(); }
 
-void Yaga::init(Initializer const& init, Options const& options)
+void Yaga::init()
 {
     smt.db().learned().clear();
     smt.db().asserted().clear();
+}
+
+void Yaga::set_logic(Initializer const& init, Options const& options) {
     init.setup(smt, options);
 
     // find the LRA and UF plugins so we can add linear constraints and function applications
     lra = nullptr;
+    uf = nullptr;
     if (auto combination = dynamic_cast<Theory_combination*>(smt.theory()))
     {
         for (auto theory : combination->theories())
@@ -80,15 +104,20 @@ Literal Yaga::make_bool()
 }
 
 void Yaga::propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> >  mapping) {
-    uf->register_mapping(mapping);
+    if (uf)
+        uf->register_mapping(mapping);
 }
 
 void Yaga::propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> >  mapping) {
-    uf->register_mapping(mapping);
+    if (uf)
+        uf->register_mapping(mapping);
 }
 
-std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>& Yaga::get_function_model() {
-    return uf->get_model();
+std::optional<std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>> Yaga::get_function_model() {
+    if (uf)
+        return uf->get_model();
+    else
+        return std::nullopt;
 }
 
 }

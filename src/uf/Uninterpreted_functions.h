@@ -29,7 +29,7 @@ public:
     void register_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > );
     void register_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > );
     void register_solver(Yaga*);
-    std::unordered_map<terms::term_t, function_value_map_t>& get_model();
+    std::unordered_map<terms::term_t, function_value_map_t> get_model();
 private:
     struct Term_evaluation {
         terms::var_value_t value;
@@ -85,7 +85,7 @@ private:
     std::vector<Variable> vars_to_watch(terms::term_t);
     std::optional<Variable> term_to_var(terms::term_t);
     std::vector<Clause> add_function_value(terms::term_t, Trail&);
-    Literal assert_equality(terms::term_t, terms::term_t, Trail&, bool);
+    void assert_equality(terms::term_t, terms::term_t, Trail&, std::vector<Clause>&, bool);
     Linear_polynomial term_to_poly(terms::term_t);
 };
 

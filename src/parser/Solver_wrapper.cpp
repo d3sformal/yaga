@@ -82,7 +82,11 @@ public:
 };
 
 Solver_wrapper::Solver_wrapper(terms::Term_manager& term_manager, Options const& opts)
-    : term_manager(term_manager), options(opts), solver(logic::qf_uflra, options, term_manager) {}
+    : term_manager(term_manager), options(opts), solver(term_manager) {}
+
+void Solver_wrapper::set_logic(Initializer const& init) {
+    solver.set_logic(init, options);
+}
 
 void print_term(term_t t, const terms::Term_manager& term_manager, int tabs = 0, std::string const& endline = "\n") {
     bool args = false;
@@ -182,7 +186,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     printf("\n --- ASSERTIONS: --- \n");
     for (size_t i = 0; i < assertions.size(); ++i)
     {
-        print_term(assertions[i], term_manager);
+        //print_term(assertions[i], term_manager);
     }
 
     if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
@@ -191,7 +195,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     }
 
     // Cnfize and assert clauses to the solver
-    solver.init(logic::qf_uflra, options);
+    solver.init();
     Internalizer_config internalizer_config{term_manager, solver};
     terms::Visitor<Internalizer_config> internalizer(term_manager, internalizer_config);
 
@@ -283,7 +287,10 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
     }
 
     auto fnc_model = solver.get_function_model();
-    for (auto const& fnc : fnc_model) {
+    if (!fnc_model.has_value())
+        return;
+
+    for (auto const& fnc : fnc_model.value()) {
         auto fnc_term = fnc.first;
         auto fnc_values = fnc.second;
         visitor.visit_fnc(fnc_term, fnc_values);
@@ -452,6 +459,7 @@ void Internalizer_config::visit(term_t t)
     {
         auto args = term_manager.get_args(t);
         assert(args.size() >= 2);
+        assert(std::all_of(args.begin(), args.end(), [&](term_t t){return term_manager.get_type(t) == terms::types::bool_type;}));
         term_t positive_term = term_manager.positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
         Variable var = new_bool_var();

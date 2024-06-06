@@ -369,8 +369,11 @@ bool Smt2_command_context::parse_command()
     case Token::SET_LOGIC_TOK:
     {
         std::string name = term_parser.parse_symbol();
-        if (name != "QF_UFLRA")
-        {
+        if (name == "QF_UFLRA") {
+            parser_context.set_logic(logic::qf_uflra);
+        } else if (name == "QF_LRA") {
+            parser_context.set_logic(logic::qf_lra);
+        } else {
             std::cerr << "Unsupported logic " << name << std::endl;
             return false;
         }

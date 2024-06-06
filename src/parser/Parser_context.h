@@ -172,6 +172,8 @@ public:
 
     Solver_answer check_sat(std::vector<term_t> const& assertions);
 
+    void set_logic(Initializer const& init);
+
     void model(Default_model_visitor& visitor);
 
     term_t declare_uninterpreted_constant(terms::type_t sort, std::string const& name);

@@ -57,7 +57,8 @@ std::vector<Clause> Uninterpreted_functions::propagate(Database& db, Trail& trai
     printf("\n---Assignments---:\n");
     std::vector<Clause> result;
 
-    for (Trail::Assignment const& assignment : trail.assigned(trail.decision_level())) {
+    std::vector<Trail::Assignment> assignments = trail.assigned(trail.decision_level());
+    for (Trail::Assignment const& assignment : assignments) {
         printf("#%i (%s)\n", assignment.var.ord(), assignment.var.type() == Variable::rational ? "rational" : "bool");
         for (Assignment_watchlist& w_list : watchlists) {
             if (! w_list.all_assigned() && assignment.var == w_list.get_watched_var().value()) {
@@ -277,6 +278,10 @@ void Uninterpreted_functions::Linear_polynomial::add(Uninterpreted_functions::Li
         if (found != vars.end()) {
             auto ix = std::distance(vars.begin(), found);
             coef[ix] += x.coef[i];
+            if (coef[ix] == 0) {
+                coef.erase(coef.begin() + ix);
+                vars.erase(vars.begin() + ix);
+            }
         } else {
             vars.push_back(var);
             coef.push_back(x.coef[i]);
@@ -318,7 +323,7 @@ Uninterpreted_functions::Linear_polynomial Uninterpreted_functions::term_to_poly
         auto args = term_manager.get_args(t);
         for (auto arg : args)
         {
-            maybe_var = term_to_var(t);
+            maybe_var = term_to_var(arg);
             if (maybe_var.has_value())
             {
                 p.vars.push_back(maybe_var.value().ord());
@@ -343,21 +348,42 @@ Uninterpreted_functions::Linear_polynomial Uninterpreted_functions::term_to_poly
     }
 }
 
-Literal Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, Trail& trail, bool equal = true) {
+void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, Trail& trail, std::vector<Clause>& clauses, bool equal = true) {
     assert(term_manager.get_type(t) == term_manager.get_type(u));
     switch(term_manager.get_type(t)) {
     case terms::types::real_type:
         Linear_polynomial p = term_to_poly(t);
         p.sub(term_to_poly(u));
 
+        if (p.vars.empty()) {
+            assert(p.constant == 0);
+            if (equal && ! clauses.empty())
+                clauses.pop_back();
+
+            return;
+        }
+
         Literal lit = solver->linear_constraint(p.vars, p.coef, Order_predicate::Type::eq, -p.constant);
-        if (!equal)
-            lit.negate();
+
 
         auto& trail_model = trail.model<bool>(Variable::boolean);
 
+        if (!equal && !lit.is_negation())
+            lit.negate();
+
+        if (trail_model.is_defined(lit.var().ord()) && trail_model.value(lit.var().ord()) == ! lit.is_negation()) {
+            return;
+        }
+
+        /*
+         * Problem:
+         * - the constraint is satisfied (x0-x7 == 0), however, the literal representing the constraint is assigned to false
+         */
+
+
         if ((int)trail_model.num_vars() <= lit.var().ord())
             trail_model.resize(lit.var().ord() + 1);
+
 
         if (!trail_model.is_defined(lit.var().ord())) {
             Term_evaluation t_eval = evaluate(t, trail);
@@ -369,8 +395,11 @@ Literal Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t 
             assert(trail_model.value(lit.var().ord()) == lit.is_negation());
         }
 
-
-        return lit;
+        if (clauses.empty()) {
+            clauses.push_back({lit});
+        } else {
+            clauses.back().push_back(lit);
+        }
     }
 }
 
@@ -418,7 +447,7 @@ std::vector<Clause> Uninterpreted_functions::add_function_value(terms::term_t t,
     /*
      * "conflict clause": -(x0 == y0) or -(x1 == y1) or (xv == yv)
      *                         ^              ^
-     * - for real args:        |              |__ literal (solver->linear_constraint)
+     * - for real args:        |              |__ literal (solver->linear_constraint) - but what if always true? (two identical terms)
      * - for bool args:        |__
      */
 
@@ -429,23 +458,15 @@ std::vector<Clause> Uninterpreted_functions::add_function_value(terms::term_t t,
     std::vector<Clause> result;
     for (std::size_t i = 0; i < current_args.size(); ++i)
     {
-        Literal eq_lit = assert_equality(current_args[i], conflict_args[i], trail, false);
-        if (result.empty())
-            result.push_back({eq_lit});
-        else
-            result[0].push_back(eq_lit);
+        assert_equality(current_args[i], conflict_args[i], trail, result, false);
     }
 
-    Literal eq_lit = assert_equality(t, current_app_term, trail);
-    if (result.empty())
-        result.push_back({eq_lit});
-    else
-        result[0].push_back(eq_lit);
+    assert_equality(t, current_app_term, trail, result);
 
     return result;
 }
 
-std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>& Uninterpreted_functions::get_model() {
+std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t> Uninterpreted_functions::get_model() {
     for (const auto& [term, function] : functions) {
         function_value_map_t function_values;
         for (const auto& [arg_values , fnc_app] : function) {

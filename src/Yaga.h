@@ -54,6 +54,20 @@ public:
 
 /** Initializer for quantifier-free linear real arithmetic.
  */
+class Qf_lra final : public Initializer {
+public:
+    virtual ~Qf_lra() = default;
+
+    /** Initialize @p solver with plugins for boolean variables and rational variables.
+     *
+     * @param solver solver to initialize
+     * @param options command line options
+     */
+    void setup(Solver& solver, Options const& options) const override;
+};
+
+/** Initializer for quantifier-free linear real arithmetic with uninterpreted functions.
+ */
 class Qf_uflra final : public Initializer {
 public:
     virtual ~Qf_uflra() = default;
@@ -73,9 +87,13 @@ struct logic {
      */
     inline static Propositional const propositional{};
 
-    /** Quantifier-free linear real arithmetic
+    /** Quantifier-free linear real arithmetic with uninterpreted functions
      */
     inline static Qf_uflra const qf_uflra{};
+
+    /** Quantifier-free linear real arithmetic
+     */
+    inline static Qf_lra const qf_lra{};
 };
 
 /** A facade for the SMT solver.
@@ -102,7 +120,7 @@ public:
      * @param options solver options
      * @param tm term manager object from the parser
      */
-    Yaga(Initializer const& init, Options const& options, terms::Term_manager const& tm);
+    Yaga(terms::Term_manager const& tm);
 
     /** Reinitialize the solver with a different logic.
      * 
@@ -111,7 +129,9 @@ public:
      * @param init initializer for a logic
      * @param options solver options
      */
-    void init(Initializer const& init, Options const& options);
+    void init();
+
+    void set_logic(Initializer const& init, Options const& options);
 
     /** Create a new variable
      * 
@@ -169,7 +189,7 @@ public:
     void propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > mapping);
     void propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > mapping);
 
-    std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>& get_function_model();
+    std::optional<std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>> get_function_model();
 
     /** Assert a new clause to the solver (range of literals)
      * 
