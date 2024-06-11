@@ -84,6 +84,10 @@ void Yaga::set_logic(Initializer const& init, Options const& options) {
     }
 }
 
+bool Yaga::has_uf() {
+    return uf;
+}
+
 Variable Yaga::make(Variable::Type type)
 {
     auto num_vars = static_cast<int>(smt.trail().model(type).num_vars());
@@ -94,7 +98,8 @@ Variable Yaga::make(Variable::Type type)
 Variable Yaga::make_function_application(Variable::Type type, terms::term_t app_term)
 {
     Variable result = make(type);
-    uf->register_application_term(result, app_term);
+    if (uf)
+        uf->register_application_term(result, app_term);
     return result;
 }
 

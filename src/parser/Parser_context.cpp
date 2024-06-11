@@ -66,6 +66,10 @@ void Parser_context::set_logic(Initializer const& init) {
     solver.set_logic(init);
 }
 
+bool Parser_context::has_uf() {
+    return solver.has_uf();
+}
+
 void Parser_context::model(Default_model_visitor& visitor)
 {
     solver.model(visitor);
@@ -115,7 +119,7 @@ term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>
 
         return term_manager.mk_app(name, declared_function.return_type, args);
     }
-    return term_manager.mk_term(name, args);
+    return term_manager.mk_term(name, args, true);
 }
 
 std::vector<term_t> Parser_context::bind_vars(std::span<Sorted_var> sorted_vars)

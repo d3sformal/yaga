@@ -88,6 +88,10 @@ void Solver_wrapper::set_logic(Initializer const& init) {
     solver.set_logic(init, options);
 }
 
+bool Solver_wrapper::has_uf() {
+    return solver.has_uf();
+}
+
 void print_term(term_t t, const terms::Term_manager& term_manager, int tabs = 0, std::string const& endline = "\n") {
     bool args = false;
     bool type = false;
@@ -183,7 +187,7 @@ void print_term(term_t t, const terms::Term_manager& term_manager, int tabs = 0,
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
-    printf("\n --- ASSERTIONS: --- \n");
+    //printf("\n --- ASSERTIONS: --- \n");
     for (size_t i = 0; i < assertions.size(); ++i)
     {
         //print_term(assertions[i], term_manager);
@@ -220,7 +224,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     // remember term-variable mapping
     variables.clear();
 
-    std::cout << "\n\n --- Variables: --- \n";
+    //std::cout << "\n\n --- Variables: --- \n";
 
     for (auto& [term, lit] : internalizer_config.bool_vars())
     {
@@ -229,8 +233,8 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
             variables.insert({term, lit.var()});
         }
 
-        std::cout << "Var #" << lit.var().ord() << ": (boolean) ";
-        print_term(term, term_manager);
+        //std::cout << "Var #" << lit.var().ord() << ": (boolean) ";
+        //print_term(term, term_manager);
     }
     for (auto& [term, var_ord] : internalizer_config.rational_vars())
     {
@@ -239,8 +243,8 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
             variables.insert({term, Variable{var_ord, Variable::rational}});
         }
 
-        std::cout << "Var #" << var_ord << ": (rational) ";
-        print_term(term, term_manager);
+        //std::cout << "Var #" << var_ord << ": (rational) ";
+        //print_term(term, term_manager);
     }
 
     auto res = solver.solver().check();

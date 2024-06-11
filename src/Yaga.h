@@ -133,6 +133,8 @@ public:
 
     void set_logic(Initializer const& init, Options const& options);
 
+    bool has_uf();
+
     /** Create a new variable
      * 
      * @param type type of the new variable

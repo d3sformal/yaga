@@ -143,10 +143,10 @@ public:
         return declared_functions.find(name) != declared_functions.end();
     }
 
-    void insert(std::string const & name, Function_declaration && templ)
+    void insert(std::string const & name, Function_declaration && decl)
     {
         assert(not has(name));
-        declared_functions.insert({name, std::move(templ)});
+        declared_functions.insert({name, std::move(decl)});
     }
 
     Function_declaration const& get(std::string const& name) const
@@ -173,6 +173,8 @@ public:
     Solver_answer check_sat(std::vector<term_t> const& assertions);
 
     void set_logic(Initializer const& init);
+
+    bool has_uf();
 
     void model(Default_model_visitor& visitor);
 

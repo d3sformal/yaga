@@ -195,8 +195,13 @@ bool Smt2_command_context::parse_command()
     // (assert <term>)
     case Token::ASSERT_TOK:
     {
-        term_t term = term_parser.parse_term();
-        assertions.push_back(term);
+        try
+        {
+            term_t term = term_parser.parse_term();
+            assertions.push_back(term);
+        } catch (std::logic_error e) {
+            output << "(error \"" << e.what() << "\")" << std::endl;
+        }
     }
     break;
 
@@ -228,7 +233,13 @@ bool Smt2_command_context::parse_command()
         sorts = term_parser.parse_sort_list();
 
         terms::type_t ret_type = term_parser.parse_sort();
-        parser_context.declare_uninterpreted_function(ret_type, std::move(sorts), name);
+
+        if (sorts.size() == 0)
+            parser_context.declare_uninterpreted_constant(ret_type, name);
+        else if (parser_context.has_uf())
+            parser_context.declare_uninterpreted_function(ret_type, std::move(sorts), name);
+        else
+            output << "(error \"" << "logic does not support uninterpreted functions" << "\")\n";
     }
     break;
 
