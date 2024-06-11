@@ -36,7 +36,7 @@ public:
      * @param args argument list
      * @return handle to the corresponding composite term
      */
-    term_t mk_term(std::string const& op, std::span<term_t> args);
+    term_t mk_term(std::string const& op, std::span<term_t> args, bool not_app = false);
 
     /**
      * Gets the term of the specified kind with the given list of argument terms

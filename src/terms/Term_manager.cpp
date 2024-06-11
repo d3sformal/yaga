@@ -159,7 +159,7 @@ term_t Term_manager::mk_term(Kind kind, std::span<term_t> args)
     }
 }
 
-term_t Term_manager::mk_term(std::string const& op, std::span<term_t> args)
+term_t Term_manager::mk_term(std::string const& op, std::span<term_t> args, bool not_app /* = false */)
 {
     if (op == ">=")
     {
@@ -237,6 +237,23 @@ term_t Term_manager::mk_term(std::string const& op, std::span<term_t> args)
     {
         assert(args.size() == 2);
         return mk_xor(args[0], args[1]);
+    }
+    else if (op == "distinct")
+    {
+        std::vector<term_t> distinct_terms;
+        for (std::size_t i = 0; i < args.size(); ++i)
+        {
+            for (std::size_t j = i + 1; j < args.size(); ++j)
+            {
+                auto distinct_two = std::vector<term_t>{args[i], args[j]};
+                distinct_terms.push_back(terms::opposite_term(mk_eq(distinct_two)));
+            }
+        }
+        return mk_and(distinct_terms);
+    }
+    else if (not_app)
+    {
+        throw std::logic_error("unknown function symbol: " + op);
     }
     else
     {
