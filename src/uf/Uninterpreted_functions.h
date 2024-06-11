@@ -85,7 +85,7 @@ private:
     std::vector<Variable> vars_to_watch(terms::term_t);
     std::optional<Variable> term_to_var(terms::term_t);
     std::vector<Clause> add_function_value(terms::term_t, Trail&);
-    void assert_equality(terms::term_t, terms::term_t, Trail&, std::vector<Clause>&, bool);
+    void assert_equality(terms::term_t, terms::term_t, Trail&, Clause&, bool);
     Linear_polynomial term_to_poly(terms::term_t);
 };
 

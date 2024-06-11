@@ -54,12 +54,12 @@ void Uninterpreted_functions::Assignment_watchlist::assign(Trail const& trail) {
 Uninterpreted_functions::Uninterpreted_functions(terms::Term_manager const& tm) : term_manager(tm) {}
 
 std::vector<Clause> Uninterpreted_functions::propagate(Database& db, Trail& trail) {
-    printf("\n---Assignments---:\n");
+    //printf("\n---Assignments---:\n");
     std::vector<Clause> result;
 
     std::vector<Trail::Assignment> assignments = trail.assigned(trail.decision_level());
     for (Trail::Assignment const& assignment : assignments) {
-        printf("#%i (%s)\n", assignment.var.ord(), assignment.var.type() == Variable::rational ? "rational" : "bool");
+        //printf("#%i (%s)\n", assignment.var.ord(), assignment.var.type() == Variable::rational ? "rational" : "bool");
         for (Assignment_watchlist& w_list : watchlists) {
             if (! w_list.all_assigned() && assignment.var == w_list.get_watched_var().value()) {
                 w_list.assign(trail);
@@ -348,7 +348,7 @@ Uninterpreted_functions::Linear_polynomial Uninterpreted_functions::term_to_poly
     }
 }
 
-void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, Trail& trail, std::vector<Clause>& clauses, bool equal = true) {
+void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, Trail& trail, Clause& clause, bool make_equal = true) {
     assert(term_manager.get_type(t) == term_manager.get_type(u));
     switch(term_manager.get_type(t)) {
     case terms::types::real_type:
@@ -357,49 +357,39 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
 
         if (p.vars.empty()) {
             assert(p.constant == 0);
-            if (equal && ! clauses.empty())
-                clauses.pop_back();
-
             return;
         }
 
         Literal lit = solver->linear_constraint(p.vars, p.coef, Order_predicate::Type::eq, -p.constant);
 
-
         auto& trail_model = trail.model<bool>(Variable::boolean);
 
-        if (!equal && !lit.is_negation())
+        if (!make_equal && !lit.is_negation())
             lit.negate();
 
-        if (trail_model.is_defined(lit.var().ord()) && trail_model.value(lit.var().ord()) == ! lit.is_negation()) {
-            return;
+         bool propagate = true;
+
+        if (trail_model.is_defined(lit.var().ord())) {
+            if (make_equal) {
+                if (trail_model.value(lit.var().ord()) == false) {
+                    propagate = false;
+                }
+            } else {
+                if (trail_model.value(lit.var().ord())) {
+                    propagate = false;
+                }
+            }
         }
 
-        /*
-         * Problem:
-         * - the constraint is satisfied (x0-x7 == 0), however, the literal representing the constraint is assigned to false
-         */
-
-
-        if ((int)trail_model.num_vars() <= lit.var().ord())
-            trail_model.resize(lit.var().ord() + 1);
-
-
-        if (!trail_model.is_defined(lit.var().ord())) {
+        if (propagate) {
             Term_evaluation t_eval = evaluate(t, trail);
             Term_evaluation u_eval = evaluate(u, trail);
             int propagation_level = std::max<int>(t_eval.decision_level, u_eval.decision_level);
             trail.propagate(lit.var(), nullptr, propagation_level);
             trail_model.set_value(lit.var().ord(), lit.is_negation());
-        } else {
-            assert(trail_model.value(lit.var().ord()) == lit.is_negation());
         }
 
-        if (clauses.empty()) {
-            clauses.push_back({lit});
-        } else {
-            clauses.back().push_back(lit);
-        }
+        clause.push_back(lit);
     }
 }
 
@@ -455,7 +445,7 @@ std::vector<Clause> Uninterpreted_functions::add_function_value(terms::term_t t,
     std::span<const terms::term_t> const& current_args = term_manager.get_args(current_app_term);
     std::span<const terms::term_t> const& conflict_args = term_manager.get_args(t);
 
-    std::vector<Clause> result;
+    auto result = Clause();
     for (std::size_t i = 0; i < current_args.size(); ++i)
     {
         assert_equality(current_args[i], conflict_args[i], trail, result, false);
@@ -463,7 +453,7 @@ std::vector<Clause> Uninterpreted_functions::add_function_value(terms::term_t t,
 
     assert_equality(t, current_app_term, trail, result);
 
-    return result;
+    return {result};
 }
 
 std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t> Uninterpreted_functions::get_model() {
