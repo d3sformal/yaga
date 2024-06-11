@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_vector.hpp>
 
 #include "test.h"
 #include "Uninterpreted_functions.h"
@@ -20,11 +21,12 @@ TEST_CASE("UF: propagation introduces conflict", "[uninterpreted_functions]")
     terms::term_t fnc_term = tm.mk_uninterpreted_constant(terms::types::real_type);
     tm.set_term_name(fnc_term, "f");
 
-    auto zero = std::vector<terms::term_t>{tm.mk_integer_constant("0")};
+    auto zero = tm.mk_integer_constant("0");
+    auto zero_v = std::vector<terms::term_t>{zero};
     auto x = tm.mk_uninterpreted_constant(terms::types::real_type);
     auto x_v = std::vector<terms::term_t>{x};
 
-    terms::term_t app0 = tm.mk_app("f", terms::types::real_type, zero);
+    terms::term_t app0 = tm.mk_app("f", terms::types::real_type, zero_v);
     terms::term_t app1 = tm.mk_app("f", terms::types::real_type, x_v);
     auto var0 = Variable(0, Variable::rational);
     auto var1 = Variable(1, Variable::rational);
@@ -38,7 +40,8 @@ TEST_CASE("UF: propagation introduces conflict", "[uninterpreted_functions]")
     const std::unordered_map<terms::term_t, int> const_map = term_to_var;
 
     Uninterpreted_functions uf(tm);
-    Yaga yaga(logic::qf_uflra, Options(), tm);
+    Yaga yaga(tm);
+    yaga.set_logic(logic::qf_uflra, Options());
     uf.register_solver(&yaga);
     uf.register_mapping(const_map);
     uf.register_application_term(var0, app0);
@@ -66,7 +69,8 @@ TEST_CASE("UF: propagation introduces conflict", "[uninterpreted_functions]")
     model.set_value(2, 0);
     conflicts = uf.propagate(yaga.solver().db(), yaga.solver().trail());
     REQUIRE(!conflicts.empty());
-
-
-
+    auto cons1 = yaga.linear_constraint(std::array<int, 1>{varx.ord()}, std::array<Rational, 1>{1}, Order_predicate::eq, 0);
+    cons1.negate();
+    auto cons2 = yaga.linear_constraint(std::array<int, 2>{var0.ord(), var1.ord()}, std::array<Rational, 2>{1, -1}, Order_predicate::eq, 0);;
+    REQUIRE_THAT(conflicts.front(), Catch::Matchers::UnorderedEquals(Clause{cons1, cons2}));
 }
