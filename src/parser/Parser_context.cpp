@@ -109,12 +109,12 @@ term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>
     {
         auto declared_function = declared_functions.get(name);
         auto expected_count = declared_function.arg_types.size();
-        assert(expected_count == args.size());
+        assert(expected_count == args.size()); (void) expected_count;
 
         for (size_t i = 0; i < args.size(); ++i)
         {
             type_t expected_type = declared_function.arg_types[i];
-            assert(expected_type == term_manager.get_type(args[i]));
+            assert(expected_type == term_manager.get_type(args[i])); (void) expected_type;
         }
 
         return term_manager.mk_app(name, declared_function.return_type, args);

@@ -38,12 +38,91 @@ public:
     virtual void visit_fnc(terms::term_t, std::map<std::vector<terms::var_value_t>, terms::var_value_t> const&) {}
 };
 
+namespace {
+struct Linear_polynomial {
+    std::vector<int> vars;
+    std::vector<Rational> coef;
+    Rational constant = 0;
+
+    void negate();
+
+    void subtract_var(Variable v);
+};
+}
+
+class Internalizer_config : public terms::Default_visitor_config
+{
+    terms::Term_manager const& term_manager;
+    Yaga& solver;
+    std::unordered_map<terms::term_t, int> internal_rational_vars;
+
+    // HACK: We need to store literals
+    // x >= 0 (positive in term representation) is internalized as ~(x < 0), which is negative
+    std::unordered_map<terms::term_t, Literal> internal_bool_vars; // Only positive terms should be added to this map!
+
+    Linear_polynomial internalize_poly(terms::term_t t);
+    inline int internal_rational_var(terms::term_t t) const
+    {
+        assert(internal_rational_vars.find(t) != internal_rational_vars.end());
+        return internal_rational_vars.at(t);
+    }
+
+    inline Variable new_bool_var()
+    {
+        return solver.make(Variable::boolean);
+    }
+
+    inline Variable new_real_var()
+    {
+        return solver.make(Variable::rational);
+    }
+
+    template<typename ValueT> void insert_var(std::unordered_map<terms::term_t, ValueT>& map, terms::term_t term, ValueT value) {
+        auto [_, inserted] = map.insert({term, value});
+        assert(inserted); (void)(inserted);
+    }
+
+public:
+    Internalizer_config(
+        terms::Term_manager const& term_manager,
+        Yaga& solver
+        )
+        : term_manager(term_manager), solver(solver)
+    { }
+
+    void visit(terms::term_t) override;
+
+    std::optional<Literal> get_literal_for(terms::term_t t) const;
+
+    /** Get a range of boolean variables (pairs of `term_t` and `Literal`)
+     *
+     * @return range of internalized boolean variables
+     */
+    inline std::ranges::view auto bool_vars() const
+    {
+        return std::ranges::views::all(internal_bool_vars);
+    }
+
+    /** Get a range of rational variables (pairs of `term_t` and variable ordinal integer)
+     *
+     * @return range of internalized rational variables
+     */
+    inline std::ranges::view auto rational_vars() const
+    {
+        return std::ranges::views::all(internal_rational_vars);
+    }
+};
+
 class Solver_wrapper
 {
     terms::Term_manager& term_manager;
     Options const& options;
-    Yaga solver;
     std::unordered_map<terms::term_t, Variable> variables;
+
+    Internalizer_config internalizer_config;
+    terms::Visitor<Internalizer_config> internalizer;
+
+    Yaga solver;
 
 public:
     Solver_wrapper(terms::Term_manager& term_manager, Options const& options);

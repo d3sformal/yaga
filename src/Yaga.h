@@ -28,6 +28,8 @@
 
 namespace yaga {
 
+class Yaga;
+
 class Initializer {
 public:
     virtual ~Initializer() {}
@@ -37,7 +39,7 @@ public:
      * @param solver solver to setup
      * @param options command line options
      */
-    virtual void setup(Solver& solver, Options const& options) const = 0;
+    virtual void setup(Yaga* solver, Options const& options) const = 0;
 };
 
 class Propositional final : public Initializer {
@@ -49,7 +51,7 @@ public:
      * @param solver solver to initializer
      * @param options command line options
      */
-    void setup(Solver& solver, Options const& options) const override;
+    void setup(Yaga* solver, Options const& options) const override;
 };
 
 /** Initializer for quantifier-free linear real arithmetic.
@@ -63,7 +65,7 @@ public:
      * @param solver solver to initialize
      * @param options command line options
      */
-    void setup(Solver& solver, Options const& options) const override;
+    void setup(Yaga* solver, Options const& options) const override;
 };
 
 /** Initializer for quantifier-free linear real arithmetic with uninterpreted functions.
@@ -77,7 +79,7 @@ public:
      * @param solver solver to initialize
      * @param options command line options
      */
-    void setup(Solver& solver, Options const& options) const override;
+    void setup(Yaga* solver, Options const& options) const override;
 };
 
 /** Predefined logic initializers for the Yaga facade.
@@ -120,7 +122,9 @@ public:
      * @param options solver options
      * @param tm term manager object from the parser
      */
-    Yaga(terms::Term_manager const& tm);
+    Yaga(terms::Term_manager const& tm,
+         std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > b_m,
+         std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > r_m);
 
     /** Reinitialize the solver with a different logic.
      * 
@@ -190,6 +194,8 @@ public:
 
     void propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > mapping);
     void propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > mapping);
+    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > real_vars();
+    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > bool_vars();
 
     std::optional<std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>> get_function_model();
 
@@ -216,6 +222,8 @@ private:
 
     // pointer to the UF plugin or nullptr if this solver does not support UF
     Uninterpreted_functions* uf;
+    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > real_mapping;
+    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > bool_mapping;
 };
 
 }

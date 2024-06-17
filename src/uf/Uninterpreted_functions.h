@@ -21,7 +21,9 @@ class Uninterpreted_functions : public Theory {
 public:
     using function_value_map_t = std::map<std::vector<terms::var_value_t>, terms::var_value_t>;
 
-    Uninterpreted_functions(terms::Term_manager const&);
+    Uninterpreted_functions(terms::Term_manager const&,
+                            std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> >,
+                            std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> >);
     std::vector<Clause> propagate(Database&, Trail&) override;
     void decide(Database&, Trail&, Variable) override;
     void on_before_backtrack(Database&, Trail&, int) override;
@@ -74,8 +76,8 @@ private:
     };
 
     terms::Term_manager const& term_manager;
-    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int>>  rational_vars;
-    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal>>  bool_vars;
+    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int>> rational_vars;
+    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal>> bool_vars;
     std::vector<Assignment_watchlist> watchlists;
     std::unordered_map<terms::term_t, function_application_map_t> functions;
     std::unordered_map<terms::term_t, function_value_map_t> model;

@@ -199,7 +199,7 @@ bool Smt2_command_context::parse_command()
         {
             term_t term = term_parser.parse_term();
             assertions.push_back(term);
-        } catch (std::logic_error e) {
+        } catch (std::logic_error const& e) {
             output << "(error \"" << e.what() << "\")" << std::endl;
         }
     }

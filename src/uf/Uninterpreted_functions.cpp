@@ -51,9 +51,12 @@ void Uninterpreted_functions::Assignment_watchlist::assign(Trail const& trail) {
     }
 }
 
-Uninterpreted_functions::Uninterpreted_functions(terms::Term_manager const& tm) : term_manager(tm) {}
+Uninterpreted_functions::Uninterpreted_functions(terms::Term_manager const& tm,
+                                                 std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > r_m,
+                                                 std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > b_m)
+    : term_manager(tm), rational_vars(r_m), bool_vars(b_m) {}
 
-std::vector<Clause> Uninterpreted_functions::propagate(Database& db, Trail& trail) {
+std::vector<Clause> Uninterpreted_functions::propagate(Database&, Trail& trail) {
     //printf("\n---Assignments---:\n");
     std::vector<Clause> result;
 
@@ -210,13 +213,13 @@ Uninterpreted_functions::Term_evaluation Uninterpreted_functions::evaluate(const
 
         switch (term_manager.get_type(t)) {
         case terms::types::real_type: {
-            Model<Rational> model = trail.model<Rational>(Variable::rational);
-            result.value = model.value(maybe_var.value().ord());
+            Model<Rational> r_model = trail.model<Rational>(Variable::rational);
+            result.value = r_model.value(maybe_var.value().ord());
             break;
         }
         case terms::types::bool_type: {
-            Model<bool> model = trail.model<bool>(Variable::boolean);
-            result.value = model.value(maybe_var.value().ord());
+            Model<bool> b_model = trail.model<bool>(Variable::boolean);
+            result.value = b_model.value(maybe_var.value().ord());
             break;
         }
         }
@@ -367,7 +370,7 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
         if (!make_equal && !lit.is_negation())
             lit.negate();
 
-         bool propagate = true;
+        bool propagate = true;
 
         if (trail_model.is_defined(lit.var().ord())) {
             if (make_equal) {
