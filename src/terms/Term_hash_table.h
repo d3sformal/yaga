@@ -71,6 +71,9 @@ private:
         bool operator()(Composite_term_proxy const& proxy, Entry const& entry) const;
         bool operator()(Constant_term_proxy const& proxy, Entry const& entry) const;
         bool operator()(Rational_proxy const& proxy, Entry const& entry) const;
+        bool operator()(Entry const& entry, Composite_term_proxy const& proxy) const { return this->operator()(proxy, entry); }
+        bool operator()(Entry const& entry, Constant_term_proxy const& proxy) const { return this->operator()(proxy, entry); }
+        bool operator()(Entry const& entry, Rational_proxy const& proxy) const { return this->operator()(proxy, entry); }
     };
 
     std::unordered_set<Entry, Hash, KeyEqual> terms;
