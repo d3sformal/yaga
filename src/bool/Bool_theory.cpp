@@ -126,7 +126,9 @@ std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
     std::vector<Clause> conflicts;
     while (conflicts.empty() && !satisfied.empty())
     {
-        auto [lit, reason] = satisfied.back();
+        auto entry = satisfied.back();
+        auto reason = entry.reason;
+        auto lit = entry.lit;
         satisfied.pop_back();
 
         // propagate the literal if necessary

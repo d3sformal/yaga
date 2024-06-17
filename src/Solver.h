@@ -36,7 +36,7 @@ public:
 
     // movable
     Solver(Solver&&) = default;
-    Solver& operator=(Solver&&) = default;
+    Solver& operator=(Solver&&) = delete;
 
     /** Get current trail (partial model)
      *
