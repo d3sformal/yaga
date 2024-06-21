@@ -74,31 +74,6 @@ std::vector<Clause> Uninterpreted_functions::propagate(Database&, Trail& trail) 
             }
         }
     }
-
-    /*
-     * for each app term -> watchlist of unassigned arguments
-     *   - create watchlist by examining structure of argument terms
-     * after each `propagate` call, check all watchlists with all newly assigned variables
-     * if the variable is watched, find a new unassigned argument
-     * if there is none, all args are assigned -> find possible conflicting assignment in known function values (map from argument value tuples to function values)
-     * for conflicting assignment, report conflict
-     * for ok assignment, add it to the map
-     *
-     * =>
-     * we need:
-     * - when encountering an app term in internalizer, register it here (create watchlist)
-     * - a function that evaluates a term
-     *
-     * DS:
-     * - a vector of watchlists that have:
-     *   - a list of pairs ( Variable, std::optional<int> ) - argument variables and their decision levels
-     *   - their respective app term
-     *
-     * terms to Variables transformation (Internalizer):
-     * - all terms substituted to one Variable, except:
-     * - CONSTANT_TERM (terms::true_term), ARITH_CONSTANT, ARITH_PRODUCT, ARITH_POLY
-     *
-     */
     return result;
 }
 
@@ -207,6 +182,7 @@ Uninterpreted_functions::Term_evaluation Uninterpreted_functions::evaluate(const
     Term_evaluation result;
 
     std::optional<Variable> maybe_var = term_to_var(t);
+
     // If there is a Variable mapped directly to term t, return its value from the model
     if (maybe_var.has_value()) {
         assert(trail.decision_level(maybe_var.value()).has_value());
@@ -355,6 +331,7 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
     assert(term_manager.get_type(t) == term_manager.get_type(u));
     switch(term_manager.get_type(t)) {
     case terms::types::real_type:
+        // polynomial p == (t - u)
         Linear_polynomial p = term_to_poly(t);
         p.sub(term_to_poly(u));
 
@@ -364,32 +341,31 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
         }
 
         Literal lit = solver->linear_constraint(p.vars, p.coef, Order_predicate::Type::eq, -p.constant);
+        assert(!lit.is_negation());
 
         auto& trail_model = trail.model<bool>(Variable::boolean);
 
-        if (!make_equal && !lit.is_negation())
+        if (!make_equal)
             lit.negate();
 
         bool propagate = true;
 
+        // if the terms are not the same, we want them to be (and vice versa)
+        bool are_equal = !make_equal;
+
+        // no literal L can be propagated to the trail, if L or -L is already on the trail
         if (trail_model.is_defined(lit.var().ord())) {
-            if (make_equal) {
-                if (trail_model.value(lit.var().ord()) == false) {
-                    propagate = false;
-                }
-            } else {
-                if (trail_model.value(lit.var().ord())) {
-                    propagate = false;
-                }
-            }
+            propagate = false;
         }
 
         if (propagate) {
             Term_evaluation t_eval = evaluate(t, trail);
             Term_evaluation u_eval = evaluate(u, trail);
+            assert(are_equal == (t_eval.value == u_eval.value));
+
             int propagation_level = std::max<int>(t_eval.decision_level, u_eval.decision_level);
             trail.propagate(lit.var(), nullptr, propagation_level);
-            trail_model.set_value(lit.var().ord(), lit.is_negation());
+            trail_model.set_value(lit.var().ord(), are_equal);
         }
 
         clause.push_back(lit);
@@ -430,20 +406,6 @@ std::vector<Clause> Uninterpreted_functions::add_function_value(terms::term_t t,
         return {};
     }
 
-    // The new function value introduces a conflict
-
-    // form a clause; literals:
-    // - negation (Aarg1 == Barg1)
-    // - negation (Aarg2 == Barg2)
-    // - valA == valB
-
-    /*
-     * "conflict clause": -(x0 == y0) or -(x1 == y1) or (xv == yv)
-     *                         ^              ^
-     * - for real args:        |              |__ literal (solver->linear_constraint) - but what if always true? (two identical terms)
-     * - for bool args:        |__
-     */
-
     terms::term_t current_app_term = current_applications[argument_values].app_term;
     std::span<const terms::term_t> const& current_args = term_manager.get_args(current_app_term);
     std::span<const terms::term_t> const& conflict_args = term_manager.get_args(t);
@@ -470,13 +432,5 @@ std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>
 
     return model;
 }
-
-/*
- * TODO:
- *
- * we need -
- * - a function that takes two arguments (terms) and returns a Literal that represents their (in)equality
- *
- */
 
 } // namespace yaga
