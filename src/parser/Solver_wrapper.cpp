@@ -19,99 +19,6 @@ bool Solver_wrapper::has_uf() {
     return solver.has_uf();
 }
 
-void print_term(term_t t, const terms::Term_manager& term_manager, int tabs = 0, std::string const& endline = "\n") {
-    bool args = false;
-    bool type = false;
-    for (int i = 0; i < tabs; ++i)
-    {
-        std::cout << "\t";
-    }
-    std::cout << "(" << t.x << ")";
-    if (term_manager.is_negated(t))
-        std::cout << "negation of ";
-    t = term_manager.positive_term(t);
-    auto kind = term_manager.get_kind(t);
-    switch (kind)
-    {
-    case terms::Kind::UNINTERPRETED_TERM:
-        //std::cout << "UNINTERPRETED_TERM: ";
-        if (term_manager.get_term_name(t).has_value())
-            std::cout << term_manager.get_term_name(t).value();
-        type = true;
-        break;
-    case terms::Kind::ARITH_BINEQ_ATOM:
-        std::cout << "ARITH_BINEQ_ATOM";
-        args = true;
-        break;
-    case terms::Kind::ARITH_CONSTANT:
-        //std::cout << "ARITH_CONSTANT: ";
-        std::cout << term_manager.arithmetic_constant_value(t);
-        break;
-    case terms::Kind::ARITH_PRODUCT:
-        //std::cout << "ARITH_PRODUCT";
-        print_term(term_manager.get_args(t)[0], term_manager, 0, "");
-        std::cout << " * ";
-        print_term(term_manager.get_args(t)[1], term_manager, 0, "");
-        //args = true;
-        break;
-    case terms::Kind::ARITH_EQ_ATOM:
-        std::cout << "ARITH_EQ_ATOM";
-        args = true;
-        break;
-    case terms::Kind::ARITH_GE_ATOM:
-        std::cout << "ARITH_GE_ATOM";
-        args = true;
-        break;
-    case terms::Kind::ARITH_POLY:
-        std::cout << "ARITH_POLY";
-        args = true;
-        break;
-    case terms::Kind::CONSTANT_TERM:
-        std::cout << "CONSTANT_TERM";
-        type = true;
-        break;
-    case terms::Kind::OR_TERM:
-        std::cout << "OR_TERM";
-        args = true;
-        break;
-    case terms::Kind::XOR_TERM:
-        std::cout << "XOR_TERM";
-        args = true;
-        break;
-    case terms::Kind::APP_TERM:
-        std::cout << "FUNCTION " << term_manager.get_term_name(term_manager.get_fnc_symbol(t)).value();
-        args = true; type = true;
-        break;
-    default:
-        printf("other");
-        break;
-    }
-
-    if (type) {
-        std::string type_alias;
-        auto type_num = term_manager.get_type(t);
-        if (type_num == 0) {
-            type_alias = "Bool";
-        } else if (type_num == 1) {
-            type_alias = "Real";
-        }
-        std::cout << " (" << type_alias << ")";
-    }
-
-    if (args) {
-        int new_tabs = tabs+1;
-        auto t_args = term_manager.get_args(t);
-        std::cout << ", args:" << std::endl;
-
-        for (size_t i = 0; i < t_args.size(); ++i)
-        {
-            print_term(t_args[i], term_manager, new_tabs);
-        }
-    } else {
-        std::cout << endline;
-    }
-}
-
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
     //printf("\n --- ASSERTIONS: --- \n");
@@ -224,7 +131,7 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
     }
 }
 
-Linear_polynomial Internalizer_config::internalize_poly(term_t t)
+utils::Linear_polynomial Internalizer_config::internalize_poly(term_t t)
 {
     auto kind = term_manager.get_kind(t);
     if (kind == terms::Kind::ARITH_CONSTANT)
@@ -243,7 +150,7 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
     if (kind == terms::Kind::ARITH_POLY)
     {
         auto args = term_manager.get_args(t);
-        Linear_polynomial poly;
+        utils::Linear_polynomial poly;
         poly.vars.reserve(args.size());
         poly.coef.reserve(args.size());
         assert(poly.constant == 0);
@@ -269,22 +176,6 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
         return poly;
     }
     throw std::logic_error("UNREACHABLE!");
-}
-
-void Linear_polynomial::negate()
-{
-    for (auto& c : coef)
-    {
-        c = -c;
-    }
-    constant = -constant;
-}
-
-void Linear_polynomial::subtract_var(Variable v)
-{
-    assert(std::ranges::find(vars, v.ord()) == vars.end());
-    this->vars.push_back(v.ord());
-    this->coef.emplace_back(-1);
 }
 
 void Internalizer_config::visit(term_t t)
@@ -327,7 +218,7 @@ void Internalizer_config::visit(term_t t)
         term_t rhs = args[1];
         assert(term_manager.is_uninterpreted(lhs) || term_manager.is_ite(lhs));
         assert(term_manager.is_uninterpreted(rhs) || term_manager.is_ite(rhs) || term_manager.is_arithmetic_constant(rhs));
-        auto poly = [&]() -> Linear_polynomial {
+        auto poly = [&]() -> utils::Linear_polynomial {
             if (term_manager.is_arithmetic_constant(rhs))
             {
                 return {{internal_rational_var(lhs)}, {1}, -term_manager.arithmetic_constant_value(rhs)};

@@ -249,40 +249,7 @@ Uninterpreted_functions::Term_evaluation Uninterpreted_functions::evaluate(const
     return result;
 }
 
-void Uninterpreted_functions::Linear_polynomial::add(Uninterpreted_functions::Linear_polynomial && x) {
-    for (std::size_t i = 0; i < x.vars.size(); ++i)
-    {
-        int var = x.vars[i];
-        auto found = std::find(vars.begin(), vars.end(), var);
-        if (found != vars.end()) {
-            auto ix = std::distance(vars.begin(), found);
-            coef[ix] += x.coef[i];
-            if (coef[ix] == 0) {
-                coef.erase(coef.begin() + ix);
-                vars.erase(vars.begin() + ix);
-            }
-        } else {
-            vars.push_back(var);
-            coef.push_back(x.coef[i]);
-        }
-    }
-
-    constant += x.constant;
-}
-
-void Uninterpreted_functions::Linear_polynomial::sub(Uninterpreted_functions::Linear_polynomial&& x) {
-    // Negate the other polynomial ( *= -1 ).
-    for (std::size_t i = 0; i < x.coef.size(); ++i)
-    {
-        x.coef[i] *= (-1);
-    }
-    x.constant *= (-1);
-
-    // Then add it.
-    add(std::move(x));
-}
-
-Uninterpreted_functions::Linear_polynomial Uninterpreted_functions::term_to_poly(terms::term_t t) {
+utils::Linear_polynomial Uninterpreted_functions::term_to_poly(terms::term_t t) {
     assert(term_manager.get_type(t) == terms::types::real_type);
 
     std::optional<Variable> maybe_var = term_to_var(t);
@@ -298,7 +265,7 @@ Uninterpreted_functions::Linear_polynomial Uninterpreted_functions::term_to_poly
         return {{var.ord()}, {term_manager.coeff_of_product(t)}, 0};
     }
     case terms::Kind::ARITH_POLY: {
-        Linear_polynomial p;
+        utils::Linear_polynomial p;
         auto args = term_manager.get_args(t);
         for (auto arg : args)
         {
@@ -332,7 +299,7 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
     switch(term_manager.get_type(t)) {
     case terms::types::real_type:
         // polynomial p == (t - u)
-        Linear_polynomial p = term_to_poly(t);
+        utils::Linear_polynomial p = term_to_poly(t);
         p.sub(term_to_poly(u));
 
         if (p.vars.empty()) {

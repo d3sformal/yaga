@@ -5,6 +5,7 @@
 #include <vector>
 #include <ranges>
 
+#include "utils/Linear_polynomial.h"
 #include "Solver_answer.h"
 #include "Term_manager.h"
 #include "Term_types.h"
@@ -38,18 +39,6 @@ public:
     virtual void visit_fnc(terms::term_t, std::map<std::vector<terms::var_value_t>, terms::var_value_t> const&) {}
 };
 
-namespace {
-struct Linear_polynomial {
-    std::vector<int> vars;
-    std::vector<Rational> coef;
-    Rational constant = 0;
-
-    void negate();
-
-    void subtract_var(Variable v);
-};
-}
-
 class Internalizer_config : public terms::Default_visitor_config
 {
     terms::Term_manager const& term_manager;
@@ -60,7 +49,7 @@ class Internalizer_config : public terms::Default_visitor_config
     // x >= 0 (positive in term representation) is internalized as ~(x < 0), which is negative
     std::unordered_map<terms::term_t, Literal> internal_bool_vars; // Only positive terms should be added to this map!
 
-    Linear_polynomial internalize_poly(terms::term_t t);
+    utils::Linear_polynomial internalize_poly(terms::term_t t);
     inline int internal_rational_var(terms::term_t t) const
     {
         assert(internal_rational_vars.find(t) != internal_rational_vars.end());

@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 #include "Linear_constraint.h"
+#include "utils/Linear_polynomial.h"
 #include "Term_manager.h"
 #include "Term_types.h"
 #include "Theory.h"
@@ -65,16 +66,6 @@ private:
         bool all_assigned();
     };
 
-    class Linear_polynomial {
-    public:
-        std::vector<int> vars;
-        std::vector<Rational> coef;
-        Rational constant;
-
-        void add(Linear_polynomial &&);
-        void sub(Linear_polynomial &&);
-    };
-
     terms::Term_manager const& term_manager;
     std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int>> rational_vars;
     std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal>> bool_vars;
@@ -88,7 +79,7 @@ private:
     std::optional<Variable> term_to_var(terms::term_t);
     std::vector<Clause> add_function_value(terms::term_t, Trail&);
     void assert_equality(terms::term_t, terms::term_t, Trail&, Clause&, bool);
-    Linear_polynomial term_to_poly(terms::term_t);
+    utils::Linear_polynomial term_to_poly(terms::term_t);
 };
 
 } // namespace yaga
