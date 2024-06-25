@@ -189,13 +189,14 @@ Uninterpreted_functions::Term_evaluation Uninterpreted_functions::evaluate(const
 
         switch (term_manager.get_type(t)) {
         case terms::types::real_type: {
-            Model<Rational> r_model = trail.model<Rational>(Variable::rational);
+            Model<Rational> const& r_model = trail.model<Rational>(Variable::rational);
             result.value = r_model.value(maybe_var.value().ord());
             break;
         }
         case terms::types::bool_type: {
-            Model<bool> b_model = trail.model<bool>(Variable::boolean);
-            result.value = b_model.value(maybe_var.value().ord());
+            Model<bool> const& b_model = trail.model<bool>(Variable::boolean);
+            bool bool_model_value = b_model.value(maybe_var.value().ord());
+            result.value = bool_model_value;
             break;
         }
         }
@@ -266,7 +267,7 @@ utils::Linear_polynomial Uninterpreted_functions::term_to_poly(terms::term_t t) 
     }
     case terms::Kind::ARITH_POLY: {
         utils::Linear_polynomial p;
-        auto args = term_manager.get_args(t);
+        auto const& args = term_manager.get_args(t);
         for (auto arg : args)
         {
             maybe_var = term_to_var(arg);
