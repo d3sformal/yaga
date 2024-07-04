@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Rational.h"
+#include "Trail.h"
 #include "Variable.h"
 
 namespace yaga::utils
@@ -17,6 +18,7 @@ struct Linear_polynomial {
     void add(Linear_polynomial &&);
     void sub(Linear_polynomial &&);
     void negate();
+    void sort(Trail&);
     void subtract_var(Variable v);
 };
 

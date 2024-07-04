@@ -57,12 +57,12 @@ Uninterpreted_functions::Uninterpreted_functions(terms::Term_manager const& tm,
     : term_manager(tm), rational_vars(r_m), bool_vars(b_m) {}
 
 std::vector<Clause> Uninterpreted_functions::propagate(Database&, Trail& trail) {
-    //printf("\n---Assignments---:\n");
     std::vector<Clause> result;
 
     std::vector<Trail::Assignment> assignments = trail.assigned(trail.decision_level());
+    //std::vector<Trail::Assignment> assignments = trail.recent();
     for (Trail::Assignment const& assignment : assignments) {
-        //printf("#%i (%s)\n", assignment.var.ord(), assignment.var.type() == Variable::rational ? "rational" : "bool");
+
         for (Assignment_watchlist& w_list : watchlists) {
             if (! w_list.all_assigned() && assignment.var == w_list.get_watched_var().value()) {
                 w_list.assign(trail);
@@ -79,14 +79,6 @@ std::vector<Clause> Uninterpreted_functions::propagate(Database&, Trail& trail) 
 
 void Uninterpreted_functions::decide(yaga::Database&, yaga::Trail&, yaga::Variable) {
     // empty (decisions are made by other plugins)
-}
-
-void Uninterpreted_functions::register_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > mapping) {
-    rational_vars = mapping;
-}
-
-void Uninterpreted_functions::register_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > mapping) {
-    bool_vars = mapping;
 }
 
 std::optional<Variable> Uninterpreted_functions::term_to_var(terms::term_t t) {
@@ -144,12 +136,14 @@ std::vector<Variable> Uninterpreted_functions::vars_to_watch(terms::term_t t) {
 }
 
 void Uninterpreted_functions::register_application_term(Variable var, terms::term_t app_term) {
+    assert(term_manager.get_kind(app_term) == terms::Kind::APP_TERM);
+
     std::vector<Variable_watch> watch_vec;
-    watch_vec.emplace_back(var, std::nullopt);
+    watch_vec.push_back({.var = var, .decision_level = std::nullopt});
     for (auto arg_term : term_manager.get_args(app_term)) {
         std::vector<Variable> vars_to_watch = this->vars_to_watch(arg_term);
         for (Variable var_to_watch : vars_to_watch) {
-            watch_vec.emplace_back(var_to_watch, std::nullopt);
+            watch_vec.push_back({.var = var_to_watch, .decision_level = std::nullopt});
         }
     }
 
@@ -295,7 +289,7 @@ utils::Linear_polynomial Uninterpreted_functions::term_to_poly(terms::term_t t) 
     }
 }
 
-void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, Trail& trail, Clause& clause, bool make_equal = true) {
+void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, Trail& trail, Clause& result_clause, bool make_equal) {
     assert(term_manager.get_type(t) == term_manager.get_type(u));
     switch(term_manager.get_type(t)) {
     case terms::types::real_type:
@@ -307,6 +301,8 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
             assert(p.constant == 0);
             return;
         }
+
+        p.sort(trail);
 
         Literal lit = solver->linear_constraint(p.vars, p.coef, Order_predicate::Type::eq, -p.constant);
         assert(!lit.is_negation());
@@ -336,12 +332,14 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
             trail_model.set_value(lit.var().ord(), are_equal);
         }
 
-        clause.push_back(lit);
+        result_clause.push_back(lit);
     }
 }
 
 // returns: a conflict clause (or more)
 std::vector<Clause> Uninterpreted_functions::add_function_value(terms::term_t t, Trail& trail) {
+    assert(term_manager.get_kind(t) == terms::Kind::APP_TERM);
+
     std::vector<terms::var_value_t> argument_values;
     int max_level = 0;
     for (terms::term_t arg_term : term_manager.get_args(t)) {

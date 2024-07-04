@@ -44,6 +44,27 @@ void Linear_polynomial::negate()
     constant = -constant;
 }
 
+void Linear_polynomial::sort(Trail& trail) {
+    using poly_element = std::pair<int, Rational>;
+    std::vector<poly_element> to_sort;
+    for (int i = 0; i < vars.size(); ++i)
+    {
+        to_sort.push_back({vars[i], coef[i]});
+    }
+
+    std::sort(to_sort.begin(), to_sort.end(), [&](poly_element a, poly_element b){
+        Variable a_var(a.first, Variable::rational);
+        Variable b_var(b.first, Variable::rational);
+        return trail.decision_level(a_var) > trail.decision_level(b_var);
+    });
+
+    for (int i = 0; i < to_sort.size(); ++i)
+    {
+        vars[i] = to_sort[i].first;
+        coef[i] = to_sort[i].second;
+    }
+}
+
 void Linear_polynomial::subtract_var(Variable v)
 {
     assert(std::ranges::find(vars, v.ord()) == vars.end());
