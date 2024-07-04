@@ -11,7 +11,7 @@ namespace yaga::utils
 class Utils
 {
 public:
-    static void print_term(terms::term_t, terms::Term_manager const& term_manager, int tabs, std::string const& endline);
+    static void print_term(terms::term_t, terms::Term_manager const& term_manager, int tabs = 0, std::string const& endline = "\n");
 };
 
 } // namespace yaga::utils

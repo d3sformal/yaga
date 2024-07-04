@@ -2,7 +2,7 @@
 
 namespace yaga::utils {
 
-void Utils::print_term(terms::term_t t, const terms::Term_manager& term_manager, int tabs = 0, std::string const& endline = "\n") {
+void Utils::print_term(terms::term_t t, const terms::Term_manager& term_manager, int tabs, std::string const& endline) {
     bool args = false;
     bool type = false;
 
@@ -36,11 +36,11 @@ void Utils::print_term(terms::term_t t, const terms::Term_manager& term_manager,
         std::cout << term_manager.arithmetic_constant_value(t);
         break;
     case terms::Kind::ARITH_PRODUCT:
-        //std::cout << "ARITH_PRODUCT";
-        print_term(term_manager.get_args(t)[0], term_manager, 0, "");
+        std::cout << "ARITH_PRODUCT";/*
+        print_term(term_manager.get_args(t)[0], term_manager);
         std::cout << " * ";
-        print_term(term_manager.get_args(t)[1], term_manager, 0, "");
-        //args = true;
+        print_term(term_manager.get_args(t)[1], term_manager);*/
+        args = true;
         break;
     case terms::Kind::ARITH_EQ_ATOM:
         std::cout << "ARITH_EQ_ATOM";

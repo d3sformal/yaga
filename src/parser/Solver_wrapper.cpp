@@ -1,4 +1,5 @@
 #include "Solver_wrapper.h"
+#include "utils/Utils.h"
 #include <variant>
 
 namespace yaga::parser
@@ -21,11 +22,11 @@ bool Solver_wrapper::has_uf() {
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
-    //printf("\n --- ASSERTIONS: --- \n");
+    /*printf("\n --- ASSERTIONS: --- \n");
     for (size_t i = 0; i < assertions.size(); ++i)
     {
-        //print_term(assertions[i], term_manager);
-    }
+        utils::Utils::print_term(assertions[i], term_manager);
+    }*/
 
     if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
     {
@@ -64,7 +65,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         }
 
         //std::cout << "Var #" << lit.var().ord() << ": (boolean) ";
-        //print_term(term, term_manager);
+        //utils::Utils::print_term(term, term_manager);
     }
     for (auto& [term, var_ord] : internalizer_config.rational_vars())
     {
@@ -74,7 +75,7 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         }
 
         //std::cout << "Var #" << var_ord << ": (rational) ";
-        //print_term(term, term_manager);
+        //utils::Utils::print_term(term, term_manager);
     }
 
     auto res = solver.solver().check();
@@ -112,7 +113,7 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
 
         if (var.type() == Variable::boolean && bool_model.is_defined(var.ord()))
         {
-            visitor.visit(term, bool_model.value(var.ord()));
+            visitor.visit(term, static_cast<bool>(bool_model.value(var.ord())));
         }
         else if (var.type() == Variable::rational && lra_model.is_defined(var.ord()))
         {
