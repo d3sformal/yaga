@@ -195,6 +195,7 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
 TEST_CASE("Formula which forces the solver to generate duplicate constraints and clauses", "[lra][sat][integration]")
 {
     Yaga_test test;
+    test.input() << "(set-logic QF_LRA)\n";
     test.input() << "(declare-fun x () Real)\n";
     test.input() << "(declare-fun y () Real)\n";
     test.input() << "(declare-fun z () Real)\n";
