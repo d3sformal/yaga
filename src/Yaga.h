@@ -17,7 +17,7 @@
 #include "Term_types.h"
 #include "Theory.h"
 #include "Theory_combination.h"
-#include "Uninterpreted_functions.h"
+#include "uf/Uninterpreted_functions.h"
 #include "Variable.h"
 #include "Variable_order.h"
 
@@ -192,8 +192,6 @@ public:
                                std::forward<Coef_range>(coef), pred, rhs).lit();
     }
 
-    void propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > mapping);
-    void propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > mapping);
     std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > real_vars();
     std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > bool_vars();
 

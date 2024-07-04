@@ -111,16 +111,6 @@ Literal Yaga::make_bool()
     return Literal{make(Variable::boolean).ord()};
 }
 
-void Yaga::propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> >  mapping) {
-    if (uf)
-        uf->register_mapping(mapping);
-}
-
-void Yaga::propagate_mapping(std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> >  mapping) {
-    if (uf)
-        uf->register_mapping(mapping);
-}
-
 std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > Yaga::real_vars() {
     return real_mapping;
 }
