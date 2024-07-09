@@ -100,6 +100,24 @@ public:
     {
         return std::ranges::views::all(internal_rational_vars);
     }
+
+    /** Get a range of boolean variables (pairs of `term_t` and `Literal`)
+     *
+     * @return range of internalized boolean variables
+     */
+    inline std::ranges::view auto bool_vars()
+    {
+        return std::ranges::views::all(internal_bool_vars);
+    }
+
+    /** Get a range of rational variables (pairs of `term_t` and variable ordinal integer)
+     *
+     * @return range of internalized rational variables
+     */
+    inline std::ranges::view auto rational_vars()
+    {
+        return std::ranges::views::all(internal_rational_vars);
+    }
 };
 
 class Solver_wrapper

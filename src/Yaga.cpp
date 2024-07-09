@@ -56,8 +56,8 @@ void Qf_uflra::setup(Yaga* yaga, Options const& options) const
 }
 
 Yaga::Yaga(terms::Term_manager const& tm,
-           std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > r_m,
-           std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > b_m)
+           std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > r_m,
+           std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > b_m)
     : smt(tm), real_mapping(r_m), bool_mapping(b_m) { init(); }
 
 void Yaga::init()
@@ -111,11 +111,11 @@ Literal Yaga::make_bool()
     return Literal{make(Variable::boolean).ord()};
 }
 
-std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > Yaga::real_vars() {
+std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > Yaga::real_vars() {
     return real_mapping;
 }
 
-std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > Yaga::bool_vars() {
+std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > Yaga::bool_vars() {
     return bool_mapping;
 }
 

@@ -123,8 +123,8 @@ public:
      * @param tm term manager object from the parser
      */
     Yaga(terms::Term_manager const& tm,
-         std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > b_m,
-         std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > r_m);
+         std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > b_m,
+         std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > r_m);
 
     /** Reinitialize the solver with a different logic.
      * 
@@ -192,8 +192,8 @@ public:
                                std::forward<Coef_range>(coef), pred, rhs).lit();
     }
 
-    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > real_vars();
-    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > bool_vars();
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > real_vars();
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > bool_vars();
 
     std::optional<std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>> get_function_model();
 
@@ -220,8 +220,8 @@ private:
 
     // pointer to the UF plugin or nullptr if this solver does not support UF
     Uninterpreted_functions* uf;
-    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > real_mapping;
-    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > bool_mapping;
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > real_mapping;
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > bool_mapping;
 };
 
 }
