@@ -3,31 +3,15 @@
 
 namespace yaga {
 
-void Uninterpreted_functions::Assignment_watchlist::backtrack_to(int new_lvl) {
-    for (Variable_watch var_w : to_watch) {
-        std::optional<int> maybe_lvl = var_w.decision_level;
-        if (maybe_lvl.has_value() && maybe_lvl.value() > new_lvl) {
-            var_w.decision_level = std::nullopt;
-
-            if (! watched_var.has_value()) {
-                watched_var = var_w.var;
-            }
-        }
-    }
+bool Uninterpreted_functions::Assignment_watchlist::all_assigned(Trail& trail) {
+    return trail.decision_level(to_watch[0]).has_value();
 }
 
-bool Uninterpreted_functions::Assignment_watchlist::all_assigned() {
-    return ! watched_var.has_value();
-}
+Uninterpreted_functions::Assignment_watchlist::Assignment_watchlist(terms::term_t t, std::vector<Variable>&& w_vector) : to_watch(w_vector), term(t) {}
 
-Uninterpreted_functions::Assignment_watchlist::Assignment_watchlist(terms::term_t t, std::vector<Variable_watch>&& w_vector) : to_watch(w_vector), term(t)
+Variable Uninterpreted_functions::Assignment_watchlist::get_watched_var()
 {
-    watched_var = w_vector[0].var;
-}
-
-std::optional<Variable> Uninterpreted_functions::Assignment_watchlist::get_watched_var()
-{
-    return watched_var;
+    return to_watch[0];
 }
 
 terms::term_t Uninterpreted_functions::Assignment_watchlist::get_term()
@@ -35,25 +19,22 @@ terms::term_t Uninterpreted_functions::Assignment_watchlist::get_term()
     return term;
 }
 
-void Uninterpreted_functions::Assignment_watchlist::assign(Trail const& trail) {
-    // To all variables, assign their current decision level
-    for (Variable_watch& var_w : to_watch) {
-        var_w.decision_level = trail.decision_level(var_w.var);
-    }
+void Uninterpreted_functions::Assignment_watchlist::on_assign(Trail& trail) {
+    assert(trail.decision_level(to_watch[0]).has_value());
 
-    // Find a new watched variable, if there is one
-    watched_var = std::nullopt;
-    for (Variable_watch var_w : to_watch) {
-        if (! var_w.decision_level.has_value()) {
-            watched_var = var_w.var;
-            break;
+    for (int i = to_watch.size()-1; i >= 0; --i)
+    {
+        if (! trail.decision_level(to_watch[i]).has_value()) {
+            Variable temp = to_watch[i];
+            to_watch[i] = to_watch[0];
+            to_watch[0] = temp;
         }
     }
 }
 
 Uninterpreted_functions::Uninterpreted_functions(terms::Term_manager const& tm,
-                                                 std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int> > r_m,
-                                                 std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal> > b_m)
+                                                 std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > r_m,
+                                                 std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > b_m)
     : term_manager(tm), rational_vars(r_m), bool_vars(b_m) {}
 
 std::vector<Clause> Uninterpreted_functions::propagate(Database&, Trail& trail) {
@@ -64,10 +45,10 @@ std::vector<Clause> Uninterpreted_functions::propagate(Database&, Trail& trail) 
     for (Trail::Assignment const& assignment : assignments) {
 
         for (Assignment_watchlist& w_list : watchlists) {
-            if (! w_list.all_assigned() && assignment.var == w_list.get_watched_var().value()) {
-                w_list.assign(trail);
+            if (assignment.var == w_list.get_watched_var()) {
+                w_list.on_assign(trail);
 
-                if (w_list.all_assigned()) {
+                if (w_list.all_assigned(trail)) {
                     std::vector<Clause> function_conflict = add_function_value(w_list.get_term(), trail);
                     result.insert(result.end(), function_conflict.begin(), function_conflict.end());
                 }
@@ -138,12 +119,12 @@ std::vector<Variable> Uninterpreted_functions::vars_to_watch(terms::term_t t) {
 void Uninterpreted_functions::register_application_term(Variable var, terms::term_t app_term) {
     assert(term_manager.get_kind(app_term) == terms::Kind::APP_TERM);
 
-    std::vector<Variable_watch> watch_vec;
-    watch_vec.push_back({.var = var, .decision_level = std::nullopt});
+    std::vector<Variable> watch_vec;
+    watch_vec.push_back(var);
     for (auto arg_term : term_manager.get_args(app_term)) {
         std::vector<Variable> vars_to_watch = this->vars_to_watch(arg_term);
         for (Variable var_to_watch : vars_to_watch) {
-            watch_vec.push_back({.var = var_to_watch, .decision_level = std::nullopt});
+            watch_vec.push_back(var_to_watch);
         }
     }
 
@@ -156,9 +137,6 @@ void Uninterpreted_functions::register_solver(yaga::Yaga* s) {
 }
 
 void Uninterpreted_functions::on_before_backtrack(Database&, Trail&, int new_lvl) {
-    for (Assignment_watchlist& w : watchlists) {
-        w.backtrack_to(new_lvl);
-    }
     for (auto & [_, function] : functions) {
         std::vector<std::vector<terms::var_value_t>> to_erase;
         for (auto & [arg_values, application] : function) {

@@ -23,8 +23,8 @@ public:
     using function_value_map_t = std::map<std::vector<terms::var_value_t>, terms::var_value_t>;
 
     Uninterpreted_functions(terms::Term_manager const& term_manager,
-                            std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int>> rational_vars,
-                            std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal>> bool_vars);
+                            std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int>> rational_vars,
+                            std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal>> bool_vars);
 
     /** Propagate literals to trail. In the case of conflicting function value assignments return a
      * conflict clause.
@@ -48,20 +48,20 @@ public:
      */
     void on_before_backtrack(Database& db, Trail& trail, int new_level) override;
 
-    /** Notify UF plugin of the existence of a function appication term
+    /** Notify UF plugin of the existence of a function application term
      *
      * @param var variable mapped to this application term
      * @param t application term
      */
     void register_application_term(Variable var, terms::term_t t);
 
-    /** Provide the UF plugin with a pointer to the Yaga object which owns it
+    /** Provide the UF plugin with a pointer to the Yaga object which encapsulates it
      *
      * @param yaga pointer to Yaga
      */
     void register_solver(Yaga* yaga);
 
-    /** Get the current model of all uninterpreted funtions
+    /** Get the current model of all uninterpreted functions
      */
     std::unordered_map<terms::term_t, function_value_map_t> get_model();
 
@@ -79,29 +79,52 @@ private:
 
     using function_application_map_t = std::map<std::vector<terms::var_value_t>, Function_application>;
 
-    struct Variable_watch {
-        Variable var;
-        std::optional<int> decision_level;
-    };
-
+    /** One-variable watchlist of non-constant arguments of an application term
+     */
     class Assignment_watchlist {
     private:
-        std::optional<Variable> watched_var;
-        std::vector<Variable_watch> to_watch;
+        std::vector<Variable> to_watch;
         terms::term_t term;
     public:
-        Assignment_watchlist(terms::term_t, std::vector<Variable_watch>&&);
-        std::optional<Variable> get_watched_var();
+        /** Create a new watchlist for an application term
+         *
+         * @param term the application term
+         * @param to_watch list of non-constant argument Variables
+         * @param trail the solver trail where the Variable will be assigned
+         */
+        Assignment_watchlist(terms::term_t term, std::vector<Variable>&& to_watch);
+
+        /** Get the current watched variable
+         *
+         * @param trail current solver trail contents
+         * @return the current watched variable
+         */
+        Variable get_watched_var();
+
+        /** Get the application term of the watchlist
+         *
+         * @return the application term
+         */
         terms::term_t get_term();
-        // TODO - reimplement, no need for backtrack method
-        void backtrack_to(int);
-        void assign(Trail const&);
-        bool all_assigned();
+
+        /** Assign the watched variable and try to find a replacement (a new unassigned variable)
+         *
+         * @param trail current solver trail contents
+         */
+        void on_assign(Trail& trail);
+
+        /** Check if all arguments of the application term (including the term itself) have
+         * been assigned a value
+         *
+         * @param trail current solver trail contents
+         * @return true iff all non-constant arguments are assigned
+         */
+        bool all_assigned(Trail& trail);
     };
 
     terms::Term_manager const& term_manager;
-    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, int>> rational_vars;
-    std::ranges::ref_view<const std::unordered_map<yaga::terms::term_t, Literal>> bool_vars;
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int>> rational_vars;
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal>> bool_vars;
     std::vector<Assignment_watchlist> watchlists;
     std::unordered_map<terms::term_t, function_application_map_t> functions;
     std::unordered_map<terms::term_t, function_value_map_t> model;
