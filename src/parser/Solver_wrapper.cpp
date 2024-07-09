@@ -22,12 +22,6 @@ bool Solver_wrapper::has_uf() {
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
-    /*printf("\n --- ASSERTIONS: --- \n");
-    for (size_t i = 0; i < assertions.size(); ++i)
-    {
-        utils::Utils::print_term(assertions[i], term_manager);
-    }*/
-
     if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
     {
         return Solver_answer::UNSAT;
@@ -55,17 +49,12 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     // remember term-variable mapping
     variables.clear();
 
-    //std::cout << "\n\n --- Variables: --- \n";
-
     for (auto& [term, lit] : internalizer_config.bool_vars())
     {
         if (term_manager.get_kind(term) == terms::Kind::UNINTERPRETED_TERM || term_manager.get_kind(term) == terms::Kind::APP_TERM)
         {
             variables.insert({term, lit.var()});
         }
-
-        //std::cout << "Var #" << lit.var().ord() << ": (boolean) ";
-        //utils::Utils::print_term(term, term_manager);
     }
     for (auto& [term, var_ord] : internalizer_config.rational_vars())
     {
@@ -73,9 +62,6 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         {
             variables.insert({term, Variable{var_ord, Variable::rational}});
         }
-
-        //std::cout << "Var #" << var_ord << ": (rational) ";
-        //utils::Utils::print_term(term, term_manager);
     }
 
     auto res = solver.solver().check();
