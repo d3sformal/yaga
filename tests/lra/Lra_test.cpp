@@ -148,8 +148,8 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
     input << "(assert (and (> pi (/ 15707963 5000000)) (and (not (<= (/ 31415927 10000000) pi)) (and (<= skoY (* pi (/ 1 3))) (and (<= (* pi (/ 1 4)) skoY) (and (<= skoX 120) (<= 100 skoX)))))))\n";
 
     Options opts;
-    const std::unordered_map<terms::term_t, int> real_vars;
-    const std::unordered_map<terms::term_t, Literal> bool_vars;
+    std::unordered_map<terms::term_t, int> real_vars;
+    std::unordered_map<terms::term_t, Literal> bool_vars;
     Yaga smt{terms::Term_manager(), std::ranges::views::all(real_vars), std::ranges::views::all(bool_vars)};
     smt.set_logic(logic::qf_lra, opts);
     Smtlib_parser<Direct_interpreter> parser{smt};
@@ -181,8 +181,8 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
     input << "(assert (and (= skoX 0) (and (not (<= pi (/ 15707963 5000000))) (and (not (<= (/ 31415927 10000000) pi)) (and (<= skoY (* pi (/ 1 3))) (and (<= (* pi (/ 1 4)) skoY) (and (<= skoX 120) (<= 100 skoX))))))))\n";
 
     Options opts;
-    const std::unordered_map<terms::term_t, int> real_vars;
-    const std::unordered_map<terms::term_t, Literal> bool_vars;
+    std::unordered_map<terms::term_t, int> real_vars;
+    std::unordered_map<terms::term_t, Literal> bool_vars;
     Yaga smt{terms::Term_manager(), std::ranges::views::all(real_vars), std::ranges::views::all(bool_vars)};
     smt.set_logic(logic::qf_uflra, opts);
     Smtlib_parser<Direct_interpreter> parser{smt};
