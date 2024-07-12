@@ -37,14 +37,14 @@ void decide_var(Trail& trail, Variable var, Rational value)
     trail.decide(var);
 }
 
-Variable make_real_var_for_term(terms::term_t term, r_map_t map, Yaga& yaga)
+Variable make_real_var_for_term(terms::term_t term, r_map_t& map, Yaga& yaga)
 {
     Variable var = yaga.make(Variable::rational);
     map[term] = var.ord();
     return var;
 }
 
-Variable make_real_var_for_app_term(terms::term_t term, r_map_t map, Yaga& yaga)
+Variable make_real_var_for_app_term(terms::term_t term, r_map_t& map, Yaga& yaga)
 {
     Variable var = yaga.make_function_application(Variable::rational, term);
     map[term] = var.ord();
@@ -74,7 +74,6 @@ TEST_CASE("UF: propagation introduces conflict", "[uf][unsat]")
 
     Yaga yaga(tm, std::ranges::views::all(rm), std::ranges::views::all(bm));
     yaga.set_logic(logic::qf_uflra, Options());
-    yaga.solver().trail().resize(Variable::rational, 3); // TODO - is it necessary?
 
     Variable vx = make_real_var_for_term(tx, rm, yaga);
     Variable vfx = make_real_var_for_app_term(tfx, rm, yaga);
@@ -121,14 +120,9 @@ TEST_CASE("UF: valid function model", "[uf][sat]")
     yaga.set_logic(logic::qf_uflra, Options());
     yaga.solver().trail().resize(Variable::rational, 3); // TODO - is it necessary?
 
-    Variable vx = yaga.make(Variable::rational);
-    rm[tx] = vx.ord();
-
-    Variable vfx = yaga.make_function_application(Variable::rational, tfx);
-    Variable vf1 = yaga.make_function_application(Variable::rational, tf1);
-
-    rm[tfx] = vfx.ord();
-    rm[tf1] = vf1.ord();
+    Variable vx = make_real_var_for_term(tx, rm, yaga);
+    Variable vfx = make_real_var_for_app_term(tfx, rm, yaga);
+    Variable vf1 = make_real_var_for_app_term(tf1, rm, yaga);
 
     Trail& t = yaga.solver().trail();
     Database& db = yaga.solver().db();
