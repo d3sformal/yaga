@@ -51,7 +51,7 @@ Variable make_real_var_for_app_term(terms::term_t term, r_map_t& map, Yaga& yaga
     return var;
 }
 
-TEST_CASE("UF: propagation introduces conflict", "[uf][unsat]")
+TEST_CASE("UF: propagation introduces conflict", "[uf]")
 {
     // f(x) == 0 && f(1) == 2 && x == 1
 
@@ -95,7 +95,7 @@ TEST_CASE("UF: propagation introduces conflict", "[uf][unsat]")
     REQUIRE(conflicts.size() == 1);
 }
 
-TEST_CASE("UF: valid function model", "[uf][sat]")
+TEST_CASE("UF: valid function model", "[uf]")
 {
     // f(x) == 0 && f(1) == 2 && x == 0
 
