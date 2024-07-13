@@ -180,7 +180,7 @@ TEST_CASE("UF: Parse a binary function", "[uf][sat][integration]")
     REQUIRE(*test.fnc_value("f", {x, 0}) != *test.fnc_value("f", {y, 0}));
 }
 
-TEST_CASE("UF: Parse an unsat binary function", "[uf][sat][integration]")
+TEST_CASE("UF: Parse an unsat binary function", "[uf][unsat][integration]")
 {
     Yaga_test test;
     test.input() << "(set-logic QF_UFLRA)\n";
