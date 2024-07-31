@@ -3,20 +3,23 @@
 
 #include "Bool_theory.h"
 #include "Clause.h"
+#include "Evsids.h"
 #include "Fraction.h"
 #include "Generalized_vsids.h"
 #include "Linear_constraint.h"
 #include "Linear_arithmetic.h"
 #include "Literal.h"
+#include "Options.h"
+#include "Rational.h"
+#include "Restart.h"
 #include "Solver.h"
-#include "Variable.h"
+#include "Term_manager.h"
+#include "Term_types.h"
 #include "Theory.h"
 #include "Theory_combination.h"
-#include "Restart.h"
+#include "uf/Uninterpreted_functions.h"
+#include "Variable.h"
 #include "Variable_order.h"
-#include "Evsids.h"
-#include "Rational.h"
-#include "Options.h"
 
 #include <algorithm>
 #include <cassert>
@@ -24,6 +27,8 @@
 #include <ranges>
 
 namespace yaga {
+
+class Yaga;
 
 class Initializer {
 public:
@@ -34,7 +39,7 @@ public:
      * @param solver solver to setup
      * @param options command line options
      */
-    virtual void setup(Solver& solver, Options const& options) const = 0;
+    virtual void setup(Yaga* solver, Options const& options) const = 0;
 };
 
 class Propositional final : public Initializer {
@@ -46,7 +51,7 @@ public:
      * @param solver solver to initializer
      * @param options command line options
      */
-    void setup(Solver& solver, Options const& options) const override;
+    void setup(Yaga* solver, Options const& options) const override;
 };
 
 /** Initializer for quantifier-free linear real arithmetic.
@@ -56,11 +61,25 @@ public:
     virtual ~Qf_lra() = default;
 
     /** Initialize @p solver with plugins for boolean variables and rational variables.
+     *
+     * @param solver solver to initialize
+     * @param options command line options
+     */
+    void setup(Yaga* solver, Options const& options) const override;
+};
+
+/** Initializer for quantifier-free linear real arithmetic with uninterpreted functions.
+ */
+class Qf_uflra final : public Initializer {
+public:
+    virtual ~Qf_uflra() = default;
+
+    /** Initialize @p solver with plugins for boolean variables, rational variables and uninterpreted functions.
      * 
      * @param solver solver to initialize
      * @param options command line options
      */
-    void setup(Solver& solver, Options const& options) const override;
+    void setup(Yaga* solver, Options const& options) const override;
 };
 
 /** Predefined logic initializers for the Yaga facade.
@@ -69,6 +88,10 @@ struct logic {
     /** Propositional logic
      */
     inline static Propositional const propositional{};
+
+    /** Quantifier-free linear real arithmetic with uninterpreted functions
+     */
+    inline static Qf_uflra const qf_uflra{};
 
     /** Quantifier-free linear real arithmetic
      */
@@ -97,8 +120,11 @@ public:
      * 
      * @param init initializer for a logic
      * @param options solver options
+     * @param tm term manager object from the parser
      */
-    Yaga(Initializer const& init, Options const& options);
+    Yaga(terms::Term_manager const& tm,
+         std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > b_m,
+         std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > r_m);
 
     /** Reinitialize the solver with a different logic.
      * 
@@ -107,7 +133,11 @@ public:
      * @param init initializer for a logic
      * @param options solver options
      */
-    void init(Initializer const& init, Options const& options);
+    void init();
+
+    void set_logic(Initializer const& init, Options const& options);
+
+    bool has_uf();
 
     /** Create a new variable
      * 
@@ -115,6 +145,13 @@ public:
      * @return object which represents the new variable
      */
     Variable make(Variable::Type type);
+
+    /** Create a new variable representing a function application term
+     *
+     * @param type return type of the function
+     * @return object which represents the function return value
+     */
+    Variable make_function_application(Variable::Type, terms::term_t);
 
     /** Convenience method to create new boolean variable and return a literal.
      * 
@@ -155,6 +192,11 @@ public:
                                std::forward<Coef_range>(coef), pred, rhs).lit();
     }
 
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > real_vars();
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > bool_vars();
+
+    std::optional<std::unordered_map<terms::term_t, Uninterpreted_functions::function_value_map_t>> get_function_model();
+
     /** Assert a new clause to the solver (range of literals)
      * 
      * @tparam Args types of arguments passed to Clause constructor
@@ -172,8 +214,14 @@ public:
     inline Solver& solver() { return smt; }
 private:
     Solver smt;
+
     // pointer to the LRA plugin or nullptr if this solver does not support LRA
     Linear_arithmetic* lra;
+
+    // pointer to the UF plugin or nullptr if this solver does not support UF
+    Uninterpreted_functions* uf;
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > real_mapping;
+    std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > bool_mapping;
 };
 
 }

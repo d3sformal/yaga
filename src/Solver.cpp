@@ -2,11 +2,13 @@
 
 namespace yaga {
 
-Solver::Solver() : solver_trail(dispatcher)
+Solver::Solver(const terms::Term_manager& tm) : solver_trail(dispatcher), term_manager(tm)
 {
     subsumption = std::make_unique<Subsumption>();
     dispatcher.add(subsumption.get());
 }
+
+Solver::Solver() : Solver(terms::Term_manager()) {}
 
 std::vector<Clause> Solver::propagate() { return theory()->propagate(database, solver_trail); }
 

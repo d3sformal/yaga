@@ -36,7 +36,7 @@ public:
      * @param args argument list
      * @return handle to the corresponding composite term
      */
-    term_t mk_term(std::string const& op, std::span<term_t> args);
+    term_t mk_term(std::string const& op, std::span<term_t> args, bool not_app = false);
 
     /**
      * Gets the term of the specified kind with the given list of argument terms
@@ -74,6 +74,9 @@ public:
      * @return term representation of the constant
      */
     term_t mk_uninterpreted_constant(type_t type);
+
+    term_t mk_app(std::string const& name, type_t ret_type, std::span<term_t> args);
+    term_t mk_app(std::span<term_t> args);
 
     /*
      * Boolean terms
@@ -134,6 +137,8 @@ public:
 
     [[nodiscard]] std::span<const term_t> get_args(term_t term) const;
 
+    [[nodiscard]] term_t get_fnc_symbol(term_t term) const;
+
     [[nodiscard]] Kind get_kind(term_t term) const;
 
     [[nodiscard]] int32_t index_of(term_t term) const;
@@ -148,11 +153,15 @@ public:
 
     [[nodiscard]] bool is_uninterpreted_constant(term_t) const;
 
+    [[nodiscard]] bool is_uninterpreted(term_t) const;
+
     [[nodiscard]] bool is_arithmetic_product(term_t) const;
 
     [[nodiscard]] bool is_arithmetic_polynomial(term_t) const;
 
     [[nodiscard]] bool is_ite(term_t) const;
+
+    [[nodiscard]] bool is_app(term_t) const;
 
     [[nodiscard]] term_t var_of_product(term_t arithmetic_product) const;
 

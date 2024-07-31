@@ -1,82 +1,24 @@
 #include "Solver_wrapper.h"
+#include "utils/Utils.h"
+#include <variant>
 
 namespace yaga::parser
 {
 
 using term_t = terms::term_t;
 
-namespace {
-struct Linear_polynomial {
-    std::vector<int> vars;
-    std::vector<Rational> coef;
-    Rational constant = 0;
+Solver_wrapper::Solver_wrapper(terms::Term_manager& term_manager, Options const& opts)
+    : term_manager(term_manager), options(opts),
+      internalizer_config(term_manager, solver), internalizer(term_manager, internalizer_config),
+      solver(term_manager, internalizer_config.rational_vars(), internalizer_config.bool_vars()) {}
 
-    void negate();
-
-    void subtract_var(Variable v);
-};
+void Solver_wrapper::set_logic(Initializer const& init) {
+    solver.set_logic(init, options);
 }
 
-class Internalizer_config : public terms::Default_visitor_config
-{
-    terms::Term_manager const& term_manager;
-    Yaga& solver;
-    std::unordered_map<terms::term_t, int> internal_rational_vars;
-
-    // HACK: We need to store literals
-    // x >= 0 (positive in term representation) is internalized as ~(x < 0), which is negative
-    std::unordered_map<terms::term_t, Literal> internal_bool_vars; // Only positive terms should be added to this map!
-
-    Linear_polynomial internalize_poly(terms::term_t t);
-    inline int internal_rational_var(terms::term_t t) const
-    {
-        assert(internal_rational_vars.find(t) != internal_rational_vars.end());
-        return internal_rational_vars.at(t);
-    }
-
-    inline Variable new_bool_var()
-    {
-        return solver.make(Variable::boolean);
-    }
-
-    inline Variable new_real_var()
-    {
-        return solver.make(Variable::rational);
-    }
-
-public:
-    Internalizer_config(
-        terms::Term_manager const& term_manager,
-        Yaga& solver
-        )
-        : term_manager(term_manager), solver(solver)
-    { }
-
-    void visit(terms::term_t) override;
-
-    std::optional<Literal> get_literal_for(terms::term_t t) const;
-
-    /** Get a range of boolean variables (pairs of `term_t` and `Literal`)
-     * 
-     * @return range of internalized boolean variables
-     */
-    inline std::ranges::view auto bool_vars() const 
-    { 
-        return std::ranges::views::all(internal_bool_vars); 
-    }
-
-    /** Get a range of rational variables (pairs of `term_t` and variable ordinal integer)
-     * 
-     * @return range of internalized rational variables
-     */
-    inline std::ranges::view auto rational_vars() const 
-    { 
-        return std::ranges::views::all(internal_rational_vars); 
-    }
-};
-
-Solver_wrapper::Solver_wrapper(terms::Term_manager& term_manager, Options const& opts)
-    : term_manager(term_manager), options(opts), solver(logic::qf_lra, options) {}
+bool Solver_wrapper::has_uf() {
+    return solver.has_uf();
+}
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
@@ -86,9 +28,8 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     }
 
     // Cnfize and assert clauses to the solver
-    solver.init(logic::qf_lra, options);
-    Internalizer_config internalizer_config{term_manager, solver};
-    terms::Visitor<Internalizer_config> internalizer(term_manager, internalizer_config);
+    solver.init();
+
     internalizer.visit(assertions);
 
     // add top level assertions to the solver
@@ -107,16 +48,17 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 
     // remember term-variable mapping
     variables.clear();
+
     for (auto& [term, lit] : internalizer_config.bool_vars())
     {
-        if (term_manager.get_kind(term) == terms::Kind::UNINTERPRETED_TERM)
+        if (term_manager.get_kind(term) == terms::Kind::UNINTERPRETED_TERM || term_manager.get_kind(term) == terms::Kind::APP_TERM)
         {
             variables.insert({term, lit.var()});
         }
     }
     for (auto& [term, var_ord] : internalizer_config.rational_vars())
     {
-        if (term_manager.get_kind(term) == terms::Kind::UNINTERPRETED_TERM)
+        if (term_manager.get_kind(term) == terms::Kind::UNINTERPRETED_TERM || term_manager.get_kind(term) == terms::Kind::APP_TERM)
         {
             variables.insert({term, Variable{var_ord, Variable::rational}});
         }
@@ -149,33 +91,41 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
 {
     auto& bool_model = solver.solver().trail().model<bool>(Variable::boolean);
     auto& lra_model = solver.solver().trail().model<Rational>(Variable::rational);
+
     for (auto& [term, var] : variables)
     {
-        if (var.type() == Variable::boolean)
+        if (term_manager.get_kind(term) != terms::Kind::UNINTERPRETED_TERM)
+            continue;
+
+        if (var.type() == Variable::boolean && bool_model.is_defined(var.ord()))
         {
-            if (bool_model.is_defined(var.ord()))
-            {
-                visitor.visit(term, bool_model.value(var.ord()));
-            }
+            visitor.visit(term, static_cast<bool>(bool_model.value(var.ord())));
         }
-        else if (var.type() == Variable::rational)
+        else if (var.type() == Variable::rational && lra_model.is_defined(var.ord()))
         {
-            if (lra_model.is_defined(var.ord()))
-            {
-                visitor.visit(term, lra_model.value(var.ord()));
-            }
+            visitor.visit(term, lra_model.value(var.ord()));
         }
+    }
+
+    auto fnc_model = solver.get_function_model();
+    if (!fnc_model.has_value())
+        return;
+
+    for (auto const& fnc : fnc_model.value()) {
+        auto fnc_term = fnc.first;
+        auto fnc_values = fnc.second;
+        visitor.visit_fnc(fnc_term, fnc_values);
     }
 }
 
-Linear_polynomial Internalizer_config::internalize_poly(term_t t)
+utils::Linear_polynomial Internalizer_config::internalize_poly(term_t t)
 {
     auto kind = term_manager.get_kind(t);
     if (kind == terms::Kind::ARITH_CONSTANT)
     {
         return {{},{},term_manager.arithmetic_constant_value(t)};
     }
-    if (kind == terms::Kind::UNINTERPRETED_TERM || kind == terms::Kind::ITE_TERM)
+    if (kind == terms::Kind::UNINTERPRETED_TERM || kind == terms::Kind::ITE_TERM || kind == terms::Kind::APP_TERM)
     {
         return {{internal_rational_var(t)}, {1}, 0};
     }
@@ -187,7 +137,7 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
     if (kind == terms::Kind::ARITH_POLY)
     {
         auto args = term_manager.get_args(t);
-        Linear_polynomial poly;
+        utils::Linear_polynomial poly;
         poly.vars.reserve(args.size());
         poly.coef.reserve(args.size());
         assert(poly.constant == 0);
@@ -198,7 +148,7 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
             {
                 poly.constant = term_manager.arithmetic_constant_value(arg);
             }
-            else if (arg_kind == terms::Kind::UNINTERPRETED_TERM or arg_kind == terms::Kind::ITE_TERM)
+            else if (arg_kind == terms::Kind::UNINTERPRETED_TERM or arg_kind == terms::Kind::ITE_TERM or arg_kind == terms::Kind::APP_TERM)
             {
                 poly.vars.push_back(internal_rational_var(arg));
                 poly.coef.emplace_back(1);
@@ -213,22 +163,6 @@ Linear_polynomial Internalizer_config::internalize_poly(term_t t)
         return poly;
     }
     throw std::logic_error("UNREACHABLE!");
-}
-
-void Linear_polynomial::negate()
-{
-    for (auto& c : coef)
-    {
-        c = -c;
-    }
-    constant = -constant;
-}
-
-void Linear_polynomial::subtract_var(Variable v)
-{
-    assert(std::ranges::find(vars, v.ord()) == vars.end());
-    this->vars.push_back(v.ord());
-    this->coef.emplace_back(-1);
 }
 
 void Internalizer_config::visit(term_t t)
@@ -269,9 +203,9 @@ void Internalizer_config::visit(term_t t)
         auto args = term_manager.get_args(t);
         term_t lhs = args[0];
         term_t rhs = args[1];
-        assert(term_manager.is_uninterpreted_constant(lhs) or term_manager.is_ite(lhs));
-        assert(term_manager.is_uninterpreted_constant(rhs) || term_manager.is_ite(rhs) || term_manager.is_arithmetic_constant(rhs));
-        auto poly = [&]() -> Linear_polynomial {
+        assert(term_manager.is_uninterpreted(lhs) || term_manager.is_ite(lhs));
+        assert(term_manager.is_uninterpreted(rhs) || term_manager.is_ite(rhs) || term_manager.is_arithmetic_constant(rhs));
+        auto poly = [&]() -> utils::Linear_polynomial {
             if (term_manager.is_arithmetic_constant(rhs))
             {
                 return {{internal_rational_var(lhs)}, {1}, -term_manager.arithmetic_constant_value(rhs)};
@@ -288,25 +222,49 @@ void Internalizer_config::visit(term_t t)
         internal_bool_vars.insert({positive_term, lit});
         return;
     }
+    case terms::Kind::APP_TERM: {
+        terms::type_t term_type = term_manager.get_type(t);
+        Variable::Type var_type;
+        switch (term_type) {
+        case terms::types::real_type:
+            var_type = Variable::rational;
+            break;
+        case terms::types::bool_type:
+            var_type = Variable::boolean;
+            break;
+        }
+
+        Variable var = solver.make_function_application(var_type, t);
+
+        switch (term_type) {
+        case terms::types::real_type:
+            insert_var(internal_rational_vars, t, var.ord());
+            break;
+        case terms::types::bool_type:
+            insert_var(internal_bool_vars, t, Literal(var.ord()));
+            break;
+        }
+
+        return;
+    }
     case terms::Kind::UNINTERPRETED_TERM:
         if (term_manager.get_type(t) == terms::types::bool_type)
         {
             Variable bool_var = solver.make(Variable::boolean);
             t = term_manager.positive_term(t);
-            auto [_, inserted] = internal_bool_vars.insert({t, Literal(bool_var.ord())});
-            assert(inserted); (void)(inserted);
+            insert_var(internal_bool_vars, t, Literal(bool_var.ord()));
         }
         else if (term_manager.get_type(t) == terms::types::real_type)
         {
             Variable rational_var = solver.make(Variable::rational);
-            auto [_, inserted] = internal_rational_vars.insert({t, rational_var.ord()});
-            assert(inserted); (void)(inserted);
+            insert_var(internal_rational_vars, t, rational_var.ord());
         }
         return;
     case terms::Kind::OR_TERM:
     {
         auto args = term_manager.get_args(t);
         assert(args.size() >= 2);
+        assert(std::all_of(args.begin(), args.end(), [&](term_t t){return term_manager.get_type(t) == terms::types::bool_type;}));
         term_t positive_term = term_manager.positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
         Variable var = new_bool_var();

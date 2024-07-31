@@ -252,7 +252,8 @@ bool Linear_arithmetic::is_unit(Model<Rational> const& model, Constraint const& 
 bool Linear_arithmetic::is_fully_assigned(Model<Rational> const& model,
                                           Constraint const& cons) const
 {
-    return cons.empty() || model.is_defined(cons.vars().front());
+    return cons.empty() || std::all_of(cons.vars().begin(), cons.vars().end(), [&](int v){return model.is_defined(v);});
+    //return cons.empty() || model.is_defined(cons.vars().front());
 }
 
 std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, int var_ord)

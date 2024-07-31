@@ -265,6 +265,23 @@ type_t Smt2_term_parser::parse_sort()
     return parser_context.get_type_for_symbol(sort_name);
 }
 
+std::vector<type_t> Smt2_term_parser::parse_sort_list()
+{
+    auto result = std::vector<type_t>();
+    Token tok = lexer.next_token();
+    while (tok != Token::RPAREN_TOK) {
+        if (tok != Token::SYMBOL) {
+            lexer.unexpected_token_error(tok);
+        }
+        auto sort_name = token_to_symbol(tok);
+        type_t sort = parser_context.get_type_for_symbol(sort_name);
+        result.push_back(sort);
+
+        tok = lexer.next_token();
+    }
+    return result;
+}
+
 std::string Smt2_term_parser::parse_keyword()
 {
     lexer.eat_token(Token::KEYWORD);

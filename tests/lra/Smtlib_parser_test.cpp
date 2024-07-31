@@ -21,6 +21,7 @@ TEST_CASE("Parse boolean functions", "[test_parser]")
     using namespace yaga::test;
 
     Yaga_test test;
+    test.input() << "(set-logic QF_LRA)\n";
     test.input() << "(declare-fun b1 () Bool)\n";
     test.input() << "(declare-fun b2 () Bool)\n";
     test.input() << "(declare-fun b3 () Bool)\n";
@@ -133,6 +134,7 @@ TEST_CASE("Parse boolean equality", "[test_parser]")
     using namespace yaga::test;
 
     Yaga_test test;
+    test.input() << "(set-logic QF_LRA)\n";
     test.input() << "(declare-fun b1 () Bool)\n";
     test.input() << "(declare-fun b2 () Bool)\n";
     test.input() << "(declare-fun b3 () Bool)\n";
@@ -221,6 +223,7 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
     using namespace yaga::test;
 
     Yaga_test test;
+    test.input() << "(set-logic QF_LRA)\n";
     test.input() << "(declare-fun x () Real)\n";
     test.input() << "(declare-fun y () Real)\n";
     test.input() << "(declare-fun z () Real)\n";
@@ -344,6 +347,7 @@ TEST_CASE("Parse if-then-else with real output", "[test_parser]")
     using namespace yaga::test;
 
     Yaga_test test;
+    test.input() << "(set-logic QF_LRA)\n";
     test.input() << "(declare-fun x () Real)\n";
     test.input() << "(declare-fun y () Real)\n";
     test.input() << "(declare-fun z () Real)\n";

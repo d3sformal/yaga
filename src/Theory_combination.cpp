@@ -1,5 +1,8 @@
 #include "Theory_combination.h"
 
+#include <iostream>
+#include "Rational.h"
+
 namespace yaga {
 
 std::vector<Clause> Theory_combination::propagate(Database& db, Trail& trail)

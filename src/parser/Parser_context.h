@@ -6,6 +6,7 @@
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "Options.h"
@@ -103,6 +104,15 @@ struct Function_template {
     : signature{std::move(name), std::move(args), ret_type}, body(body) {}
 };
 
+struct Function_declaration {
+    std::string name;
+    std::vector<type_t> arg_types;
+    type_t return_type;
+
+    Function_declaration(std::string name, std::vector<type_t> arg_types, type_t ret_type)
+    : name(std::move(name)), arg_types(std::move(arg_types)), return_type(ret_type) {}
+};
+
 class Defined_functions {
     std::unordered_map<std::string, Function_template> defined_functions;
 
@@ -124,6 +134,27 @@ public:
     }
 };
 
+class Declared_functions {
+    std::unordered_map<std::string, Function_declaration> declared_functions;
+
+public:
+    bool has(std::string const & name) const
+    {
+        return declared_functions.find(name) != declared_functions.end();
+    }
+
+    void insert(std::string const & name, Function_declaration && decl)
+    {
+        assert(not has(name));
+        declared_functions.insert({name, std::move(decl)});
+    }
+
+    Function_declaration const& get(std::string const& name) const
+    {
+        return declared_functions.at(name);
+    }
+};
+
 class Parser_context {
 public:
     Parser_context(terms::Term_manager& term_manager, Options const& options) 
@@ -141,9 +172,14 @@ public:
 
     Solver_answer check_sat(std::vector<term_t> const& assertions);
 
+    void set_logic(Initializer const& init);
+
+    bool has_uf();
+
     void model(Default_model_visitor& visitor);
 
     term_t declare_uninterpreted_constant(terms::type_t sort, std::string const& name);
+    void declare_uninterpreted_function(terms::type_t ret_type, std::vector<terms::type_t> && arg_sorts, std::string const& name);
 
     term_t mk_numeral(std::string const& numeric_string);
     term_t mk_decimal(std::string const& decimal_string);
@@ -163,6 +199,7 @@ private:
     Let_records let_records;
 
     Defined_functions defined_functions;
+    Declared_functions declared_functions;
 
     terms::Term_manager& term_manager;
 

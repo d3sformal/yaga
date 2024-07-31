@@ -62,6 +62,14 @@ Solver_answer Parser_context::check_sat(std::vector<term_t> const& assertions)
     return solver.check(assertions);
 }
 
+void Parser_context::set_logic(Initializer const& init) {
+    solver.set_logic(init);
+}
+
+bool Parser_context::has_uf() {
+    return solver.has_uf();
+}
+
 void Parser_context::model(Default_model_visitor& visitor)
 {
     solver.model(visitor);
@@ -72,6 +80,14 @@ term_t Parser_context::declare_uninterpreted_constant(terms::type_t sort, std::s
     term_t term = term_manager.mk_uninterpreted_constant(sort);
     term_manager.set_term_name(term, name);
     return term;
+}
+
+void Parser_context::declare_uninterpreted_function(terms::type_t ret_type, std::vector<terms::type_t> && arg_sorts, std::string const& name)
+{
+    term_t fnc_term = term_manager.mk_uninterpreted_constant(ret_type);
+    term_manager.set_term_name(fnc_term, name);
+
+    declared_functions.insert(name, Function_declaration(name, std::move(arg_sorts), ret_type));
 }
 
 term_t Parser_context::mk_numeral(std::string const& numeric_string)
@@ -89,8 +105,21 @@ term_t Parser_context::resolve_term(std::string const& name, std::vector<term_t>
     if (defined_functions.has(name))
     {
         return resolve_defined_function(name, args);
+    } else if (declared_functions.has(name))
+    {
+        auto declared_function = declared_functions.get(name);
+        auto expected_count = declared_function.arg_types.size();
+        assert(expected_count == args.size()); (void) expected_count;
+
+        for (size_t i = 0; i < args.size(); ++i)
+        {
+            type_t expected_type = declared_function.arg_types[i];
+            assert(expected_type == term_manager.get_type(args[i])); (void) expected_type;
+        }
+
+        return term_manager.mk_app(name, declared_function.return_type, args);
     }
-    return term_manager.mk_term(name, args);
+    return term_manager.mk_term(name, args, true);
 }
 
 std::vector<term_t> Parser_context::bind_vars(std::span<Sorted_var> sorted_vars)

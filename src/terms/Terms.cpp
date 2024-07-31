@@ -131,7 +131,9 @@ term_t Term_table::or_term(std::span<term_t> args)
 
 term_t Term_table::arithmetic_product(Rational const& coeff, term_t var)
 {
-    assert(is_uninterpreted_constant(var) or (is_ite(var) and get_type(var) == types::real_type));
+    assert(
+        is_uninterpreted_constant(var) or
+        ((is_ite(var) or is_app(var)) and get_type(var) == types::real_type));
     term_t coeff_term = arithmetic_constant(coeff);
     std::array<term_t, 2> args{coeff_term, var};
     Composite_term_proxy proxy{Kind::ARITH_PRODUCT, types::real_type, hash_composite_term(Kind::ARITH_PRODUCT, args), *this, args};
@@ -165,7 +167,7 @@ term_t Term_table::arithmetic_binary_eq(term_t t1, term_t t2)
 {
     assert(get_type(t1) == types::real_type);
     assert(get_type(t2) == types::real_type);
-    assert(get_kind(t1) == Kind::UNINTERPRETED_TERM or get_kind(t1) == Kind::ITE_TERM);
+    assert(get_kind(t1) == Kind::UNINTERPRETED_TERM or get_kind(t1) == Kind::ITE_TERM or get_kind(t1) == Kind::APP_TERM);
     assert(get_kind(t2) != Kind::ARITH_PRODUCT and get_kind(t2) != Kind::ARITH_POLY);
     std::array<term_t, 2> args{t1, t2};
     Composite_term_proxy proxy{Kind::ARITH_BINEQ_ATOM, types::bool_type, hash_composite_term(Kind::ARITH_BINEQ_ATOM, args), *this, args};
@@ -179,6 +181,11 @@ term_t Term_table::arithmetic_ite(term_t c, term_t t, term_t e)
     assert(get_type(e) == types::real_type);
     std::array<term_t, 3> args{c,t,e};
     Composite_term_proxy proxy{Kind::ITE_TERM, types::real_type, hash_composite_term(Kind::ITE_TERM, args), *this, args};
+    return known_terms.get_composite_term(proxy);
+}
+
+term_t Term_table::app_term(type_t ret_type, std::span<term_t> args) {
+    Composite_term_proxy proxy{Kind::APP_TERM, ret_type, hash_composite_term(Kind::APP_TERM, args), *this, args};
     return known_terms.get_composite_term(proxy);
 }
 
@@ -210,7 +217,11 @@ void Term_table::set_term_name(term_t t, std::string const& name)
 std::optional<std::string_view> Term_table::get_term_name(term_t t) const
 {
     auto it = name_table.find(t);
-    return it != name_table.end() ? std::make_optional(std::string_view{it->second}) : std::nullopt;
+    if (it != name_table.end())
+        return std::make_optional(std::string_view{it->second});
+    if (get_kind(t) == Kind::APP_TERM)
+        return get_term_name(get_fnc_symbol(t));
+    return std::nullopt;
 }
 
 std::optional<term_t> Term_table::get_term_by_name(std::string const& name) const
@@ -255,6 +266,11 @@ bool Term_table::is_ite(term_t t) const
     return get_kind(t) == Kind::ITE_TERM;
 }
 
+bool Term_table::is_app(term_t t) const
+{
+    return get_kind(t) == Kind::APP_TERM;
+}
+
 term_t Term_table::var_of_product(term_t t) const
 {
     assert(is_arithmetic_product(t));
@@ -278,9 +294,20 @@ std::span<const term_t> Term_table::monomials_of(term_t t) const
     return descriptor.args();
 }
 
+term_t Term_table::get_fnc_symbol(term_t t) const {
+    assert(get_kind(t) == Kind::APP_TERM);
+
+    term_descriptor_t const& descriptor = get_descriptor(t);
+    auto const& composite_descriptor = dynamic_cast<composite_term_descriptor_t const&>(descriptor);
+    assert(composite_descriptor.size() != 0);
+
+    return composite_descriptor.args()[0];
+}
+
 std::span<const term_t> Term_table::get_args(term_t t) const
 {
     auto kind = get_kind(t);
+
     switch (kind)
     {
     case Kind::ARITH_CONSTANT:
@@ -291,7 +318,12 @@ std::span<const term_t> Term_table::get_args(term_t t) const
         term_descriptor_t const& descriptor = get_descriptor(t);
         auto const& composite_descriptor = dynamic_cast<composite_term_descriptor_t const&>(descriptor);
         assert(composite_descriptor.size() != 0);
-        return composite_descriptor.args();
+
+        if (kind == Kind::APP_TERM) {
+            return composite_descriptor.args().last(composite_descriptor.size() - 1);
+        } else {
+            return composite_descriptor.args();
+        }
     }
 }
 

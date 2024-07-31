@@ -17,6 +17,7 @@
 #include "Event_dispatcher.h"
 #include "Restart.h"
 #include "Subsumption.h"
+#include "Term_manager.h"
 #include "Theory.h"
 #include "Trail.h"
 #include "Variable.h"
@@ -29,6 +30,7 @@ public:
     enum class Result { unsat = 0, sat = 1 };
 
     Solver();
+    Solver(const terms::Term_manager& tm);
 
     // non-copyable
     Solver(Solver const&) = delete;
@@ -61,6 +63,12 @@ public:
      * @return clause database owned by this solver
      */
     inline Database const& db() const { return database; }
+
+    /** Get term manager
+     *
+     * @return term manager owned by this solver
+     */
+    inline const terms::Term_manager& tm() { return term_manager; }
 
     /** Create a new theory for this solver.
      *
@@ -175,6 +183,7 @@ private:
     std::unique_ptr<Theory> solver_theory;
     std::unique_ptr<Restart> restart_policy;
     std::unique_ptr<Variable_order> variable_order;
+    const terms::Term_manager& term_manager;
     int num_bool_vars = 0;
 
     using Clause_iterator = std::deque<Clause>::iterator;

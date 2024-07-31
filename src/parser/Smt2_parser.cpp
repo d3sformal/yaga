@@ -22,6 +22,26 @@ class Print_model final : public Default_model_visitor {
     terms::Term_manager& term_manager;
     // output stream where the model will be printed
     std::ostream& output;
+
+    void print_variable(terms::var_value_t var) {
+        if (std::holds_alternative<bool>(var))
+            output << (std::get<bool>(var) ? "true" : "false");
+        else if (std::holds_alternative<Rational>(var))
+            output << std::get<Rational>(var);
+    }
+
+    void print_type(type_t type) {
+        switch (type) {
+        default:
+        case terms::types::bool_type:
+            output << "Bool";
+            break;
+        case terms::types::real_type:
+            output << "Real";
+            break;
+        }
+    }
+
 public:
     virtual ~Print_model() = default;
 
@@ -42,34 +62,91 @@ public:
      */
     void end_list() { output << ")\n"; }
 
-    /** Print value of a boolean variable in the SMT-LIB format:
+    /** Print value of a variable in the SMT-LIB format:
      * 
-     * (define-fun <var-name> () Bool <var-value>)
-     * 
-     * @param term term which represents a boolean variable
-     * @param value value of @p term
-     */
-    void visit(term_t term, bool value) override
-    {
-        if (auto name = term_manager.get_term_name(term))
-        {
-            output << "(define-fun " << *name << " () Bool " 
-                << (value ? "true" : "false") << ")\n";
-        }
-    }
-
-    /** Print value of a rational variable in the SMT-LIB format:
-     * 
-     * (define-fun <var-name> () Real <var-value>)
+     * (define-fun <var-name> () <sort> <var-value>)
      * 
      * @param term term which represents a rational variable
      * @param value value of @p term
      */
-    void visit(term_t term, Rational const& value) override
+    void visit(term_t term, terms::var_value_t const& value) override
     {
         if (auto name = term_manager.get_term_name(term))
         {
-            output << "(define-fun " << *name << " () Real " << value << ")\n";
+            output << "(define-fun " << *name << " () ";
+            print_type((int) value.index());
+            output << " ";
+            print_variable(value);
+            output << ")\n";
+        }
+    }
+
+    /** Print values of a function in the SMT-LIB format:
+     *
+     * (define-fun <fun-name> (<sorted-var>*) <sort> <fun-value>)
+     *
+     * @param term term which represents a function symbol
+     * @param values function values of @p term
+     */
+    void visit_fnc(terms::term_t term, std::map<std::vector<terms::var_value_t>, terms::var_value_t> const& values) override
+    {
+        if (auto name = term_manager.get_term_name(term))
+        {
+            output << "(define-fun " << *name << " (";
+
+            std::vector<std::string> arg_names;
+            auto arg_vector = values.begin()->first;
+            for (size_t i = 0; i < arg_vector.size(); ++i)
+            {
+                std::string arg_name = "x" + std::to_string(i);
+                arg_names.push_back(arg_name);
+                output << (i > 0 ? " (" : "(") << arg_name << " ";
+                print_type((int) arg_vector[i].index());
+                output << ")";
+            }
+
+            output << ") ";
+
+            auto it = values.begin();
+            auto else_value = it->second;
+            it++;
+
+            print_type((int) else_value.index());
+
+            output << "\n";
+
+            int parentheses = (int)values.size();
+            for (; it != values.end(); it++)
+            {
+                output << "  (ite";
+
+                if (arg_names.size() > 1)
+                    output << " (and";
+
+                auto arg_values = it->first;
+                for (size_t j = 0; j < arg_values.size(); ++j)
+                {
+                    output << " (= " << arg_names[j] + " ";
+                    print_variable(arg_values[j]);
+                    output << ")";
+                }
+
+                if (arg_names.size() > 1)
+                    output << ")";
+
+                output << " ";
+                print_variable(it->second);
+                output << "\n";
+            }
+
+            output << "       ";
+            print_variable(else_value);
+            output << " ";
+            for (; parentheses > 0; parentheses--)
+            {
+                output << ")";
+            }
+            output << "\n";
         }
     }
 };
@@ -118,8 +195,13 @@ bool Smt2_command_context::parse_command()
     // (assert <term>)
     case Token::ASSERT_TOK:
     {
-        term_t term = term_parser.parse_term();
-        assertions.push_back(term);
+        try
+        {
+            term_t term = term_parser.parse_term();
+            assertions.push_back(term);
+        } catch (std::logic_error const& e) {
+            output << "(error \"" << e.what() << "\")" << std::endl;
+        }
     }
     break;
 
@@ -132,22 +214,32 @@ bool Smt2_command_context::parse_command()
     }
     break;
 
-    // (declare-fun <symbol> (<sort>∗) <sort>)
     // (declare-const <symbol> <sort>)
     case Token::DECLARE_CONST_TOK:
+    {
+        std::string name = term_parser.parse_symbol();
+        terms::type_t t = term_parser.parse_sort();
+        parser_context.declare_uninterpreted_constant(t, name);
+    }
+    break;
+
+    // (declare-fun <symbol> (<sort>∗) <sort>)
     case Token::DECLARE_FUN_TOK:
     {
         std::string name = term_parser.parse_symbol();
         std::vector<terms::type_t> sorts;
-        if (tok == Token::DECLARE_FUN_TOK)
-        {
-            // FIXME: Support function symbol
-            // HACK: For now only empty sort list
-            lexer.eat_token(Token::LPAREN_TOK);
-            lexer.eat_token(Token::RPAREN_TOK);
-        }
-        terms::type_t t = term_parser.parse_sort();
-        parser_context.declare_uninterpreted_constant(t, name);
+
+        lexer.eat_token(Token::LPAREN_TOK);
+        sorts = term_parser.parse_sort_list();
+
+        terms::type_t ret_type = term_parser.parse_sort();
+
+        if (sorts.size() == 0)
+            parser_context.declare_uninterpreted_constant(ret_type, name);
+        else if (parser_context.has_uf())
+            parser_context.declare_uninterpreted_function(ret_type, std::move(sorts), name);
+        else
+            output << "(error \"" << "logic does not support uninterpreted functions" << "\")\n";
     }
     break;
 
@@ -288,8 +380,11 @@ bool Smt2_command_context::parse_command()
     case Token::SET_LOGIC_TOK:
     {
         std::string name = term_parser.parse_symbol();
-        if (name != "QF_LRA")
-        {
+        if (name == "QF_UFLRA") {
+            parser_context.set_logic(logic::qf_uflra);
+        } else if (name == "QF_LRA") {
+            parser_context.set_logic(logic::qf_lra);
+        } else {
             std::cerr << "Unsupported logic " << name << std::endl;
             return false;
         }
