@@ -159,8 +159,7 @@ Clause& Lra_conflict_analysis::finish()
     return clause;
 }
 
-std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bounds, int var_ord)
-{
+std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bounds, int var_ord) {
     auto models = lra->relevant_models(trail);
     auto lb = bounds[var_ord].lower_bound(models);
     auto ub = bounds[var_ord].upper_bound(models);
@@ -170,15 +169,30 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
     }
 
     auto is_strict = lb->is_strict() || ub->is_strict();
-    if (lb->value() < ub->value() || (lb->value() == ub->value() && !is_strict))
+    if (!lia)
     {
-        return {}; // no conflict
+        if (lb->value() < ub->value() || (lb->value() == ub->value() && !is_strict))
+        {
+            return {}; // no conflict
+        }
     }
+    else
+    {
+        if ((lb->value() + 1 < ub->value()) ||
+            (lb->value() + 1 == ub->value() && (
+                !lb->value().isInteger() ||
+                !is_strict)))
+        {
+            return {};
+        }
+    }
+
+
     assert(lb->var() == ub->var());
 
     // Derive a conflict using FM elimination. We implicitly use resolution to resolve intermediate
     // results.
-    Lra_conflict_analysis analysis{lra};
+    Lra_conflict_analysis analysis{lra, lia};
     auto fm = analysis.eliminate(models, bounds, *lb);
     fm.resolve(analysis.eliminate(models, bounds, *ub), ub->var());
 
@@ -207,12 +221,24 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds
         return {}; // no conflict
     }
 
-    // check if `L <= x` and `x <= U` and L, U evaluate to the same value where `x` is the
-    // check, unassigned variable
-    if (lb->value() != ub->value() || lb->reason().is_strict() || ub->reason().is_strict())
-    {
-        return {};
+    if (!lia) {
+        // check if `L <= x` and `x <= U` and L, U evaluate to the same value where `x` is the
+        // check, unassigned variable
+        if (lb->value() != ub->value() || lb->reason().is_strict() || ub->reason().is_strict())
+        {
+            return {};
+        }
+    } else {
+        // check if there is still an integer between the bounds
+        if ((lb->value() + 1 < ub->value()) ||
+            (lb->value() + 1 == ub->value() &&
+                (!lb->value().isInteger() ||
+                (lb->reason().is_strict() || !ub->reason().is_strict()))))
+        {
+            return {};
+        }
     }
+
 
     // check if `x != D` where D, L, U evaluate to the same value
     auto neq = bounds[var_ord].inequality(models, lb->value());
@@ -223,7 +249,7 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds
     assert(lb->var() == ub->var());
     assert(neq->var() == lb->var());
 
-    Lra_conflict_analysis analysis{lra};
+    Lra_conflict_analysis analysis{lra, lia};
     analysis.conflict().push_back(~neq->reason().lit());
 
     auto mult = neq->reason().coef().front() > 0 ? 1 : -1;

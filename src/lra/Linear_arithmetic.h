@@ -51,6 +51,11 @@ public:
          * A rational variable is effectively decided if it can only be assigned one value.
          */
         bool prop_rational = false;
+
+        /**
+         * If true, the plugin will work with integer numbers instead of rationals.
+         */
+        bool prop_integer = false;
     };
 
     virtual ~Linear_arithmetic() = default;
