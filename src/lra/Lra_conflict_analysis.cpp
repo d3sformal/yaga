@@ -230,10 +230,8 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds
         }
     } else {
         // check if there is still an integer between the bounds
-        if ((lb->value() + 1 < ub->value()) ||
-            (lb->value() + 1 == ub->value() &&
-                (!lb->value().isInteger() ||
-                (lb->reason().is_strict() || !ub->reason().is_strict()))))
+        if (lb->value() != ub->value() || lb->reason().is_strict() || ub->reason().is_strict() ||
+            !lb->value().isInteger())
         {
             return {};
         }
