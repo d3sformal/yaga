@@ -178,9 +178,10 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
     }
     else
     {
-        if ((lb->value() + 1 < ub->value()) ||
-            (lb->value() + 1 == ub->value() && (
-                !lb->value().isInteger() ||
+        if ((lb->value() == ub->value() && !is_strict) ||
+            (lb->value() + 1 < ub->value()) ||
+            (lb->value() + 1 == ub->value() &&
+                (!lb->value().isInteger() ||
                 !is_strict)))
         {
             return {};
