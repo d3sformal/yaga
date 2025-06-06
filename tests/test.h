@@ -448,11 +448,24 @@ public:
     {
         auto it_f = fnc_model.find(name);
         if (it_f == fnc_model.end())
+        {
             return std::nullopt;
+        }
 
         function_map_t const& fn_map = it_f->second;
         auto it = fn_map.find(args);
-        return it != fn_map.end() ? std::optional{it->second} : std::nullopt;
+        if (it != fn_map.end())
+        {
+            return it->second;
+        } 
+        else if (fnc_trailing_values.contains(name))
+        {
+            return fnc_trailing_values.at(name);
+        }
+        else
+        {
+            return std::nullopt;
+        }
     }
 };
 
