@@ -411,15 +411,22 @@ public:
      */
     inline yaga::Solver_answer answer() const { return last_answer; }
 
+
     /** Run the parser with `input()`.
      */
-    inline void run()
-    {
-        input() << "(check-sat)\n(get-model)\n";
+    inline void run(){
         parser.parse(input(), output());
         output().seekg(0, std::ios::beg);
         read_answer();
         read_model();
+    }
+
+    /** Add check-sat and get-model commands to the input, Run the parser with `input()`.
+     */
+    inline void run_check()
+    {
+        input() << "(check-sat)\n(get-model)\n";
+        run();
     }
 
     /** Get value of a boolean variable

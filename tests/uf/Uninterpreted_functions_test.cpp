@@ -148,7 +148,7 @@ TEST_CASE("UF: Parse a simple satisfiable formula", "[uf][sat][integration]")
     test.input() << "(declare-fun y () Real)\n";
     test.input() << "(declare-fun f (Real) Real)\n";
     test.input() << "(assert (distinct (f x) (f y)))\n";
-    test.run();
+    test.run_check();
 
     REQUIRE(test.answer() == Solver_answer::SAT);
     REQUIRE(*test.real("x") != *test.real("y"));
@@ -164,7 +164,7 @@ TEST_CASE("UF: Parse a binary function", "[uf][sat][integration]")
     test.input() << "(declare-fun f (Real Real) Real)\n";
     // implies x!=y && x!=0 && y!=0
     test.input() << "(assert (distinct (f 0 x) (f 0 y) (f x 0) (f y 0)))\n";
-    test.run();
+    test.run_check();
 
     REQUIRE(test.answer() == Solver_answer::SAT);
     auto x = *test.real("x");
@@ -188,7 +188,7 @@ TEST_CASE("UF: Parse an unsat binary function", "[uf][unsat][integration]")
     test.input() << "(declare-fun f (Real Real) Real)\n";
     test.input() << "(assert (distinct (f 0 x) (f x 0)))\n";
     test.input() << "(assert (= x 0))\n";
-    test.run();
+    test.run_check();
 
     REQUIRE(test.answer() == Solver_answer::UNSAT);
 }

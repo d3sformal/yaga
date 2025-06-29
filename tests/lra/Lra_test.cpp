@@ -210,7 +210,7 @@ TEST_CASE("Formula which forces the solver to generate duplicate constraints and
     test.input() << "(assert (< y 1002))\n";
     test.input() << "(assert (< y 1003))\n";
     test.input() << "(assert (< y 1004))\n";
-    test.run();
+    test.run_check();
 
     REQUIRE(test.answer() == Solver_answer::SAT);
     if (*test.boolean("b"))
