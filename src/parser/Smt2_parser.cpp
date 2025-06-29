@@ -151,6 +151,17 @@ public:
     }
 };
 
+bool sets_are_disjoint(const std::unordered_set<std::string>& setA,
+                       const std::unordered_set<std::string>& setB) {
+    const auto& smaller = (setA.size() < setB.size()) ? setA : setB;
+    const auto& larger = (setA.size() < setB.size()) ? setB : setA;
+
+    for (const auto& val : smaller) {
+        if (larger.count(val)) return false;
+    }
+    return true;
+}
+
 class Smt2_command_context {
     std::istream& input;
     std::ostream& output;
@@ -165,6 +176,8 @@ class Smt2_command_context {
     bool parse_command();
 
     void parse_error(std::string const& msg);
+
+    std::pair<std::vector<term_t>, std::vector<term_t>> assign_terms_by_name_to_groups(const std::unordered_set<std::string>& group1, const std::unordered_set<std::string>& group2);
 
     void print_answer(Solver_answer answer);
 
@@ -347,6 +360,30 @@ bool Smt2_command_context::parse_command()
         UNIMPLEMENTED;
     }
     break;
+    case Token::GET_INTERPOLANT_TOK:
+    {
+        auto groups = term_parser.parse_interpolation_groups();
+
+        if (!sets_are_disjoint(groups.first, groups.second)){
+            parse_error("Expected disjoint sets of interpolation groups");
+        }
+
+        if (last_answer == Solver_answer::SAT) {
+            // TODO: Implement -> no interpolant exists
+        } else {
+            auto groups_terms = assign_terms_by_name_to_groups(groups.first, groups.second);
+
+            if (groups_terms.first.empty() || groups_terms.second.empty()){
+                parse_error("Invalid interpolation groups: both groups must contain at least one assertion");
+            }
+            //last_answer = parser_context.get_interpolant(groups_terms.first, groups_terms.second, assertions);
+            //print_answer(last_answer.value());
+            // TODO: Print or process interpolant as needed
+        }
+
+        return true;    // we consumed all the input for this token, we can return
+    }
+    break;
 
     // (pop <numeral>?)
     case Token::POP_TOK:
@@ -434,6 +471,34 @@ void Smt2_command_context::print_answer(Solver_answer answer)
         break;
     }
 
+}
+
+std::pair<std::vector<term_t>, std::vector<term_t>> Smt2_command_context::assign_terms_by_name_to_groups(const std::unordered_set<std::string>& group1, const std::unordered_set<std::string>& group2){
+    std::vector<term_t> group1_terms;
+    std::vector<term_t> group2_terms;
+
+    bool group2_is_complement = group2.empty();
+
+    for (const auto& assertion : assertions) {
+        auto maybe_name = term_manager.get_term_name(assertion);
+
+        if (!maybe_name){
+            if (group2_is_complement){
+                group2_terms.push_back(assertion);  // No name, assign to complement group
+            }
+            continue; // No name, skip further checks
+        }
+
+        auto name = std::string(*maybe_name);  // Convert string_view to string
+
+        if (group1.count(name)) {
+            group1_terms.push_back(assertion);
+        }
+        else if (group2_is_complement || group2.count(name)) {
+            group2_terms.push_back(assertion);
+        }
+    }
+    return {group1_terms, group2_terms};
 }
 
 void Smt2_parser::parse_file(std::string const& file_name)

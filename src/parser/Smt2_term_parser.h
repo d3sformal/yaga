@@ -28,6 +28,9 @@ class Smt2_term_parser {
 
     term_t get_term_for_symbol(std::string const&);
 
+    void parse_attributes(term_t& term);
+
+    std::unordered_set<std::string> parse_symbol_group(bool can_be_empty = false);
 public:
     explicit Smt2_term_parser(smt2_lexer & lexer, Parser_context & ctx)
         : lexer(lexer), parser_context(ctx) {}
@@ -44,6 +47,8 @@ public:
     std::string parse_sexpr();
 
     std::vector<Sorted_var> parse_sorted_var_list();
+
+    std::pair<std::unordered_set<std::string>, std::unordered_set<std::string>> parse_interpolation_groups();
 };
 
 } // namespace yaga::parser

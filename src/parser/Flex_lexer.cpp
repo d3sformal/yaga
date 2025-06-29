@@ -28,7 +28,8 @@ void Flex_lexer::eat_token(Token t)
 
 Token Flex_lexer::next_token()
 {
-    return lex_scan();
+    last_token = lex_scan();
+    return last_token;
 }
 
 char const* Flex_lexer::token_string()

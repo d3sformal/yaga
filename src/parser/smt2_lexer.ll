@@ -51,6 +51,7 @@ using namespace yaga::parser;
 "get-assertions"    return Token::GET_ASSERTIONS_TOK;
 "get-assignment"    return Token::GET_ASSIGNMENT_TOK;
 "get-info"          return Token::GET_INFO_TOK;
+"get-interpolant"   return Token::GET_INTERPOLANT_TOK;
 "get-model"         return Token::GET_MODEL_TOK;
 "get-option"        return Token::GET_OPTION_TOK;
 "get-unsat-core"    return Token::GET_UNSAT_CORE_TOK;

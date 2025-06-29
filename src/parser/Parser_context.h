@@ -170,6 +170,10 @@ public:
 
     type_t get_type_for_symbol(std::string const& symbol);
 
+    void set_term_name(term_t t, std::string const& name) {
+        term_manager.set_term_name(t, name);
+    }
+
     Solver_answer check_sat(std::vector<term_t> const& assertions);
 
     void set_logic(Initializer const& init);
@@ -194,6 +198,7 @@ public:
 
     void store_defined_fun(std::string const& name, term_t definition, std::vector<term_t> && formal_args, type_t ret_sort);
 
+    Solver_answer get_interpolant(std::vector<term_t> const& group1, std::vector<term_t> const& group2, const std::vector<term_t>& assertions);
 
 private:
     Let_records let_records;
