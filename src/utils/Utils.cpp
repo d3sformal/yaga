@@ -100,4 +100,100 @@ void Utils::print_term(terms::term_t t, const terms::Term_manager& term_manager,
     }
 }
 
+void Utils::pretty_print_term(terms::term_t t, const terms::Term_manager& tm, std::ostream& out) {
+    if (tm.is_negated(t)) {
+        t = tm.positive_term(t);
+        out << "(not ";
+        pretty_print_term(t, tm, out);
+        out << ")";
+        return;
+    }
+
+    auto kind = tm.get_kind(t);
+    auto args = tm.get_args(t);
+
+    switch (kind) {
+    case terms::Kind::UNINTERPRETED_TERM:
+        out << tm.get_term_name(t).value_or("<?>");
+        break;
+
+    case terms::Kind::CONSTANT_TERM:
+    case terms::Kind::ARITH_CONSTANT:
+        out << tm.arithmetic_constant_value(t);
+        break;
+
+    case terms::Kind::ARITH_BINEQ_ATOM: {
+        out << "(= ";
+        pretty_print_term(args[0], tm, out);
+        out << " ";
+        pretty_print_term(args[1], tm, out);
+        out << ")";
+        break;
+    }
+
+    case terms::Kind::ARITH_EQ_ATOM:
+        out << "(= ";
+        pretty_print_term(args[0], tm, out);
+        out << " ";
+        pretty_print_term(args[1], tm, out);
+        out << ")";
+        break;
+
+    case terms::Kind::ARITH_GE_ATOM:
+        out << "(>= ";
+        pretty_print_term(args[0], tm, out);
+        out << " 0)";
+        break;
+
+    case terms::Kind::ARITH_PRODUCT:
+        out << "(* ";
+        pretty_print_term(args[0], tm, out);
+        out << " ";
+        pretty_print_term(args[1], tm, out);
+        out << ")";
+        break;
+
+    case terms::Kind::ARITH_POLY:
+        out << "(+";
+        for (const auto& arg : args) {
+            out << " ";
+            pretty_print_term(arg, tm, out);
+        }
+        out << ")";
+        break;
+
+    case terms::Kind::OR_TERM:
+        out << "(or";
+        for (const auto& arg : args) {
+            out << " ";
+            pretty_print_term(arg, tm, out);
+        }
+        out << ")";
+        break;
+
+    case terms::Kind::XOR_TERM:
+        out << "(xor";
+        for (const auto& arg : args) {
+            out << " ";
+            pretty_print_term(arg, tm, out);
+        }
+        out << ")";
+        break;
+
+    case terms::Kind::APP_TERM: {
+        std::string fname = std::string(tm.get_term_name(tm.get_fnc_symbol(t)).value_or("<?>"));
+        out << "(" << fname;
+        for (const auto& arg : args) {
+            out << " ";
+            pretty_print_term(arg, tm, out);
+        }
+        out << ")";
+        break;
+    }
+
+    default:
+        out << "<unknown>";
+        break;
+    }
+}
 } // namespace yaga::utils
