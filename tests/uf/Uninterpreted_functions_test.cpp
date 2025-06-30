@@ -151,8 +151,14 @@ TEST_CASE("UF: Parse a simple satisfiable formula", "[uf][sat][integration]")
     test.run();
 
     REQUIRE(test.answer() == Solver_answer::SAT);
-    REQUIRE(*test.real("x") != *test.real("y"));
-    REQUIRE(*test.fnc_value("f", {*test.real("x")}) != *test.fnc_value("f", {*test.real("y")}));
+    REQUIRE(test.real("x").has_value());
+    REQUIRE(test.real("y").has_value());
+    auto x = *test.real("x");
+    auto y = *test.real("y");
+    REQUIRE(x != y);
+    REQUIRE(test.fnc_value("f", {x}).has_value());
+    REQUIRE(test.fnc_value("f", {y}).has_value());
+    REQUIRE(*test.fnc_value("f", {x}) != *test.fnc_value("f", {y}));
 }
 
 TEST_CASE("UF: Parse a binary function", "[uf][sat][integration]")
@@ -167,17 +173,27 @@ TEST_CASE("UF: Parse a binary function", "[uf][sat][integration]")
     test.run();
 
     REQUIRE(test.answer() == Solver_answer::SAT);
+    REQUIRE(test.real("x").has_value());
+    REQUIRE(test.real("y").has_value());
     auto x = *test.real("x");
     auto y = *test.real("y");
     REQUIRE(x != y);
     REQUIRE(x != 0);
     REQUIRE(y != 0);
-    REQUIRE(*test.fnc_value("f", {0, x}) != *test.fnc_value("f", {0, y}));
-    REQUIRE(*test.fnc_value("f", {0, x}) != *test.fnc_value("f", {x, 0}));
-    REQUIRE(*test.fnc_value("f", {0, x}) != *test.fnc_value("f", {y, 0}));
-    REQUIRE(*test.fnc_value("f", {0, y}) != *test.fnc_value("f", {x, 0}));
-    REQUIRE(*test.fnc_value("f", {0, y}) != *test.fnc_value("f", {y, 0}));
-    REQUIRE(*test.fnc_value("f", {x, 0}) != *test.fnc_value("f", {y, 0}));
+    REQUIRE(test.fnc_value("f", {0, x}).has_value());
+    REQUIRE(test.fnc_value("f", {0, y}).has_value());
+    REQUIRE(test.fnc_value("f", {x, 0}).has_value());
+    REQUIRE(test.fnc_value("f", {y, 0}).has_value());
+    auto f_0_x = *test.fnc_value("f", {0, x});
+    auto f_0_y = *test.fnc_value("f", {0, y});
+    auto f_x_0 = *test.fnc_value("f", {x, 0});
+    auto f_y_0 = *test.fnc_value("f", {y, 0});
+    REQUIRE(f_0_x != f_0_y);
+    REQUIRE(f_0_x != f_x_0);
+    REQUIRE(f_0_x != f_y_0);
+    REQUIRE(f_0_y != f_x_0);
+    REQUIRE(f_0_y != f_y_0);
+    REQUIRE(f_x_0 != f_y_0);
 }
 
 TEST_CASE("UF: Parse an unsat binary function", "[uf][unsat][integration]")
