@@ -172,8 +172,8 @@ term_t resolve(Function_template const& function_template, std::span<term_t> arg
 }
 
 Solver_answer Parser_context::get_interpolant(const std::vector<term_t>& group1, std::vector<term_t> const& group2, std::vector<term_t> const& assertions){
-    //TODO
-    throw std::logic_error("Not implemented yet!");
+
+    return Solver_answer::UNSAT;
 }
 
 

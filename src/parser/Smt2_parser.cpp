@@ -156,10 +156,9 @@ bool sets_are_disjoint(const std::unordered_set<std::string>& setA,
     const auto& smaller = (setA.size() < setB.size()) ? setA : setB;
     const auto& larger = (setA.size() < setB.size()) ? setB : setA;
 
-    for (const auto& val : smaller) {
-        if (larger.count(val)) return false;
-    }
-    return true;
+    return std::none_of(smaller.begin(), smaller.end(), [&](const auto& item) {
+        return larger.contains(item);
+    });
 }
 
 class Smt2_command_context {
@@ -247,7 +246,7 @@ bool Smt2_command_context::parse_command()
 
         terms::type_t ret_type = term_parser.parse_sort();
 
-        if (sorts.size() == 0)
+        if (sorts.empty())
             parser_context.declare_uninterpreted_constant(ret_type, name);
         else if (parser_context.has_uf())
             parser_context.declare_uninterpreted_function(ret_type, std::move(sorts), name);
@@ -369,16 +368,18 @@ bool Smt2_command_context::parse_command()
         }
 
         if (last_answer == Solver_answer::SAT) {
-            // TODO: Implement -> no interpolant exists
+            parse_error("The environment status is not UNSAT");
         } else {
             auto groups_terms = assign_terms_by_name_to_groups(groups.first, groups.second);
 
             if (groups_terms.first.empty() || groups_terms.second.empty()){
                 parse_error("Invalid interpolation groups: both groups must contain at least one assertion");
             }
-            //last_answer = parser_context.get_interpolant(groups_terms.first, groups_terms.second, assertions);
-            //print_answer(last_answer.value());
-            // TODO: Print or process interpolant as needed
+            last_answer = parser_context.get_interpolant(groups_terms.first, groups_terms.second, assertions);
+            print_answer(last_answer.value());
+            if (last_answer == Solver_answer::UNSAT){
+                // TODO: Print or process interpolant as needed
+            }
         }
 
         return true;    // we consumed all the input for this token, we can return
@@ -491,10 +492,10 @@ std::pair<std::vector<term_t>, std::vector<term_t>> Smt2_command_context::assign
 
         auto name = std::string(*maybe_name);  // Convert string_view to string
 
-        if (group1.count(name)) {
+        if (group1.contains(name)) {
             group1_terms.push_back(assertion);
         }
-        else if (group2_is_complement || group2.count(name)) {
+        else if (group2_is_complement || group2.contains(name)) {
             group2_terms.push_back(assertion);
         }
     }
