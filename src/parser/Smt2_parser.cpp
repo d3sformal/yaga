@@ -161,39 +161,7 @@ bool sets_are_disjoint(const std::unordered_set<std::string>& setA,
     });
 }
 
-class Smt2_command_context {
-    std::istream& input;
-    std::ostream& output;
-    smt2_lexer lexer;
-
-    Smt2_term_parser term_parser;
-    Parser_context parser_context;
-    terms::Term_manager& term_manager;
-    std::vector<term_t> assertions;
-    std::optional<Solver_answer> last_answer;
-
-    bool parse_command();
-
-    void parse_error(std::string const& msg);
-
-    std::pair<std::vector<term_t>, std::vector<term_t>> assign_terms_by_name_to_groups(const std::unordered_set<std::string>& group1, const std::unordered_set<std::string>& group2);
-
-    void print_answer(Solver_answer answer);
-
-public:
-    Smt2_command_context(std::istream& input, std::ostream& output, terms::Term_manager& term_manager, Options const& opts)
-        : input(input), output(output), term_parser(lexer, parser_context), parser_context(term_manager, opts), term_manager(term_manager)
-    {}
-    void execute();
-};
-
-void Smt2_command_context::execute()
-{
-    lexer.yyrestart(input);
-    while(parse_command()) { /* empty */ }
-}
-
-bool Smt2_command_context::parse_command()
+bool Smt2_parser::parse_command(std::ostream& output, Smt2_term_parser& term_parser, Parser_context& parser_context)
 {
     if (lexer.eat_token_choice(Token::EOF_TOK, Token::LPAREN_TOK))
     {
@@ -222,7 +190,7 @@ bool Smt2_command_context::parse_command()
     case Token::CHECK_SAT_TOK:
     {
         last_answer = parser_context.check_sat(assertions);
-        print_answer(*last_answer);
+        print_answer(*last_answer, output);
     }
     break;
 
@@ -376,7 +344,7 @@ bool Smt2_command_context::parse_command()
                 parse_error("Invalid interpolation groups: both groups must contain at least one assertion");
             }
             last_answer = parser_context.get_interpolant(groups_terms.first, groups_terms.second, assertions);
-            print_answer(last_answer.value());
+            print_answer(last_answer.value(), output);
             if (last_answer == Solver_answer::UNSAT){
                 // TODO: Print or process interpolant as needed
             }
@@ -450,11 +418,11 @@ bool Smt2_command_context::parse_command()
     lexer.eat_token(Token::RPAREN_TOK);
     return true;
 }
-void Smt2_command_context::parse_error(std::string const& msg)
+void Smt2_parser::parse_error(std::string const& msg)
 {
     throw std::runtime_error(msg);
 }
-void Smt2_command_context::print_answer(Solver_answer answer)
+void Smt2_parser::print_answer(Solver_answer answer,  std::ostream& output)
 {
     switch (answer)
     {
@@ -474,7 +442,7 @@ void Smt2_command_context::print_answer(Solver_answer answer)
 
 }
 
-std::pair<std::vector<term_t>, std::vector<term_t>> Smt2_command_context::assign_terms_by_name_to_groups(const std::unordered_set<std::string>& group1, const std::unordered_set<std::string>& group2){
+std::pair<std::vector<term_t>, std::vector<term_t>> Smt2_parser::assign_terms_by_name_to_groups(const std::unordered_set<std::string>& group1, const std::unordered_set<std::string>& group2){
     std::vector<term_t> group1_terms;
     std::vector<term_t> group2_terms;
 
@@ -513,9 +481,11 @@ void Smt2_parser::parse_file(std::string const& file_name)
 
 void Smt2_parser::parse(std::istream& input, std::ostream& output)
 {
-    terms::Term_manager tm;
-    Smt2_command_context ctx(input, output, tm, options);
-    ctx.execute();
+    Parser_context parser_context(term_manager, options);
+    Smt2_term_parser term_parser(lexer, parser_context);
+
+    lexer.yyrestart(input);
+    while(parse_command(output, term_parser, parser_context)) { /* empty */ }
 }
 
 } // namespace yaga::parser
