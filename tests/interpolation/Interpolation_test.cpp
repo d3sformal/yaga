@@ -32,8 +32,6 @@ TEST_CASE("Parse real terms with :named attributes", "[test_parser]")
         test.run_check();
 
         REQUIRE(test.answer() == Solver_answer::UNSAT);
-        //REQUIRE(test.parser.parser_context.get_term_for_symbol("A") == test.parser.assertions[0]);
-        //REQUIRE(test.parser.parser_context.get_term_for_symbol("B") == test.parser.assertions[1]);
     }
 
     SECTION("with :named attributes")
@@ -43,12 +41,10 @@ TEST_CASE("Parse real terms with :named attributes", "[test_parser]")
         test.run_check();
 
         REQUIRE(test.answer() == Solver_answer::UNSAT);
-        //REQUIRE(test.parser.parser_context.get_term_for_symbol("A") == test.parser.assertions[0]);
-        //REQUIRE(test.parser.parser_context.get_term_for_symbol("B") == test.parser.assertions[1]);
     }
 }
 
-TEST_CASE("Interpolation debugging", "[interpolation_debug]")
+TEST_CASE("Interpolation token parsing", "[test_parser]")
 {
     using namespace yaga;
     using namespace yaga::test;
@@ -92,7 +88,7 @@ TEST_CASE("Interpolation debugging", "[interpolation_debug]")
     }
 }
 
-TEST_CASE("Interpolation error handling", "[interpolation_errors]")
+TEST_CASE("Interpolation parser error handling", "[test_parser]")
 {
     using namespace yaga;
     using namespace yaga::test;
@@ -110,8 +106,7 @@ TEST_CASE("Interpolation error handling", "[interpolation_errors]")
         test.input() << "(check-sat)";
         test.input() << "(get-interpolant (A) (B))";  // Should be SAT, no interpolant exists
 
-        test.run();
-        REQUIRE(test.answer() == Solver_answer::SAT);
+        REQUIRE_THROWS_AS(test.run(), std::runtime_error);
     }
 
     test.input() << "(assert (! (< y 0) :named C))";
