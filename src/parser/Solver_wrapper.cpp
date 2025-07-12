@@ -118,6 +118,19 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
     }
 }
 
+Solver_answer Solver_wrapper::interpolate(const std::vector<terms::term_t> & group1, const std::vector<terms::term_t> & group2) {
+    //TODO: inicialize the solver -> inspiration the model() method
+
+    return Solver_answer::UNSAT;
+}
+
+void Solver_wrapper::get_interpolant() {
+
+    auto interpolant = solver.solver().get_interpolant();
+    //convert std::vector<std::vector<Literal>> into std::vector<tems:term_t>
+    //TODO print interpolant with the Utils method pretty print
+}
+
 utils::Linear_polynomial Internalizer_config::internalize_poly(term_t t)
 {
     auto kind = term_manager.get_kind(t);

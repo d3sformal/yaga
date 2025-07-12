@@ -343,10 +343,11 @@ bool Smt2_parser::parse_command(std::ostream& output, Smt2_term_parser& term_par
             if (groups_terms.first.empty() || groups_terms.second.empty()){
                 parse_error("Invalid interpolation groups: both groups must contain at least one assertion");
             }
-            last_answer = parser_context.get_interpolant(groups_terms.first, groups_terms.second, assertions);
+            last_answer = parser_context.interpolate(groups_terms.first, groups_terms.second);
             print_answer(last_answer.value(), output);
             if (last_answer == Solver_answer::UNSAT){
                 // TODO: Print or process interpolant as needed
+                parser_context.get_interpolant();
             }
         }
 

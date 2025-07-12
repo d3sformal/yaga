@@ -174,6 +174,16 @@ public:
      */
     inline Theory* theory() { return solver_theory.get(); }
 
+    /** Check satisfiability modulo model of asserted clauses in database `db()`
+     *
+     * @return `sat` if asserted clauses are satisfiable, `unsat` otherwise
+     */
+    Result check(Trail input_model);
+
+    Result interpolate(std::vector<Clause> group1, std::vector<Clause> group2);
+
+    inline std::vector<Clause> const& get_interpolant() {return interpolant; }
+
 private:
     Event_dispatcher dispatcher;
     Trail solver_trail;
@@ -195,6 +205,8 @@ private:
     int total_learned_clauses = 0;
     int total_restarts = 0;
     int total_decisions = 0;
+
+    std::vector<Clause> interpolant;
 
     // run propagate in theory
     [[nodiscard]] std::vector<Clause> propagate();
