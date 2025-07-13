@@ -227,12 +227,9 @@ Solver::Result Solver::check()
     }
 }
 
-Solver::Result Solver::check(yaga::Trail input_model) {
-    return Result::unsat;
-}
+Solver::Result Solver::check(const TrailModelsSnapshot& input_model) {
 
-Solver::Result Solver::interpolate(std::vector<Clause> group1, std::vector<Clause> group2) {
-    return Result::unsat;
+    return check();
 }
 
 } // namespace yaga

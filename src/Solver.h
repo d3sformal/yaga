@@ -178,11 +178,9 @@ public:
      *
      * @return `sat` if asserted clauses are satisfiable, `unsat` otherwise
      */
-    Result check(Trail input_model);
+    Result check(const TrailModelsSnapshot& input_model);
 
-    Result interpolate(std::vector<Clause> group1, std::vector<Clause> group2);
-
-    inline std::vector<Clause> const& get_interpolant() {return interpolant; }
+    inline const std::vector<Clause>& get_interpolant() { return interpolant; }
 
 private:
     Event_dispatcher dispatcher;

@@ -20,16 +20,9 @@ bool Solver_wrapper::has_uf() {
     return solver.has_uf();
 }
 
-Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
-{
-    if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
-    {
-        return Solver_answer::UNSAT;
-    }
+void Solver_wrapper::prepare_assertions_and_assert_clauses(const std::vector<terms::term_t>& assertions) {
 
-    // Cnfize and assert clauses to the solver
-    solver.init();
-
+    // CNF-ize and assert clauses to the solver
     internalizer.visit(assertions);
 
     // add top level assertions to the solver
@@ -45,8 +38,9 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
         }
         solver.assert_clause(literal);
     }
+}
 
-    // remember term-variable mapping
+void Solver_wrapper::remember_term_variable_mapping(){
     variables.clear();
 
     for (auto& [term, lit] : internalizer_config.bool_vars())
@@ -63,6 +57,18 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
             variables.insert({term, Variable{var_ord, Variable::rational}});
         }
     }
+}
+
+Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
+{
+    if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
+    {
+        return Solver_answer::UNSAT;
+    }
+    solver.init();
+
+    prepare_assertions_and_assert_clauses(assertions);
+    remember_term_variable_mapping();
 
     auto res = solver.solver().check();
 
@@ -119,9 +125,49 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
 }
 
 Solver_answer Solver_wrapper::interpolate(const std::vector<terms::term_t> & group1, const std::vector<terms::term_t> & group2) {
-    //TODO: inicialize the solver -> inspiration the model() method
 
-    return Solver_answer::UNSAT;
+    solver.init();
+    prepare_assertions_and_assert_clauses(group1);
+    // Save asserted clauses for group1
+    std::vector<Clause> clausesGroup1(solver.solver().db().asserted().begin(), solver.solver().db().asserted().end());
+
+    solver.init();
+    prepare_assertions_and_assert_clauses(group2);
+    // Save asserted clauses for group2
+    std::vector<Clause> clausesGroup2(solver.solver().db().asserted().begin(), solver.solver().db().asserted().end());
+
+    remember_term_variable_mapping();
+
+    std::vector<std::vector<Literal>> interpolant;
+
+    //the interpolation while loop
+    for(;;) {
+        solver.init();
+        // Re-assert all clauses for group2
+        for (const auto& clause : clausesGroup2) {
+            solver.assert_clause(clause);
+        }
+        // Re-assert all clauses for the current interpolant (if any)
+        for (const auto& clause : interpolant) {
+            solver.assert_clause(clause);
+        }
+        auto result = solver.solver().check();
+        if (result == Solver::Result::unsat){
+            return Solver_answer::UNSAT;
+        }
+
+        TrailModelsSnapshot model(solver.solver().trail());
+        solver.init();
+        // Re-assert all clauses for group1
+        for (const auto& clause : clausesGroup1) {
+            solver.assert_clause(clause);
+        }
+        result = solver.solver().check(model);
+        if (result == Solver::Result::sat){
+            return Solver_answer::SAT;
+        }
+        interpolant.insert(interpolant.end(), solver.solver().get_interpolant().begin(), solver.solver().get_interpolant().end());
+    }
 }
 
 void Solver_wrapper::get_interpolant() {

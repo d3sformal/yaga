@@ -128,6 +128,8 @@ class Solver_wrapper
 
     Internalizer_config internalizer_config;
     terms::Visitor<Internalizer_config> internalizer;
+    void prepare_assertions_and_assert_clauses(const std::vector<terms::term_t>& assertions);
+    void remember_term_variable_mapping();
 
     Yaga solver;
 
