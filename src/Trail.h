@@ -6,6 +6,7 @@
 #include <optional>
 #include <tuple>
 #include <vector>
+#include <numeric>
 
 #include "Clause.h"
 #include "Literal.h"
@@ -285,6 +286,55 @@ private:
     // models managed by this trail
     std::vector<std::unique_ptr<Model_base>> var_models;
 };
+
+class TrailModelsSnapshot {
+
+public:
+    TrailModelsSnapshot(const yaga::Trail& trail){
+        int num_models = static_cast<int>(Variable::Type::LAST_ELEMENT);
+        var_models.resize(num_models);
+        indexes.resize(num_models);
+        for (int i = 0; i <= static_cast<int>(Variable::Type::LAST_ELEMENT); ++i) {
+            var_models[i] = trail.model(static_cast<Variable::Type>(i)).clone_as_ptr();
+        }
+    }
+
+
+    std::size_t size() const {
+        return std::accumulate(
+            var_models.begin(), var_models.end(), std::size_t{0},
+            [](std::size_t sum, const std::unique_ptr<Model_base>& m) {
+                return sum + (m ? m->num_vars() : 0);
+            });
+    }
+
+
+    std::optional<size_t> next_decision(Variable::Type type) {
+
+        auto& model = *var_models[type];
+
+        for (size_t i = indexes[type]; i < model.num_vars(); ++i)
+        {
+            if (model.is_defined(i)){
+                indexes[type] = i + 1;
+                return i;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    template <typename T> inline Model<T> const& model(Variable::Type type) const
+    {
+        return dynamic_cast<Model<T>&>(*var_models[type]);
+    }
+
+
+private:
+    std::vector<std::unique_ptr<Model_base>> var_models;
+    std::vector<size_t> indexes;
+
+    };
 
 } // namespace yaga
 
