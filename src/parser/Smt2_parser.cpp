@@ -388,9 +388,9 @@ bool Smt2_parser::parse_command(std::ostream& output, Smt2_term_parser& term_par
     {
         std::string name = term_parser.parse_symbol();
         if (name == "QF_UFLRA") {
-            parser_context.set_logic(logic::qf_uflra);
+            parser_context.set_logic(logic_enum::QF_UFLRA);
         } else if (name == "QF_LRA") {
-            parser_context.set_logic(logic::qf_lra);
+            parser_context.set_logic(logic_enum::QF_LRA);
         } else {
             std::cerr << "Unsupported logic " << name << std::endl;
             return false;

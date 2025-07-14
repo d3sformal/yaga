@@ -62,8 +62,8 @@ Solver_answer Parser_context::check_sat(std::vector<term_t> const& assertions)
     return solver.check(assertions);
 }
 
-void Parser_context::set_logic(Initializer const& init) {
-    solver.set_logic(init);
+void Parser_context::set_logic(logic_enum logic) {
+    solver.set_logic(logic);
 }
 
 bool Parser_context::has_uf() {
@@ -173,7 +173,15 @@ term_t resolve(Function_template const& function_template, std::span<term_t> arg
 
 Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, std::vector<term_t> const& group2){
 
-    return solver.interpolate(group1, group2);
+    auto res = solver.check(group2);
+    std::cout << (res == Solver_answer::SAT ? "SAT" : "UNSAT") << std::endl;
+
+    auto model = solver.get_trail_models_snapshot();
+    auto mapping = solver.get_variable_mapping();
+
+    solver.reset();
+    res = solver.check(group1, model, mapping);
+    return res;
 }
 
 void Parser_context::get_interpolant() {

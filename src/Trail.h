@@ -287,14 +287,21 @@ private:
     std::vector<std::unique_ptr<Model_base>> var_models;
 };
 
+/*
+ * TrailModelsSnapshot is a snapshot of the trail models at a given point in time.
+ * It is used to store the models of the trail at a given point in time.
+*/
 class TrailModelsSnapshot {
 
 public:
     TrailModelsSnapshot(const yaga::Trail& trail){
-        int num_models = static_cast<int>(Variable::Type::LAST_ELEMENT);
+        int num_models = static_cast<int>(Variable::Type::LAST_ELEMENT) + 1;
         var_models.resize(num_models);
         indexes.resize(num_models);
-        for (int i = 0; i <= static_cast<int>(Variable::Type::LAST_ELEMENT); ++i) {
+
+        std::cout << "Size models " << trail.models().size() << std::endl;
+
+        for (int i = 0; i < num_models; ++i) {
             var_models[i] = trail.model(static_cast<Variable::Type>(i)).clone_as_ptr();
         }
     }
@@ -308,7 +315,9 @@ public:
             });
     }
 
-
+    /*
+     * Get the next decision for a given type
+     */
     std::optional<size_t> next_decision(Variable::Type type) {
 
         auto& model = *var_models[type];

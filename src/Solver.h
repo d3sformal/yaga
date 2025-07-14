@@ -178,9 +178,17 @@ public:
      *
      * @return `sat` if asserted clauses are satisfiable, `unsat` otherwise
      */
-    Result check(const TrailModelsSnapshot& input_model);
+    Result check(TrailModelsSnapshot& input_model);
 
-    inline const std::vector<Clause>& get_interpolant() { return interpolant; }
+    inline const std::vector<Clause>& get_model_interpolant() { return interpolant; }
+
+    /*
+     * Reset the solver
+     */
+    void reset(){
+        trail().clear();
+        interpolant.clear();
+    };
 
 private:
     Event_dispatcher dispatcher;

@@ -12,12 +12,17 @@ Solver_wrapper::Solver_wrapper(terms::Term_manager& term_manager, Options const&
       internalizer_config(term_manager, solver), internalizer(term_manager, internalizer_config),
       solver(term_manager, internalizer_config.rational_vars(), internalizer_config.bool_vars()) {}
 
-void Solver_wrapper::set_logic(Initializer const& init) {
-    solver.set_logic(init, options);
+void Solver_wrapper::set_logic(logic_enum logic) {
+    solver.set_logic(logic, options);
 }
 
 bool Solver_wrapper::has_uf() {
     return solver.has_uf();
+}
+
+void Solver_wrapper::reset() {
+    solver.reset();
+    internalizer.reset();
 }
 
 void Solver_wrapper::prepare_assertions_and_assert_clauses(const std::vector<terms::term_t>& assertions) {
@@ -124,57 +129,19 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
     }
 }
 
-Solver_answer Solver_wrapper::interpolate(const std::vector<terms::term_t> & group1, const std::vector<terms::term_t> & group2) {
+Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions,
+                    TrailModelsSnapshot& trail_snapshot,
+                    std::unordered_map<terms::term_t, Variable> variables_mapping){
 
-    solver.init();
-    prepare_assertions_and_assert_clauses(group1);
-    // Save asserted clauses for group1
-    std::vector<Clause> clausesGroup1(solver.solver().db().asserted().begin(), solver.solver().db().asserted().end());
-
-    solver.init();
-    prepare_assertions_and_assert_clauses(group2);
-    // Save asserted clauses for group2
-    std::vector<Clause> clausesGroup2(solver.solver().db().asserted().begin(), solver.solver().db().asserted().end());
-
-    remember_term_variable_mapping();
-
-    std::vector<std::vector<Literal>> interpolant;
-
-    //the interpolation while loop
-    for(;;) {
-        solver.init();
-        // Re-assert all clauses for group2
-        for (const auto& clause : clausesGroup2) {
-            solver.assert_clause(clause);
-        }
-        // Re-assert all clauses for the current interpolant (if any)
-        for (const auto& clause : interpolant) {
-            solver.assert_clause(clause);
-        }
-        auto result = solver.solver().check();
-        if (result == Solver::Result::unsat){
-            return Solver_answer::UNSAT;
-        }
-
-        TrailModelsSnapshot model(solver.solver().trail());
-        solver.init();
-        // Re-assert all clauses for group1
-        for (const auto& clause : clausesGroup1) {
-            solver.assert_clause(clause);
-        }
-        result = solver.solver().check(model);
-        if (result == Solver::Result::sat){
-            return Solver_answer::SAT;
-        }
-        interpolant.insert(interpolant.end(), solver.solver().get_interpolant().begin(), solver.solver().get_interpolant().end());
-    }
+    return check(assertions);
 }
 
-void Solver_wrapper::get_interpolant() {
 
-    auto interpolant = solver.solver().get_interpolant();
-    //convert std::vector<std::vector<Literal>> into std::vector<tems:term_t>
-    //TODO print interpolant with the Utils method pretty print
+std::vector<terms::term_t> Solver_wrapper::get_interpolant() {
+
+    solver.solver().get_model_interpolant();
+    //TODO: transform from internal representaiton to tree structure
+    return {};
 }
 
 utils::Linear_polynomial Internalizer_config::internalize_poly(term_t t)

@@ -227,7 +227,12 @@ Solver::Result Solver::check()
     }
 }
 
-Solver::Result Solver::check(const TrailModelsSnapshot& input_model) {
+Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
+
+    // clear the interpolant -> done in init()
+    // in analyze conflinct -> if the decition level of the conflict is less than the size of the trail -> conflict is final
+    // in analyze final -> resolving all the propagations
+    // decisions ->
 
     return check();
 }

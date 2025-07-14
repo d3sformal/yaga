@@ -176,7 +176,7 @@ public:
 
     Solver_answer check_sat(std::vector<term_t> const& assertions);
 
-    void set_logic(Initializer const& init);
+    void set_logic(logic_enum logic);
 
     bool has_uf();
 
