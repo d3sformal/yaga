@@ -62,6 +62,42 @@ public:
         return analyze(trail, std::move(conflict), [](auto const&) {});
     }
 
+
+    /** Remove all propagated literals from the clause using resolution
+     *
+     *
+     * @param trail current trail
+     * @param clause clause that is false in @p trail and containes propagations
+     * @return clause without any propagated literals.
+     */
+    Clause analyze_final(Trail const& trail, Clause&& clause){
+        auto const& model = trail.model<bool>(Variable::boolean);
+        assert(eval(model, clause) == false);
+
+        init(trail, clause);
+
+        for (int i = 0; i <= top_level; ++i)
+        {
+            auto const& assigned = trail.assigned(i);
+
+            for(auto it = assigned.rbegin(); conflict.size() > 1 && it != assigned.rend(); ++it){
+                auto [var, reason] = *it;
+
+                if (var.type() == Variable::boolean && reason != nullptr){
+                    auto lit =
+                        model.value(var.ord()) ? ~Literal{var.ord()} : Literal{var.ord()};
+                    if (can_resolve(lit)){
+                        final_resolve(trail, *reason, lit);
+                    }
+                }
+            }
+
+        }
+        Clause result(conflict.begin(), conflict.end());
+        assert(eval(model, result) == false);
+        return result;
+    }
+
 private:
     // TODO: use some open addressing implementation?
     // current conflict clause
@@ -80,6 +116,11 @@ private:
     // resolve current conflict with other clause using literal lit
     // (precondition: can_resolve(lit))
     void resolve(Trail const& trail, Clause const& other, Literal lit);
+    // resolve current conflict with other clause using literal lit
+    // the literal for resolving does not need to be at the top_level
+    // used for resolving all propagations from the conflict clause
+    void final_resolve(Trail const& trail, Clause const& other, Literal conflict_lit);
+
     // finish the conflict derivation
     std::pair<Clause, int> finish(Trail const& trail) const;
 };

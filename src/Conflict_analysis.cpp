@@ -39,6 +39,21 @@ void Conflict_analysis::resolve(Trail const& trail, Clause const& other, Literal
     --num_top_level;
 }
 
+void Conflict_analysis::final_resolve(Trail const& trail, Clause const& other, Literal conflict_lit)
+{
+    assert(can_resolve(conflict_lit));
+
+    for (auto lit : other)
+    {
+        if (lit != ~conflict_lit)
+        {
+            conflict.insert(lit);
+        }
+    }
+
+    conflict.erase(conflict.find(conflict_lit));
+}
+
 std::pair<Clause, int> Conflict_analysis::finish(Trail const& trail) const
 {
     Clause clause{conflict.begin(), conflict.end()};
