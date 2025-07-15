@@ -79,6 +79,17 @@ public:
      */
     void decide(Database&, Trail&, Variable) override;
 
+    /** Decide a valaue from the input model for variable @p
+     *
+     * The method should ignore the request if @p var is not owned by this
+     *
+     * @param db clause database
+     * @param trail current trail
+     * @param var variable to decide
+     * @param input_model partial model that holds the value of variable
+     */
+    virtual void decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) override;
+
     /** Propagate a fully assigned constraint @p cons to @p trail
      *
      * Precondition: @p cons (its boolean variable) is not on the trail

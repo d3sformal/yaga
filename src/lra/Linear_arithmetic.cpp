@@ -544,6 +544,23 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     trail.decide(var);
 }
 
+void Linear_arithmetic::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model) {
+    if (var.type() != Variable::rational)
+    {
+        return;
+    }
+
+    auto models = relevant_models(trail);
+
+    Rational value = input_model.model<Rational>(Variable::Type::rational).value(var.ord());
+
+    // decide the value
+    cached_values.set_value(var.ord(), value);
+    models.owned().set_value(var.ord(), value);
+    trail.decide(var);
+}
+
+
 void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& trail,
                                                  Models const& models)
 {

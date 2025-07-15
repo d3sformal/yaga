@@ -26,6 +26,16 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
     }
 }
 
+
+void Bool_theory::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model){
+    if (var.type() == Variable::boolean){
+        auto& model = trail.model<bool>(Variable::boolean);
+        auto value = input_model.model<bool>(Variable::boolean).value(var.ord());
+        model.set_value(var.ord(), value);
+    }
+    trail.decide(var);
+}
+
 void Bool_theory::on_variable_resize(Variable::Type type, int num_vars)
 {
     if (type == Variable::boolean)

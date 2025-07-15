@@ -36,6 +36,14 @@ void Theory_combination::decide(Database& db, Trail& trail, Variable var)
     }
 }
 
+void Theory_combination::decide(Database& db, Trail& trail, Variable var, TrailModelsSnapshot const& input_model) {
+    for (auto&& theory : theories())
+    {
+        theory->decide(db, trail, var, input_model);
+    }
+}
+
+
 void Theory_combination::on_init(Database& db, Trail& trail)
 {
     for (auto&& theory : theories())
