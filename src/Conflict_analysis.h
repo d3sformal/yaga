@@ -62,7 +62,6 @@ public:
         return analyze(trail, std::move(conflict), [](auto const&) {});
     }
 
-
     /** Remove all propagated literals from the clause using resolution
      *
      *
@@ -76,7 +75,7 @@ public:
 
         init(trail, clause);
 
-        for (int i = 0; i <= top_level; ++i)
+        for (int i = top_level; i >= 0; --i)
         {
             auto const& assigned = trail.assigned(i);
 
@@ -91,10 +90,15 @@ public:
                     }
                 }
             }
-
         }
+
         Clause result(conflict.begin(), conflict.end());
-        assert(eval(model, result) == false);
+        for (auto&& lit : result){
+            if (!model.value(lit.var().ord())){
+                lit.negate();
+            }
+        }
+        eval(model, result);
         return result;
     }
 
