@@ -134,9 +134,7 @@ void Utils::pretty_print_term(terms::term_t t, const terms::Term_manager& tm, st
     case terms::Kind::ARITH_EQ_ATOM:
         out << "(= ";
         pretty_print_term(args[0], tm, out);
-        out << " ";
-        pretty_print_term(args[1], tm, out);
-        out << ")";
+        out << " 0)";
         break;
 
     case terms::Kind::ARITH_GE_ATOM:
