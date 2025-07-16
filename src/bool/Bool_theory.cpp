@@ -32,8 +32,8 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var, TrailModelsSnaps
         auto& model = trail.model<bool>(Variable::boolean);
         auto value = input_model.model<bool>(Variable::boolean).value(var.ord());
         model.set_value(var.ord(), value);
+        trail.decide(var);
     }
-    trail.decide(var);
 }
 
 void Bool_theory::on_variable_resize(Variable::Type type, int num_vars)

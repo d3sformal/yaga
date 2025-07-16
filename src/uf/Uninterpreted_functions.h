@@ -52,7 +52,7 @@ public:
      * @param var variable to decide
      * @param input_model partial model that holds the value of variable
      */
-    void decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model) override;
+    void decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) override;
 
     /** Take action before the solver backtracks to decision level @p new_level
      *

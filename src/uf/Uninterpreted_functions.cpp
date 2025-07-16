@@ -62,7 +62,7 @@ void Uninterpreted_functions::decide(yaga::Database&, yaga::Trail&, yaga::Variab
     // empty (decisions are made by other plugins)
 }
 
-void Uninterpreted_functions::decide(yaga::Database&, yaga::Trail& trail, yaga::Variable var, yaga::TrailModelsSnapshot const& input_model) {
+void Uninterpreted_functions::decide(yaga::Database&, yaga::Trail&, yaga::Variable, yaga::TrailModelsSnapshot const&) {
     // empty (decisions are made by other plugins)
 }
 
@@ -310,6 +310,7 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
             assert(are_equal == (t_eval.value == u_eval.value));
 
             int propagation_level = std::max<int>(t_eval.decision_level, u_eval.decision_level);
+            std::cout << "var " << lit.var() << " level " << propagation_level << std::endl;
             trail.propagate(lit.var(), nullptr, propagation_level);
             trail_model.set_value(lit.var().ord(), are_equal);
         }
