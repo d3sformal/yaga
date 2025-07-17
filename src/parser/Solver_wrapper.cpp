@@ -133,7 +133,47 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
                     TrailModelsSnapshot& trail_snapshot,
                     std::unordered_map<terms::term_t, Variable> variables_mapping){
 
-    return check(assertions);
+    if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
+    {
+        return Solver_answer::UNSAT;
+    }
+    solver.init();
+
+    prepare_assertions_and_assert_clauses(assertions);
+    remember_term_variable_mapping();
+
+    TrailModelsSnapshot model(solver.solver().trail());
+    for (auto& [term, var] : variables){
+        auto old_map_it = variables_mapping.find(term);
+        if (old_map_it != variables_mapping.end()){
+            Variable& old_var = old_map_it->second;
+
+            switch (var.type())
+            {
+            case Variable::boolean:
+                model.model<bool>(Variable::boolean).set_value(var.ord(), trail_snapshot.model<bool>(Variable::boolean).value(old_var.ord()));
+                break;
+            case Variable::rational:
+                model.model<Rational >(Variable::rational).set_value(var.ord(), trail_snapshot.model<Rational>(Variable::rational).value(old_var.ord()));
+                break;
+            default:
+                std::cerr << "Not supported variable type" << std::endl;
+                return Solver_answer::UNKNOWN;
+            }
+        }
+    }
+    auto res = solver.solver().check(model);
+
+    if (res == Solver::Result::sat)
+    {
+        return Solver_answer::SAT;
+    }
+    else if (res == Solver::Result::unsat)
+    {
+        return Solver_answer::UNSAT;
+    }
+    assert(false);
+    return Solver_answer::UNKNOWN;
 }
 
 

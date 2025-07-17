@@ -47,6 +47,16 @@ std::pair<std::vector<Clause>, int> Solver::analyze_conflicts(std::vector<Clause
     return {learned, level};
 }
 
+std::vector<Clause> Solver::analyze_final(std::vector<Clause>&& learned_clauses){
+
+    std::vector<Clause> final;
+
+    for (auto&& clause : learned_clauses){
+        final.emplace_back(analysis.analyze_final(trail(), std::move(clause)));
+    }
+    return final;
+}
+
 Solver::Clause_range Solver::learn(std::vector<Clause>&& clauses)
 {
     // remove duplicate clauses
@@ -156,6 +166,11 @@ void Solver::decide(Variable var)
     theory()->decide(db(), trail(), var);
 }
 
+void Solver::decide(Variable var, TrailModelsSnapshot const& input_model){
+    ++total_decisions;
+    theory()->decide(db(), trail(), var, input_model);
+}
+
 void Solver::init()
 {
     // allocate memory
@@ -229,12 +244,66 @@ Solver::Result Solver::check()
 
 Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
 
-    // clear the interpolant -> done in init()
-    // in analyze conflinct -> if the decition level of the conflict is less than the size of the trail -> conflict is final
-    // in analyze final -> resolving all the propagations
-    // decisions ->
+    init();
 
-    return check();
+    for (;;)
+    {
+        auto conflicts = propagate();
+
+        if (!conflicts.empty())
+        {
+            if (trail().decision_level() == 0)
+            {
+                return Result::unsat;
+            }
+            auto [learned, level] = analyze_conflicts(std::move(conflicts));
+
+            if (std::any_of(learned.begin(), learned.end(), [](auto const& clause) { return clause.empty(); })
+                || level < input_model.size())
+            {
+                auto final = analyze_final(std::move(learned));
+                interpolant.insert(interpolant.end(), final.begin(), final.end());
+                return Result::unsat;
+            }
+
+            auto clauses = learn(std::move(learned));
+            if (restart_policy->should_restart())
+            {
+                input_model.restart();
+                restart();
+            }
+            else // backtrack instead of restarting
+            {
+                backtrack_with(clauses, level);
+            }
+        }
+        else // no conflict
+        {
+            //decide value from the input model
+            if (trail().decision_level() < input_model.size())
+            {
+                for (size_t i = 0; i <= Variable::Type::LAST_ELEMENT; ++i)
+                {
+                    auto res = input_model.next_decision(static_cast<Variable::Type>(i));
+                    if (res.has_value())
+                    {
+                        Variable var(res.value(), static_cast<Variable::Type>(i));
+                        decide(var, input_model);
+
+                        break;
+                    }
+                }
+            }
+            else { //if no previous decision then this branch
+                auto var = pick_variable();
+                if (!var)
+                {
+                    return Result::sat;
+                }
+                decide(var.value());
+            }
+        }
+    }
 }
 
 } // namespace yaga

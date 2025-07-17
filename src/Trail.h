@@ -299,24 +299,30 @@ public:
         var_models.resize(num_models);
         indexes.resize(num_models);
 
-        std::cout << "Size models " << trail.models().size() << std::endl;
-
         for (int i = 0; i < num_models; ++i) {
             var_models[i] = trail.model(static_cast<Variable::Type>(i)).clone_as_ptr();
         }
     }
 
-
+    /*
+     * number of defined variables
+     */
     std::size_t size() const {
         return std::accumulate(
             var_models.begin(), var_models.end(), std::size_t{0},
             [](std::size_t sum, const std::unique_ptr<Model_base>& m) {
-                return sum + (m ? m->num_vars() : 0);
+
+                for (size_t i = 0; i < m->num_vars(); ++i) {
+                    if (m->is_defined(i)) {
+                        ++sum;
+                    }
+                }
+                return sum;
             });
     }
 
     /*
-     * Get the next decision for a given type
+     * Get the next decision for a given type @p
      */
     std::optional<size_t> next_decision(Variable::Type type) {
 
@@ -333,17 +339,31 @@ public:
         return std::nullopt;
     }
 
+    template <typename T> inline Model<T>& model(Variable::Type type)
+    {
+        return dynamic_cast<Model<T>&>(*var_models[type]);
+    }
+
     template <typename T> inline Model<T> const& model(Variable::Type type) const
     {
         return dynamic_cast<Model<T>&>(*var_models[type]);
     }
 
+    /**
+     * Restarts the next_decision iteration for all variable types.
+     *
+     * Use this method when you want to re-iterate over all defined variables
+     * from the beginning for each type, without altering the snapshot's data.
+     */
+    void restart() {
+        std::fill(indexes.begin(), indexes.end(), 0);
+    }
 
 private:
     std::vector<std::unique_ptr<Model_base>> var_models;
     std::vector<size_t> indexes;
 
-    };
+};
 
 } // namespace yaga
 

@@ -232,6 +232,9 @@ private:
     void restart();
     // reset the solver for a new check()
     void init();
+
+    [[nodiscard]] std::vector<Clause> analyze_final(std::vector<Clause>&& learned_clauses);
+    void decide(Variable var, TrailModelsSnapshot const& input_model);
 };
 
 } // namespace yaga
