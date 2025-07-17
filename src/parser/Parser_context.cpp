@@ -171,22 +171,49 @@ term_t resolve(Function_template const& function_template, std::span<term_t> arg
     return terms::simultaneous_variable_substitution(term_manager, subst_map, function_template.body);
 }
 
-Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, std::vector<term_t> const& group2){
+Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, const std::vector<term_t>& group2){
+    std::vector<term_t> group2_and_interpolant(group2);
 
-    auto res = solver.check(group2);
-    std::cout << (res == Solver_answer::SAT ? "SAT" : "UNSAT") << std::endl;
+    for (; ;)
+    {
+        solver.reset();
 
-    auto model = solver.get_trail_models_snapshot();
-    auto mapping = solver.get_variable_mapping();
+        auto res = solver.check(group2_and_interpolant);
+        if (res == Solver_answer::UNSAT){
+            return Solver_answer::UNSAT;
+        }
+        auto model = solver.get_trail_models_snapshot();
+        auto mapping = solver.get_variable_mapping();
+        solver.reset();
 
-    solver.reset();
-    res = solver.check(group1, model, mapping);
-    return res;
+        res = solver.check(group1, model, mapping);
+        if (res == Solver_answer::SAT){
+            return Solver_answer::SAT;
+        }
+
+        auto model_interpolant = solver.get_interpolant();
+        interpolant.insert(interpolant.end(), model_interpolant.begin(), model_interpolant.end());
+        group2_and_interpolant.insert(group2_and_interpolant.end(), model_interpolant.begin(), model_interpolant.end());
+
+        // group1 is unsat
+        if (model_interpolant.size() == 1 && model_interpolant[0] == terms::false_term) {
+            return Solver_answer::UNSAT;
+        }
+
+        for (auto t : interpolant){
+            utils::Utils::pretty_print_term(t, term_manager, std::cout);
+            std::cout << std::endl;
+        }
+    }
+    return Solver_answer::UNKNOWN;
 }
 
 void Parser_context::get_interpolant() {
 
-    solver.get_interpolant();
+    for (auto t : interpolant){
+        utils::Utils::pretty_print_term(t, term_manager, std::cout);
+        std::cout << std::endl;
+    }
 }
 
 

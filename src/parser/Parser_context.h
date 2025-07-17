@@ -210,6 +210,7 @@ private:
     terms::Term_manager& term_manager;
 
     Solver_wrapper solver;
+    std::vector<term_t> interpolant;
 
     term_t resolve_defined_function(std::string const& name, std::span<term_t> args);
 };
