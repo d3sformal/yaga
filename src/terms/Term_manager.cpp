@@ -410,6 +410,10 @@ term_t Term_manager::mk_rational_constant(std::string const& str)
     return term_table->arithmetic_constant(num / den);
 }
 
+term_t Term_manager::mk_negated(term_t t){
+    return opposite_term(t);
+}
+
 bool Term_manager::is_var_like(term_t t) const
 {
     auto kind = get_kind(t);

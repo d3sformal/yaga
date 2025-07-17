@@ -177,11 +177,142 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
 }
 
 
-std::vector<terms::term_t> Solver_wrapper::get_interpolant() {
+std::vector<terms::term_t> Solver_wrapper::get_interpolant()
+{
+    // Get the interpolant as a vector of clauses (each clause is a vector of Literal)
+    auto& clauses = solver.solver().get_model_interpolant();
+    return convert_from_internal_representation_to_tree(clauses);
+}
 
-    solver.solver().get_model_interpolant();
-    //TODO: transform from internal representaiton to tree structure
-    return {};
+std::vector<terms::term_t> Solver_wrapper::convert_from_internal_representation_to_tree(std::vector<std::vector<Literal>> const& clauses ) {
+    std::vector<terms::term_t> result;
+
+    // Build a reverse mapping from Literal.var().ord() to term_t for boolean variables
+    std::unordered_map<int, terms::term_t> literal_to_term;
+    for (const auto& [term, lit] : internalizer_config.bool_vars()) {
+        literal_to_term[lit.var().ord()] = term;
+    }
+    // Build a reverse mapping from rational variable ordinal to term_t
+    std::unordered_map<int, terms::term_t> rational_var_to_term;
+    for (const auto& [term, var_ord] : internalizer_config.rational_vars()) {
+        rational_var_to_term[var_ord] = term;
+    }
+
+    // Get the LRA theory plugin (if available)
+    yaga::Linear_arithmetic* lra = nullptr;
+    if (auto* combo = dynamic_cast<yaga::Theory_combination*>(solver.solver().theory())) {
+        for (auto* theory : combo->theories()) {
+            lra = dynamic_cast<yaga::Linear_arithmetic*>(theory);
+            if (lra) break;
+        }
+    } else {
+        lra = dynamic_cast<yaga::Linear_arithmetic*>(solver.solver().theory());
+    }
+
+    for (const auto& clause : clauses) {
+        std::vector<terms::term_t> or_args;
+        for (const auto& lit : clause) {
+            int var_ord = lit.var().ord();
+            auto it = literal_to_term.find(var_ord);
+            if (it != literal_to_term.end()) {
+                terms::term_t term = it->second;
+                // If the literal is negated, wrap the term as negated
+                if (lit.is_negation()) {
+                    term = term_manager.positive_term(term);
+                    term.x ^= 1;
+                }
+                or_args.push_back(term);
+                continue;
+            }
+            // Fallback: try to find in variables mapping (for uninterpreted/app terms)
+            auto vit = std::find_if(variables.begin(), variables.end(),
+                [var_ord](const auto& p) { return p.second.type() == Variable::boolean && p.second.ord() == var_ord; });
+            if (vit != variables.end()) {
+                terms::term_t term = vit->first;
+                if (lit.is_negation()) {
+                    term = term_manager.positive_term(term);
+                    term.x ^= 1;
+                }
+                or_args.push_back(term);
+                continue;
+            }
+            // Try to reconstruct as an arithmetic literal (linear constraint)
+            if (lra) {
+                auto cons = lra->constraint(lit);
+                if (!cons.empty()) {
+                    // Map LRA variable ordinals to term_t
+                    std::vector<terms::term_t> poly_terms;
+                    std::vector<yaga::Rational> coefs;
+                    for (auto v : cons.vars()) {
+                        auto rit = rational_var_to_term.find(v);
+                        if (rit == rational_var_to_term.end()) {
+                            // Could not map variable, skip this literal
+                            poly_terms.clear();
+                            break;
+                        }
+                        poly_terms.push_back(rit->second);
+                    }
+                    if (poly_terms.size() != static_cast<size_t>(cons.size())) {
+                        // Could not map all variables
+                        continue;
+                    }
+                    for (auto c : cons.coef()) {
+                        coefs.push_back(c);
+                    }
+                    // Build the polynomial term
+                    // If only one variable, just use it; otherwise, build a sum
+                    terms::term_t poly_term;
+                    if (poly_terms.size() == 1 && coefs[0] == yaga::Rational(1) && cons.rhs() == 0) {
+                        poly_term = poly_terms[0];
+                    } else {
+                        // Build a polynomial term: sum_i (coef_i * var_i) + constant
+                        std::vector<terms::term_t> sum_terms;
+                        for (size_t i = 0; i < poly_terms.size(); ++i) {
+                            if (coefs[i] == 1) {
+                                sum_terms.push_back(poly_terms[i]);
+                            } else {
+                                std::vector<terms::term_t> factors{poly_terms[i], term_manager.mk_rational_constant(coefs[i].get_str())};
+                                sum_terms.push_back(term_manager.mk_arithmetic_times(factors));
+                            }
+                        }
+                        if (cons.rhs() != 0) {
+                            sum_terms.push_back(term_manager.mk_rational_constant((-cons.rhs()).get_str()));
+                        }
+                        poly_term = term_manager.mk_arithmetic_plus(sum_terms);
+                    }
+                    // Determine the predicate and build the atom
+                    yaga::Order_predicate pred = cons.pred();
+                    terms::term_t atom;
+                    if (pred == yaga::Order_predicate::leq) {
+                        atom = term_manager.mk_arithmetic_leq(poly_term, terms::zero_term);
+                    } else if (pred == yaga::Order_predicate::lt) {
+                        atom = term_manager.mk_arithmetic_lt(poly_term, terms::zero_term);
+                    } else if (pred == yaga::Order_predicate::eq) {
+                        atom = term_manager.mk_arithmetic_eq(poly_term, terms::zero_term);
+                    } else {
+                        continue;
+                    }
+                    if (lit.is_negation()){
+                        atom = term_manager.mk_negated(atom);
+                    }
+
+                    or_args.push_back(atom);
+                    continue;
+                }
+            }
+            // Could not find mapping, skip this literal
+            continue;
+        }
+        if (or_args.empty()) {
+            result.push_back(terms::false_term);
+        } else if (or_args.size() == 1) {
+            result.push_back(or_args[0]);
+        } else {
+            // Build an OR term
+            result.push_back(term_manager.mk_or(or_args));
+        }
+    }
+    return result;
 }
 
 utils::Linear_polynomial Internalizer_config::internalize_poly(term_t t)

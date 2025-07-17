@@ -122,6 +122,8 @@ public:
 
     term_t mk_ite(term_t i, term_t t, term_t e);
 
+    term_t mk_negated(term_t t);
+
     /*
      * term names
      */

@@ -138,6 +138,8 @@ class Solver_wrapper
     void remember_term_variable_mapping();
 
     Yaga solver;
+    std::vector<terms::term_t> convert_from_internal_representation_to_tree(std::vector<std::vector<Literal>> const& clauses );
+
 
 public:
     Solver_wrapper(terms::Term_manager& term_manager, Options const& options);
