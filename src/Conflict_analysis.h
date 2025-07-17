@@ -86,19 +86,14 @@ public:
                     auto lit =
                         model.value(var.ord()) ? ~Literal{var.ord()} : Literal{var.ord()};
                     if (can_resolve(lit)){
-                        final_resolve(trail, *reason, lit);
+                        final_resolve(*reason, lit);
                     }
                 }
             }
         }
 
         Clause result(conflict.begin(), conflict.end());
-        for (auto&& lit : result){
-            if (!model.value(lit.var().ord())){
-                lit.negate();
-            }
-        }
-        eval(model, result);
+        assert(eval(model, result) == false);
         return result;
     }
 
@@ -123,7 +118,7 @@ private:
     // resolve current conflict with other clause using literal lit
     // the literal for resolving does not need to be at the top_level
     // used for resolving all propagations from the conflict clause
-    void final_resolve(Trail const& trail, Clause const& other, Literal conflict_lit);
+    void final_resolve(Clause const& other, Literal conflict_lit);
 
     // finish the conflict derivation
     std::pair<Clause, int> finish(Trail const& trail) const;

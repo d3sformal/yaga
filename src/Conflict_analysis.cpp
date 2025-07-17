@@ -39,7 +39,7 @@ void Conflict_analysis::resolve(Trail const& trail, Clause const& other, Literal
     --num_top_level;
 }
 
-void Conflict_analysis::final_resolve(Trail const& trail, Clause const& other, Literal conflict_lit)
+void Conflict_analysis::final_resolve(Clause const& other, Literal conflict_lit)
 {
     assert(can_resolve(conflict_lit));
 
