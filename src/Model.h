@@ -4,6 +4,7 @@
 #include <optional>
 #include <vector>
 #include <memory>
+#include <iostream>
 
 #include "Clause.h"
 #include "Literal.h"
@@ -154,6 +155,7 @@ inline std::optional<bool> eval(Model<bool> const& model, Clause const& clause)
     for (auto lit : clause)
     {
         auto val = eval(model, lit);
+        std::cout << "EVAL: Literal " << lit.var() << " is negated " << static_cast<bool>(lit.is_negation()) << " value form model " << static_cast<bool>(model.value(lit.var().ord())) << std::endl;
         if (val == true)
         {
             return true;

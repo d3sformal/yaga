@@ -1,5 +1,5 @@
 #include "Bool_theory.h"
-
+#include <iostream>
 namespace yaga {
 
 void Bool_theory::decide(Database&, Trail& trail, Variable var)
@@ -22,6 +22,7 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
                 assert(false && "unreachable");
                 break;
         }
+        std::cout << "Boolean arithmetic::decide var " << var << " value " << static_cast<bool>(model.value(var.ord())) << std::endl;
         trail.decide(var);
     }
 }

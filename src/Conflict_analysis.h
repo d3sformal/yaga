@@ -9,6 +9,7 @@
 #include <tuple>
 #include <unordered_set>
 #include <vector>
+#include <iostream>
 
 #include "Clause.h"
 #include "Trail.h"
@@ -48,6 +49,8 @@ public:
                     model.value(var.ord()) ? ~Literal{var.ord()} : Literal{var.ord()};
                 if (can_resolve(lit))
                 {
+                    std::cout << "Resolving Lit " << lit.var() << " with value " << static_cast<bool>(model.value(lit.var().ord())) <<  " is negated " << static_cast<bool>(lit.is_negation()) << std::endl;
+
                     on_resolve(*reason);
                     resolve(trail, *reason, lit);
                 }

@@ -1,4 +1,5 @@
 #include "Parser_context.h"
+#include "utils/Utils.h"
 
 #include "Solver_wrapper.h"
 #include "Term_manager.h"
@@ -200,6 +201,7 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
             return Solver_answer::UNSAT;
         }
 
+        std::cout << "printing interpolant after iteration" << std::endl;
         for (auto t : interpolant){
             utils::Utils::pretty_print_term(t, term_manager, std::cout);
             std::cout << std::endl;

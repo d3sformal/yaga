@@ -1,4 +1,5 @@
 #include "Solver.h"
+#include <iostream>
 
 namespace yaga {
 
@@ -242,46 +243,88 @@ Solver::Result Solver::check()
     }
 }
 
-Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
+void debug_print(std::vector<Clause> const& clauses, std::string debug_info){
+    std::cout << debug_info << " " << clauses.size();
+    for (auto&& c : clauses){
+        std::cout << "\t";
+        for(auto&& lit : c){
+            std::cout << " " << lit.var() << " is_negation: " << static_cast<bool>(lit.is_negation());
+        }
+        std::cout << std::endl;
+    }
+}
 
+Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
+    std::cout << "SMT MODULO MODEL" << std::endl;
+    std::cout << std::boolalpha;
     init();
 
     for (;;)
     {
+        std::cout << "<<<<< propagation" << std::endl;
         auto conflicts = propagate();
 
         if (!conflicts.empty())
         {
+            debug_print(conflicts, "Found conflicts");
+            interpolant.insert(interpolant.end(), conflicts.begin(), conflicts.end());
             if (trail().decision_level() == 0)
             {
                 return Result::unsat;
             }
+            std::cout << "Analysis" << std::endl;
             auto [learned, level] = analyze_conflicts(std::move(conflicts));
+
+            debug_print(learned, "learned clauses");
+            interpolant.insert(interpolant.end(), learned.begin(), learned.end());
 
             if (std::any_of(learned.begin(), learned.end(), [](auto const& clause) { return clause.empty(); })
                 || level < input_model.size())
             {
                 auto final = analyze_final(std::move(learned));
+                debug_print(final, "Final_resolve " + std::to_string(level) + " num of clauses of interpolant");
+                std::cout << "Final_resolve " << level << " num of clauses of interpolant " << final.size() << std::endl;
+                for (auto&& c : final){
+                    std::cout << "\t";
+                    for (auto&& lit : c){
+                        std::cout << " " << lit.var() << " " << static_cast<bool>(lit.is_negation());
+                    }
+                    std::cout << std::endl;
+                }
                 interpolant.insert(interpolant.end(), final.begin(), final.end());
+                std::cout << "Printing and adding the literals to the interpolant one by one to precisely know which lit is representing which var";
+                for (auto&& c : final){
+                    std::cout << "\t";
+                    for (auto&& lit : c){
+                        std::cout << " " << lit.var() << " " << static_cast<bool>(lit.is_negation());
+                        interpolant.emplace_back(std::vector{lit});
+                    }
+                    std::cout << std::endl;
+                }
                 return Result::unsat;
             }
 
+            std::cout << "learned" << std::endl;
             auto clauses = learn(std::move(learned));
             if (restart_policy->should_restart())
             {
+                std::cout << "restart" << std::endl;
                 input_model.restart();
                 restart();
             }
             else // backtrack instead of restarting
             {
+                std::cout << "backtrack to level " << level <<  std::endl;
                 backtrack_with(clauses, level);
             }
         }
         else // no conflict
         {
+            std::cout << "no conflict" << std::endl;
             //decide value from the input model
             if (trail().decision_level() < input_model.size())
             {
+                std::cout << "decision from model, akt dec level " << trail().decision_level() << " input_model.size() " << input_model.size() << std::endl;
                 for (size_t i = 0; i <= Variable::Type::LAST_ELEMENT; ++i)
                 {
                     auto res = input_model.next_decision(static_cast<Variable::Type>(i));
@@ -295,7 +338,9 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
                 }
             }
             else { //if no previous decision then this branch
+                std::cout << "decision heuristics ";
                 auto var = pick_variable();
+                std::cout << "Picked Variable " << var.value() << std::endl;
                 if (!var)
                 {
                     return Result::sat;
@@ -304,6 +349,7 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
             }
         }
     }
+
 }
 
 } // namespace yaga

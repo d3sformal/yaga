@@ -1,5 +1,5 @@
 #include "Linear_arithmetic.h"
-
+#include <iostream>
 namespace yaga {
 
 void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
@@ -202,7 +202,7 @@ void Linear_arithmetic::replace_watch(Trail& trail, Models& models, int lra_var_
             {
                 if (is_fully_assigned(models.owned(), cons))
                 {
-                    assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
+                        assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit())); //TODO: here
                 }
                 else // cons is unit
                 {
@@ -317,6 +317,7 @@ void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models)
             {
                 if (bounds.is_implied(models, c))
                 {
+                    std::cout << "Propagate unassigned: var " << cons.lit().var() << " level " << trail.decision_level() << std::endl;
                     trail.propagate(c.lit().var(), nullptr, trail.decision_level());
                     models.boolean().set_value(c.lit().var().ord(), !c.lit().is_negation());
                 }
@@ -374,6 +375,7 @@ void Linear_arithmetic::propagate(Trail& trail, Models& models, Constraint const
     // propagate the boolean variable of the constraint
     auto value = cons.eval(models.owned());
     models.boolean().set_value(cons.lit().var().ord(), cons.lit().is_negation() ^ value);
+    std::cout << "Propagate Constraint: var " << cons.lit().var() << " value " << static_cast<bool>(cons.lit().is_negation() ^ value) << " is negated " << static_cast<bool>(cons.lit().is_negation()) << " level " << dec_level << std::endl;
     trail.propagate(cons.lit().var(), /*reason=*/nullptr, dec_level);
 }
 
@@ -538,6 +540,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     }
 
     // decide the value
+    std::cout << "Linear arithmetic::decide var " << var << " value " << value << std::endl;
     cached_values.set_value(var.ord(), value);
     assert(bnds.is_allowed(models, value));
     models.owned().set_value(var.ord(), value);
@@ -557,6 +560,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var, TrailModel
     // decide the value
     cached_values.set_value(var.ord(), value);
     models.owned().set_value(var.ord(), value);
+    std::cout << "Linear_arithmetic::decide* " << var << " " << value << std::endl;
     trail.decide(var);
 }
 

@@ -152,9 +152,15 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
             {
             case Variable::boolean:
                 model.model<bool>(Variable::boolean).set_value(var.ord(), input_model.model<bool>(Variable::boolean).value(old_var.ord()));
+                std::cout << "set bool var " <<var.ord() << " to " << input_model.model<bool>(Variable::boolean).value(old_var.ord()) << " of the term ";
+                utils::Utils::pretty_print_term(term, term_manager);
+                std::cout << std::endl;
                 break;
             case Variable::rational:
                 model.model<Rational >(Variable::rational).set_value(var.ord(), input_model.model<Rational>(Variable::rational).value(old_var.ord()));
+                std::cout << "set rational var " <<var.ord() << " to " << input_model.model<Rational>(Variable::rational).value(old_var.ord()) << " of the term ";
+                utils::Utils::pretty_print_term(term, term_manager);
+                std::cout << std::endl;
                 break;
             default:
                 std::cerr << "Not supported variable type" << std::endl;
@@ -162,6 +168,20 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
             }
         }
     }
+
+    std::cout << "mapping: " << std::endl;
+    for (auto [term, var] : variables){
+        std::cout << "term ";
+        utils::Utils::pretty_print_term(term, term_manager);
+        std::cout << " var " << var << std::endl;
+    }
+
+    std::cout << "asserted clauses before check" << std::endl;
+    for ( auto t : convert_from_internal_representation_to_tree(std::vector(solver.solver().db().asserted().begin(), solver.solver().db().asserted().end()))){
+        utils::Utils::pretty_print_term(t, term_manager);
+        std::cout << std::endl;
+    }
+
     auto res = solver.solver().check(model);
 
     if (res == Solver::Result::sat)
