@@ -130,7 +130,7 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
 }
 
 Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions,
-                    TrailModelsSnapshot& trail_snapshot,
+                    TrailModelsSnapshot& input_model,
                     std::unordered_map<terms::term_t, Variable> variables_mapping){
 
     if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
@@ -151,10 +151,10 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
             switch (var.type())
             {
             case Variable::boolean:
-                model.model<bool>(Variable::boolean).set_value(var.ord(), trail_snapshot.model<bool>(Variable::boolean).value(old_var.ord()));
+                model.model<bool>(Variable::boolean).set_value(var.ord(), input_model.model<bool>(Variable::boolean).value(old_var.ord()));
                 break;
             case Variable::rational:
-                model.model<Rational >(Variable::rational).set_value(var.ord(), trail_snapshot.model<Rational>(Variable::rational).value(old_var.ord()));
+                model.model<Rational >(Variable::rational).set_value(var.ord(), input_model.model<Rational>(Variable::rational).value(old_var.ord()));
                 break;
             default:
                 std::cerr << "Not supported variable type" << std::endl;
@@ -175,7 +175,6 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
     assert(false);
     return Solver_answer::UNKNOWN;
 }
-
 
 std::vector<terms::term_t> Solver_wrapper::get_interpolant()
 {
