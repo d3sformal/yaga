@@ -371,11 +371,11 @@ void Linear_arithmetic::propagate(Trail& trail, Models& models, Constraint const
         assert(level.has_value());
         dec_level = std::max<int>(dec_level, level.value());
     }
-
+    std::cout << "Propagate Constraint: " << cons << std::endl;
     // propagate the boolean variable of the constraint
     auto value = cons.eval(models.owned());
     models.boolean().set_value(cons.lit().var().ord(), cons.lit().is_negation() ^ value);
-    std::cout << "Propagate Constraint: var " << cons.lit().var() << " value " << static_cast<bool>(cons.lit().is_negation() ^ value) << " is negated " << static_cast<bool>(cons.lit().is_negation()) << " level " << dec_level << std::endl;
+    std::cout <<  "var " << cons.lit().var() << " value " << value << " models.boolean().set_value " << static_cast<bool>(cons.lit().is_negation() ^ value) << " is negated " << static_cast<bool>(cons.lit().is_negation()) << " level " << dec_level << std::endl;
     trail.propagate(cons.lit().var(), /*reason=*/nullptr, dec_level);
 }
 
