@@ -177,7 +177,7 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
     }
 
     std::cout << "asserted clauses before check" << std::endl;
-    for ( auto t : convert_from_internal_representation_to_tree(std::vector(solver.solver().db().asserted().begin(), solver.solver().db().asserted().end()))){
+    for ( auto t : convert_from_internal_to_tree_representation(std::vector(solver.solver().db().asserted().begin(), solver.solver().db().asserted().end()))){
         utils::Utils::pretty_print_term(t, term_manager);
         std::cout << std::endl;
     }
