@@ -174,6 +174,7 @@ term_t resolve(Function_template const& function_template, std::span<term_t> arg
 
 Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, const std::vector<term_t>& group2){
     std::vector<term_t> group2_and_interpolant(group2);
+    interpolant.clear();
 
     for (; ;)
     {
@@ -189,6 +190,7 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
 
         res = solver.check(group1, model, mapping);
         if (res == Solver_answer::SAT){
+            interpolant.clear();    //there is no interpolant, remove previous model interpolants
             return Solver_answer::SAT;
         }
 

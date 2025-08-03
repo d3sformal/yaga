@@ -130,8 +130,8 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
 }
 
 Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions,
-                    TrailModelsSnapshot& input_model,
-                    std::unordered_map<terms::term_t, Variable> variables_mapping){
+                                    TrailModelsSnapshot& input_model,
+                                    std::unordered_map<terms::term_t, Variable> variables_mapping){
 
     if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
     {
@@ -200,16 +200,19 @@ std::vector<terms::term_t> Solver_wrapper::get_interpolant()
 {
     // Get the interpolant as a vector of clauses (each clause is a vector of Literal)
     auto& clauses = solver.solver().get_model_interpolant();
-    return convert_from_internal_representation_to_tree(clauses);
+    return convert_from_internal_to_tree_representation(clauses);
 }
 
-std::vector<terms::term_t> Solver_wrapper::convert_from_internal_representation_to_tree(std::vector<std::vector<Literal>> const& clauses ) {
+std::vector<terms::term_t> Solver_wrapper::convert_from_internal_to_tree_representation(std::vector<std::vector<Literal>> const& clauses ) {
     std::vector<terms::term_t> result;
 
-    // Build a reverse mapping from Literal.var().ord() to term_t for boolean variables
-    std::unordered_map<int, terms::term_t> literal_to_term;
+    // Build a reverse mapping from Literal.var().ord() to term_t for boolean variables.
+    // Additionally, remember whether the stored literal is originally negated so that we can
+    // correctly reconstruct the polarity of the term when we later process a literal that
+    // refers to the same boolean variable with potentially different sign.
+    std::unordered_map<int, std::pair<terms::term_t, bool>> literal_to_term;
     for (const auto& [term, lit] : internalizer_config.bool_vars()) {
-        literal_to_term[lit.var().ord()] = term;
+        literal_to_term[lit.var().ord()] = {term, lit.is_negation()};
     }
     // Build a reverse mapping from rational variable ordinal to term_t
     std::unordered_map<int, terms::term_t> rational_var_to_term;
@@ -234,23 +237,21 @@ std::vector<terms::term_t> Solver_wrapper::convert_from_internal_representation_
             int var_ord = lit.var().ord();
             auto it = literal_to_term.find(var_ord);
             if (it != literal_to_term.end()) {
-                terms::term_t term = it->second;
-                // If the literal is negated, wrap the term as negated
-                if (lit.is_negation()) {
-                    term = term_manager.positive_term(term);
-                    term.x ^= 1;
-                }
+                auto [mapped_term, mapped_negated] = it->second;
+                // If the polarity of the current literal differs from the polarity that was
+                // stored during internalization, negate the reconstructed term.
+                bool need_negate = lit.is_negation() != mapped_negated;
+                terms::term_t term = need_negate ? term_manager.mk_negated(mapped_term) : mapped_term;
                 or_args.push_back(term);
                 continue;
             }
             // Fallback: try to find in variables mapping (for uninterpreted/app terms)
             auto vit = std::find_if(variables.begin(), variables.end(),
-                [var_ord](const auto& p) { return p.second.type() == Variable::boolean && p.second.ord() == var_ord; });
+                                    [var_ord](const auto& p) { return p.second.type() == Variable::boolean && p.second.ord() == var_ord; });
             if (vit != variables.end()) {
                 terms::term_t term = vit->first;
                 if (lit.is_negation()) {
-                    term = term_manager.positive_term(term);
-                    term.x ^= 1;
+                    term = term_manager.mk_negated(term);
                 }
                 or_args.push_back(term);
                 continue;
@@ -322,8 +323,12 @@ std::vector<terms::term_t> Solver_wrapper::convert_from_internal_representation_
             // Could not find mapping, skip this literal
             continue;
         }
-        if (or_args.empty()) {
+
+        if (clause.empty()) {   //we encountered empty clause
             result.push_back(terms::false_term);
+        } else if(or_args.empty()) {
+            // Clause could not be reconstructed; treat it as a tautology
+            result.push_back(terms::true_term);
         } else if (or_args.size() == 1) {
             result.push_back(or_args[0]);
         } else {
@@ -396,9 +401,9 @@ void Internalizer_config::visit(term_t t)
         }
         auto constraint_literal =
             negated ? solver.linear_constraint(internal_poly.vars, internal_poly.coef,
-                                        Order_predicate::Type::lt, -internal_poly.constant)
+                                               Order_predicate::Type::lt, -internal_poly.constant)
                     : solver.linear_constraint(internal_poly.vars, internal_poly.coef,
-                                        Order_predicate::Type::leq, -internal_poly.constant);
+                                               Order_predicate::Type::leq, -internal_poly.constant);
         Literal lit = negated ? ~constraint_literal : constraint_literal;
         term_t positive_term = term_manager.positive_term(t);
         assert(internal_bool_vars.find(positive_term) == internal_bool_vars.end());
