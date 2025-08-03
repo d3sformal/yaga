@@ -144,7 +144,8 @@ class Solver_wrapper
      * @param clauses The internal representation of the clauses.
      * @return The tree representation of the clauses.
      */
-    std::vector<terms::term_t> convert_from_internal_representation_to_tree(std::vector<std::vector<Literal>> const& clauses );
+    std::vector<terms::term_t>
+    convert_from_internal_to_tree_representation(std::vector<std::vector<Literal>> const& clauses );
 
 
 public:

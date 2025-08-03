@@ -1,4 +1,5 @@
 #include "Parser_context.h"
+#include "utils/Utils.h"
 
 #include "Solver_wrapper.h"
 #include "Term_manager.h"
@@ -173,6 +174,7 @@ term_t resolve(Function_template const& function_template, std::span<term_t> arg
 
 Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, const std::vector<term_t>& group2){
     std::vector<term_t> group2_and_interpolant(group2);
+    interpolant.clear();
 
     for (; ;)
     {
@@ -188,6 +190,7 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
 
         res = solver.check(group1, model, mapping);
         if (res == Solver_answer::SAT){
+            interpolant.clear();    //there is no interpolant, remove previous model interpolants
             return Solver_answer::SAT;
         }
 
@@ -198,11 +201,6 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
         // group1 is unsat
         if (model_interpolant.size() == 1 && model_interpolant[0] == terms::false_term) {
             return Solver_answer::UNSAT;
-        }
-
-        for (auto t : interpolant){
-            utils::Utils::pretty_print_term(t, term_manager, std::cout);
-            std::cout << std::endl;
         }
     }
     return Solver_answer::UNKNOWN;
