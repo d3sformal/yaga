@@ -73,7 +73,7 @@ TEST_CASE("UF: propagation introduces conflict", "[uf]")
     b_map_t bm;
 
     Yaga yaga(tm, std::ranges::views::all(rm), std::ranges::views::all(bm));
-    yaga.set_logic(logic::qf_uflra, Options());
+    yaga.set_logic(QF_UFLRA, Options());
 
     Variable vx = make_real_var_for_term(tx, rm, yaga);
     Variable vfx = make_real_var_for_app_term(tfx, rm, yaga);
@@ -117,7 +117,7 @@ TEST_CASE("UF: valid function model", "[uf]")
     b_map_t bm;
 
     Yaga yaga(tm, std::ranges::views::all(rm), std::ranges::views::all(bm));
-    yaga.set_logic(logic::qf_uflra, Options());
+    yaga.set_logic(QF_UFLRA, Options());
     yaga.solver().trail().resize(Variable::rational, 3); // TODO - is it necessary?
 
     Variable vx = make_real_var_for_term(tx, rm, yaga);
