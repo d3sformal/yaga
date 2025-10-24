@@ -182,12 +182,11 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
             (lb->value() + 1 < ub->value()) ||
             (lb->value() + 1 == ub->value() &&
                 (!lb->value().isInteger() ||
-                !is_strict)))
+                !lb->is_strict() || !ub->is_strict())))
         {
             return {};
         }
     }
-
 
     assert(lb->var() == ub->var());
 
