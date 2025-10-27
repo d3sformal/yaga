@@ -22,6 +22,8 @@ class Print_model final : public Default_model_visitor {
     terms::Term_manager& term_manager;
     // output stream where the model will be printed
     std::ostream& output;
+    // set the logic, for discrimination of LRA and LIA
+    int logic;
 
     void print_variable(terms::var_value_t var) {
         if (std::holds_alternative<bool>(var))
@@ -32,12 +34,19 @@ class Print_model final : public Default_model_visitor {
 
     void print_type(type_t type) {
         switch (type) {
-        default:
-        case terms::types::bool_type:
-            output << "Bool";
-            break;
-        case terms::types::real_type:
-            output << "Real";
+            default:
+            case terms::types::bool_type:
+                output << "Bool";
+                break;
+            case terms::types::real_type:
+                if (logic == 1)
+                {
+                    output << "Real";
+                }
+                else if (logic == 2)
+                {
+                    output << "Int";
+                }
             break;
         }
     }
@@ -45,8 +54,8 @@ class Print_model final : public Default_model_visitor {
 public:
     virtual ~Print_model() = default;
 
-    Print_model(terms::Term_manager& manager, std::ostream& output) 
-        : term_manager(manager), output(output) {}
+    Print_model(terms::Term_manager& manager, std::ostream& output, int logic)
+        : term_manager(manager), output(output), logic(logic) {}
 
     /** Print an error message to the output stream
      * 
@@ -161,6 +170,12 @@ class Smt2_command_context {
     terms::Term_manager& term_manager;
     std::vector<term_t> assertions;
     std::optional<Solver_answer> last_answer;
+
+    enum logic_type {
+        PROP = 0,
+        LRA = 1,
+        LIA = 2,
+    } logic;
 
     bool parse_command();
 
@@ -311,7 +326,7 @@ bool Smt2_command_context::parse_command()
     // (get-model)
     case Token::GET_MODEL_TOK:
     {
-        Print_model printer(term_manager, output);
+        Print_model printer(term_manager, output, logic);
         if (!last_answer)
         {
             printer.error("use (check-sat) before (get-model)");
@@ -382,8 +397,16 @@ bool Smt2_command_context::parse_command()
         std::string name = term_parser.parse_symbol();
         if (name == "QF_UFLRA") {
             parser_context.set_logic(logic::qf_uflra);
+            logic = LRA;
         } else if (name == "QF_LRA") {
             parser_context.set_logic(logic::qf_lra);
+            logic = LRA;
+        } else if (name == "QF_UFLIA") {
+            parser_context.set_logic(logic::qf_uflia);
+            logic = LIA;
+        } else if (name == "QF_LIA") {
+            parser_context.set_logic(logic::qf_lia);
+            logic = LIA;
         } else {
             std::cerr << "Unsupported logic " << name << std::endl;
             return false;

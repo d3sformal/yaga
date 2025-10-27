@@ -82,6 +82,35 @@ public:
     void setup(Yaga* solver, Options const& options) const override;
 };
 
+    /** Initializer for quantifier-free linear integer arithmetic.
+ */
+    class Qf_lia final : public Initializer {
+    public:
+        virtual ~Qf_lia() = default;
+
+        /** Initialize @p solver with plugins for boolean variables and integer variables.
+         *
+         * @param solver solver to initialize
+         * @param options command line options
+         */
+        void setup(Yaga* solver, Options const& options) const override;
+    };
+
+    /** Initializer for quantifier-free linear integer arithmetic with uninterpreted functions.
+     */
+    class Qf_uflia final : public Initializer {
+    public:
+        virtual ~Qf_uflia() = default;
+
+        /** Initialize @p solver with plugins for boolean variables, integer variables and uninterpreted functions.
+         *
+         * @param solver solver to initialize
+         * @param options command line options
+         */
+        void setup(Yaga* solver, Options const& options) const override;
+    };
+
+
 /** Predefined logic initializers for the Yaga facade.
  */
 struct logic {
@@ -96,6 +125,14 @@ struct logic {
     /** Quantifier-free linear real arithmetic
      */
     inline static Qf_lra const qf_lra{};
+
+    /** Quantifier-free linear integer arithmetic with uninterpreted functions
+     */
+    inline static Qf_uflia const qf_uflia{};
+
+    /** Quantifier-free linear integer arithmetic
+     */
+    inline static Qf_lia const qf_lia{};
 };
 
 /** A facade for the SMT solver.

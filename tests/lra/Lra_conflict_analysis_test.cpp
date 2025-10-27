@@ -186,7 +186,7 @@ TEST_CASE("Derive bound conflict when some variables are not assigned", "[bound_
         std::vector{*bounds[z.ord()].upper_bound(models)}});
     REQUIRE(bounds[x.ord()].lower_bound(models));
     
-    Bound_conflict_analysis analysis{&lra};
+    Bound_conflict_analysis analysis{&lra, false};
     auto conflict = analysis.analyze(trail, bounds, x.ord());
     REQUIRE(conflict);
     REQUIRE_THAT(*conflict, Catch::Matchers::UnorderedEquals(clause(
@@ -255,7 +255,7 @@ TEST_CASE("Derive inequality conflict when some variables are not assigned", "[i
     bounds[x.ord()].add_inequality(models, {x.ord(), 0, constraints[4], models});
     REQUIRE(bounds[x.ord()].inequality(models, 0));
 
-    Inequality_conflict_analysis analysis{&lra};
+    Inequality_conflict_analysis analysis{&lra, false};
     auto conflict = analysis.analyze(trail, bounds, x.ord());
     REQUIRE(conflict);
     REQUIRE_THAT(*conflict, Catch::Matchers::UnorderedEquals(clause(

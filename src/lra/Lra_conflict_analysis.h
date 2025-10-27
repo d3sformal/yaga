@@ -245,7 +245,7 @@ public:
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
 
-    inline Lra_conflict_analysis(Linear_arithmetic* lra) : lra(lra) {}
+    inline Lra_conflict_analysis(Linear_arithmetic* lra, bool lia) : lra(lra), lia(lia) {}
 
     /** Eliminate a variable using @p bound
      *
@@ -274,6 +274,7 @@ public:
 private:
     Linear_arithmetic* lra;
     Clause clause;
+    bool lia;
 };
 
 /** Analysis of bound conflicts.
@@ -284,7 +285,7 @@ public:
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
 
-    inline Bound_conflict_analysis(Linear_arithmetic* lra) : lra(lra) {}
+    inline Bound_conflict_analysis(Linear_arithmetic* lra, bool lia) : lra(lra), lia(lia) {}
 
     /** Check if there is a bound conflict and provide an explanation if there is a conflict.
      *
@@ -297,6 +298,7 @@ public:
 
 private:
     Linear_arithmetic* lra;
+    bool lia;
 };
 
 /** Analysis of inequality conflicts.
@@ -307,7 +309,7 @@ public:
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
 
-    inline Inequality_conflict_analysis(Linear_arithmetic* lra) : lra(lra), fm(lra) {}
+    inline Inequality_conflict_analysis(Linear_arithmetic* lra, bool lia) : lra(lra), fm(lra), lia(lia) {}
 
     /** Check if there is an inequality conflict - i.e., `L <= x` and `x <= U` and `x != D`
      * where L, U, D evaluate to the same value in @p trail
@@ -322,6 +324,7 @@ public:
 private:
     Linear_arithmetic* lra;
     Fm_elimination fm;
+    bool lia;
 };
 
 } // namespace yaga

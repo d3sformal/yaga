@@ -54,6 +54,9 @@ type_t Parser_context::get_type_for_symbol(std::string const& symbol)
     if (symbol == "Real") {
         return terms::types::real_type;
     }
+    if (symbol == "Int") {
+        return terms::types::real_type;
+    }
     throw std::logic_error("Requested unknown type");
 }
 

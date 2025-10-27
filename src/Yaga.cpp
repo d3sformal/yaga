@@ -55,6 +55,52 @@ void Qf_uflra::setup(Yaga* yaga, Options const& options) const
     yaga->solver().set_variable_order<Generalized_vsids>(lra);
 }
 
+void Qf_lia::setup(Yaga* yaga, Options const& options) const
+{
+    yaga->solver().trail().set_model<bool>(Variable::boolean, 0);
+    yaga->solver().trail().set_model<Rational>(Variable::rational, 0);
+    // create plugins
+    auto& theories = yaga->solver().set_theory<Theory_combination>();
+    auto& bcp = theories.add_theory<Bool_theory>();
+    bcp.set_phase(options.phase);
+
+    Linear_arithmetic::Options lra_options;
+    lra_options.prop_rational = options.prop_rational;
+    lra_options.prop_bounds = options.deduce_bounds;
+    lra_options.prop_integer = true;
+    auto& lra = theories.add_theory<Linear_arithmetic>();
+    lra.set_options(lra_options);
+
+    // add heuristics
+    yaga->solver().set_restart_policy<Glucose_restart>();
+    yaga->solver().set_variable_order<Generalized_vsids>(lra);
+}
+
+    void Qf_uflia::setup(Yaga* yaga, Options const& options) const
+{
+    yaga->solver().trail().set_model<bool>(Variable::boolean, 0);
+    yaga->solver().trail().set_model<Rational>(Variable::rational, 0);
+    // create plugins
+    auto& theories = yaga->solver().set_theory<Theory_combination>();
+    auto& bcp = theories.add_theory<Bool_theory>();
+    bcp.set_phase(options.phase);
+
+    Linear_arithmetic::Options lra_options;
+    lra_options.prop_rational = options.prop_rational;
+    lra_options.prop_bounds = options.deduce_bounds;
+    lra_options.prop_integer = true;
+    auto& lra = theories.add_theory<Linear_arithmetic>();
+    lra.set_options(lra_options);
+
+    theories.add_theory<Uninterpreted_functions>(yaga->solver().tm(), yaga->real_vars(), yaga->bool_vars());
+
+    // add heuristics
+    yaga->solver().set_restart_policy<Glucose_restart>();
+    yaga->solver().set_variable_order<Generalized_vsids>(lra);
+}
+
+
+
 Yaga::Yaga(terms::Term_manager const& tm,
            std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > r_m,
            std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > b_m)

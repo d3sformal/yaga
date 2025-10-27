@@ -258,12 +258,12 @@ bool Linear_arithmetic::is_fully_assigned(Model<Rational> const& model,
 
 std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, int var_ord)
 {
-    if (auto conflict = Bound_conflict_analysis{this}.analyze(trail, bounds, var_ord))
+    if (auto conflict = Bound_conflict_analysis{this, options.prop_integer}.analyze(trail, bounds, var_ord))
     {
         return conflict;
     }
 
-    if (auto conflict = Inequality_conflict_analysis{this}.analyze(trail, bounds, var_ord))
+    if (auto conflict = Inequality_conflict_analysis{this, options.prop_integer}.analyze(trail, bounds, var_ord))
     {
         return conflict;
     }
@@ -523,6 +523,8 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
         }
         else // there is no suitable integer value
         {
+            // LRA has to be chosen, otherwise a conflict should be detected
+            assert(!options.prop_integer);
             assert(bnds.lower_bound(models) != nullptr);
             assert(bnds.upper_bound(models) != nullptr);
 
