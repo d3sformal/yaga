@@ -118,10 +118,12 @@ void Utils::pretty_print_term(terms::term_t t, const terms::Term_manager& tm, st
         break;
 
     case terms::Kind::CONSTANT_TERM:
-        if (tm.get_type(t) == 0) {
-            std::cout << " (Bool)";
-        } else if (tm.get_type(t) == 1) {
-            std::cout << " (Real)";
+        if (t == terms::true_term) {
+            out << "true";
+        } else if (t == terms::false_term) {
+            out << "false";
+        } else {
+            out << "<unknown-constant>";
         }
         break;
     case terms::Kind::ARITH_CONSTANT:
