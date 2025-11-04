@@ -176,8 +176,8 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
     std::vector<term_t> group2_and_interpolant(group2);
     interpolant.clear();
 
-    for (; ;)
-    {
+    //for (; ;)
+    //{
         solver.reset();
 
         auto res = solver.check(group2_and_interpolant);
