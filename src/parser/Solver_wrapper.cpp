@@ -66,6 +66,8 @@ void Solver_wrapper::remember_term_variable_mapping(){
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
+    std::cout << "-------- SMT CHECK --------" << std::endl;
+
     if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
     {
         return Solver_answer::UNSAT;
@@ -74,6 +76,12 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 
     prepare_assertions_and_assert_clauses(assertions);
     remember_term_variable_mapping();
+
+    std::cout << "asserted clauses before check" << std::endl;
+    for ( auto t : convert_from_internal_to_tree_representation(std::vector(solver.solver().db().asserted().begin(), solver.solver().db().asserted().end()))){
+        utils::Utils::pretty_print_term(t, term_manager);
+        std::cout << std::endl;
+    }
 
     auto res = solver.solver().check();
 
@@ -132,6 +140,7 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
 Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions,
                                     TrailModelsSnapshot& input_model,
                                     std::unordered_map<terms::term_t, Variable> variables_mapping){
+    std::cout << "-------- SMT MODULO MODEL --------" << std::endl;
 
     if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
     {

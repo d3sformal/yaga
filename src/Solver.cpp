@@ -212,12 +212,14 @@ Solver::Result Solver::check()
         {
             if (trail().decision_level() == 0)
             {
+                std::cout << ">>> end check" << std::endl;
                 return Result::unsat;
             }
 
             auto [learned, level] = analyze_conflicts(std::move(conflicts));
             if (std::any_of(learned.begin(), learned.end(), [](auto const& clause) { return clause.empty(); }))
             {
+                std::cout << ">>> end check" << std::endl;
                 return Result::unsat;
             }
 
@@ -236,6 +238,7 @@ Solver::Result Solver::check()
             auto var = pick_variable();
             if (!var)
             {
+                std::cout << ">>> end check" << std::endl;
                 return Result::sat;
             }
             decide(var.value());
@@ -255,7 +258,6 @@ void debug_print(std::vector<Clause> const& clauses, std::string debug_info){
 }
 
 Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
-    std::cout << "SMT MODULO MODEL" << std::endl;
     std::cout << std::boolalpha;
     init();
 
@@ -267,7 +269,7 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
         if (!conflicts.empty())
         {
             debug_print(conflicts, "Found conflicts");
-            interpolant.insert(interpolant.end(), conflicts.begin(), conflicts.end());
+            //interpolant.insert(interpolant.end(), conflicts.begin(), conflicts.end());
             if (trail().decision_level() == 0)
             {
                 return Result::unsat;
@@ -276,23 +278,16 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
             auto [learned, level] = analyze_conflicts(std::move(conflicts));
 
             debug_print(learned, "learned clauses");
-            interpolant.insert(interpolant.end(), learned.begin(), learned.end());
+            //interpolant.insert(interpolant.end(), learned.begin(), learned.end());
 
             if (std::any_of(learned.begin(), learned.end(), [](auto const& clause) { return clause.empty(); })
                 || level < input_model.size())
             {
                 auto final = analyze_final(std::move(learned));
                 debug_print(final, "Final_resolve " + std::to_string(level) + " num of clauses of interpolant");
-                std::cout << "Final_resolve " << level << " num of clauses of interpolant " << final.size() << std::endl;
-                for (auto&& c : final){
-                    std::cout << "\t";
-                    for (auto&& lit : c){
-                        std::cout << " " << lit.var() << " " << static_cast<bool>(lit.is_negation());
-                    }
-                    std::cout << std::endl;
-                }
+
                 interpolant.insert(interpolant.end(), final.begin(), final.end());
-                std::cout << "Printing and adding the literals to the interpolant one by one to precisely know which lit is representing which var";
+                /*std::cout << "Printing and adding the literals to the interpolant one by one to precisely know which lit is representing which var";
                 for (auto&& c : final){
                     std::cout << "\t";
                     for (auto&& lit : c){
@@ -300,7 +295,8 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
                         interpolant.emplace_back(std::vector{lit});
                     }
                     std::cout << std::endl;
-                }
+                }*/
+                std::cout << ">>> end of check modulo model" << std::endl;
                 return Result::unsat;
             }
 

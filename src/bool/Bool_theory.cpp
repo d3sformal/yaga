@@ -82,6 +82,7 @@ void Bool_theory::on_learned_clause(Database& db, Trail&, Clause const& learned)
 
 void Bool_theory::initialize(Database& db, Trail& trail)
 {
+    std::cout << "initialize(Database& db, Trail& trail)" << std::endl;
     auto const& model = trail.model<bool>(Variable::boolean);
 
     // allocate space for new variables if necessary
@@ -89,6 +90,8 @@ void Bool_theory::initialize(Database& db, Trail& trail)
 
     if (trail.empty()) // initialize watch lists
     {
+        std::cout << "trail is empty" << std::endl;
+
         // clear watch lists
         for (auto& list : watched)
         {
@@ -116,9 +119,11 @@ void Bool_theory::initialize(Database& db, Trail& trail)
         }
     }
 
+
     // propagate assigned variables
     for (auto [var, reason] : assigned(trail))
     {
+        std::cout << "we are in assigned" << std::endl;
         if (var.type() == Variable::boolean)
         {
             auto lit = model.value(var.ord()) ? Literal{var.ord()} : ~Literal{var.ord()};
@@ -129,6 +134,7 @@ void Bool_theory::initialize(Database& db, Trail& trail)
 
 std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
 {
+    std::cout << "Bool propagate(Database& db, Trail& trail)" << std::endl;
     satisfied.clear();
 
     auto& model = trail.model<bool>(Variable::boolean);
@@ -145,6 +151,7 @@ std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
         // propagate the literal if necessary
         if (reason != nullptr && !model.is_defined(lit.var().ord()))
         {
+            std::cout << "we need to propagate the literal" << std::endl;
             model.set_value(lit.var().ord(), !lit.is_negation());
             trail.propagate(lit.var(), reason, trail.decision_level());
         }
@@ -198,6 +205,7 @@ bool Bool_theory::replace_second_watch(Model<bool> const& model, Watched_clause&
 std::optional<Clause> 
 Bool_theory::falsified([[maybe_unused]] Trail const& trail, Model<bool> const& model, Literal falsified_lit)
 {
+    std::cout << "Bool falsified" << std::endl;
     assert(eval(model, falsified_lit) == false);
 
     auto& watchlist = watched[falsified_lit];

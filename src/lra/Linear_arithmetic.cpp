@@ -4,6 +4,7 @@ namespace yaga {
 
 void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
 {
+    std::cout << "on_variable_resize" << std::endl;
     if (type == Variable::rational)
     {
         bounds.resize(num_vars);
@@ -19,6 +20,7 @@ void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
 
 bool Linear_arithmetic::is_effectively_decided(Models const& models, int lra_var_ord)
 {
+    std::cout << "is_effectively_decided" << std::endl;
     if (models.owned().is_defined(lra_var_ord))
     {
         return false;
@@ -36,6 +38,7 @@ bool Linear_arithmetic::is_effectively_decided(Models const& models, int lra_var
 
 std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 {
+    std::cout << "propagate (Database&, Trail&)" << std::endl;
     auto models = relevant_models(trail);
 
     // find relevant variables which have been assigned at current decision level
@@ -89,6 +92,7 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 
 void Linear_arithmetic::watch(Constraint& cons)
 {
+    std::cout << "watch (Constraint&)" << std::endl;
     assert(!cons.empty());
 
     watched[cons.vars()[0]].push_back(cons);
@@ -100,6 +104,7 @@ void Linear_arithmetic::watch(Constraint& cons)
 
 void Linear_arithmetic::watch(Constraint& cons, Model<Rational> const& model)
 {
+    std::cout << "watch (Constraint&, Model<Rational> const&)" << std::endl;
     // move 2 unassigned variables to the front
     auto out_var_it = cons.vars().begin();
     auto out_var_end = cons.size() == 1 ? out_var_it + 1 : out_var_it + 2;
@@ -121,6 +126,7 @@ void Linear_arithmetic::watch(Constraint& cons, Model<Rational> const& model)
 bool Linear_arithmetic::replace_watch(Model<Rational> const& lra_model, Watched_constraint& watch,
                                       int lra_var_ord)
 {
+    std::cout << "replace_watch (Model<Rational> const&, Watched_constraint&, int)" << std::endl;
     auto& cons = watch.constraint;
 
     if (cons.size() <= 1)
@@ -182,6 +188,7 @@ bool Linear_arithmetic::replace_watch(Model<Rational> const& lra_model, Watched_
 
 void Linear_arithmetic::replace_watch(Trail& trail, Models& models, int lra_var_ord)
 {
+    std::cout << "replace_watch (Trail&, Models&, int)" << std::endl;
     assert(models.owned().is_defined(lra_var_ord));
 
     auto& watchlist = watched[lra_var_ord];
@@ -228,6 +235,7 @@ void Linear_arithmetic::replace_watch(Trail& trail, Models& models, int lra_var_
 
 int Linear_arithmetic::decision_level(Trail const& trail, Constraint const& cons) const
 {
+    std::cout << "decision_level" << std::endl;
     int level = trail.decision_level(cons.lit().var()).value_or(0);
     for (auto lra_var_ord : cons.vars())
     {
@@ -239,6 +247,7 @@ int Linear_arithmetic::decision_level(Trail const& trail, Constraint const& cons
 
 bool Linear_arithmetic::is_unit(Model<Rational> const& model, Constraint const& cons) const
 {
+    std::cout << "is_unit" << std::endl;
     // Unit constraint will have exactly one watched variable assigned. The first two variables
     // in each constraint are the watched variables. Moreover, we move the unassigned variable
     // to the front in case one of the watched variables is assigned.
@@ -252,12 +261,14 @@ bool Linear_arithmetic::is_unit(Model<Rational> const& model, Constraint const& 
 bool Linear_arithmetic::is_fully_assigned(Model<Rational> const& model,
                                           Constraint const& cons) const
 {
+    std::cout << "is_fully_assigned" << std::endl;
     return cons.empty() || std::all_of(cons.vars().begin(), cons.vars().end(), [&](int v){return model.is_defined(v);});
     //return cons.empty() || model.is_defined(cons.vars().front());
 }
 
 std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, int var_ord)
 {
+    std::cout << "check_bounds" << std::endl;
     if (auto conflict = Bound_conflict_analysis{this}.analyze(trail, bounds, var_ord))
     {
         return conflict;
@@ -272,11 +283,13 @@ std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, int var_ord)
 
 void Linear_arithmetic::unit(Models const& models, Constraint const& cons) 
 { 
+    std::cout << "unit" << std::endl;
     bounds.update(models, cons); 
 }
 
 void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& models)
 {
+    std::cout << "propagate_bounds" << std::endl;
     for (auto& [var, _] : trail.assigned(trail.decision_level()))
     {
         if (var.type() == Variable::boolean)
@@ -298,6 +311,7 @@ void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& model
 
 void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models)
 {
+    std::cout << "propagate_unassigned" << std::endl;
     if (trail.decision_level() == 0)
     {
         return;
@@ -328,6 +342,7 @@ void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models)
 
 std::vector<Clause> Linear_arithmetic::finish(Trail& trail)
 {
+    std::cout << "finish" << std::endl;
     // find all rational variables whose bound has changed
     auto const& changed = bounds.changed();
     to_check.insert(to_check.end(), changed.begin(), changed.end());
@@ -361,6 +376,7 @@ std::vector<Clause> Linear_arithmetic::finish(Trail& trail)
 
 void Linear_arithmetic::propagate(Trail& trail, Models& models, Constraint const& cons)
 {
+    std::cout << "propagate (Trail&, Models&, Constraint const&)" << std::endl;
     assert(!eval(models.boolean(), cons.lit()));
 
     // find decision level of the propagation
@@ -381,6 +397,7 @@ void Linear_arithmetic::propagate(Trail& trail, Models& models, Constraint const
 
 bool Linear_arithmetic::is_new(Models const& models, Variable var) const
 {
+    std::cout << "is_new" << std::endl;
     return (var.type() == Variable::boolean &&
             var.ord() >= static_cast<int>(models.boolean().num_vars())) ||
            (var.type() == Variable::rational &&
@@ -389,6 +406,7 @@ bool Linear_arithmetic::is_new(Models const& models, Variable var) const
 
 void Linear_arithmetic::add_variable(Trail& trail, Models const& models, Variable var)
 {
+    std::cout << "add_variable" << std::endl;
     if (is_new(models, var))
     {
         trail.resize(var.type(), var.ord() + 1);
@@ -397,6 +415,7 @@ void Linear_arithmetic::add_variable(Trail& trail, Models const& models, Variabl
 
 std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bounds_type& bounds)
 {
+    std::cout << "find_integer" << std::endl;
     // check values 0, 1, -1, 2, -2, 3, -3, ..., length, -length
     auto check_around_zero = [&](Rational const& length) -> std::optional<Rational> {
         for (Rational value{0}; value <= length; value += 1)
@@ -507,6 +526,7 @@ std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bo
 
 void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
 {
+    std::cout << "decide (Database&, Trail&, Variable)" << std::endl;
     if (var.type() != Variable::rational)
     {
         return;
@@ -548,6 +568,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
 }
 
 void Linear_arithmetic::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model) {
+    std::cout << "decide (Database&, Trail&, Variable, TrailModelsSnapshot const&)" << std::endl;
     if (var.type() != Variable::rational)
     {
         return;
@@ -568,6 +589,7 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var, TrailModel
 void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& trail,
                                                  Models const& models)
 {
+    std::cout << "check_bounds_consistency" << std::endl;
     std::vector<std::optional<Rational>> ub;
     std::vector<std::optional<Rational>> lb;
     std::vector<Constraint> ub_reason;
@@ -636,6 +658,7 @@ void Linear_arithmetic::check_bounds_consistency([[maybe_unused]] Trail const& t
 
 void Linear_arithmetic::check_watch_consistency([[maybe_unused]] Models const& models)
 {
+    std::cout << "check_watch_consistency" << std::endl;
     for (auto cons : constraints)
     {
         if (cons.empty())
