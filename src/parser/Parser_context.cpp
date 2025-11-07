@@ -182,6 +182,9 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
 
         auto res = solver.check(group2_and_interpolant);
         if (res == Solver_answer::UNSAT){
+            if (interpolant.empty()){
+                interpolant.emplace_back(terms::true_term);
+            }
             return Solver_answer::UNSAT;
         }
         auto model = solver.get_trail_models_snapshot();
@@ -207,10 +210,15 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
 }
 
 void Parser_context::get_interpolant() {
-
+    if (!interpolant.empty()){
+        std::cout << "(and ";
+    }
     for (auto t : interpolant){
         utils::Utils::pretty_print_term(t, term_manager, std::cout);
         std::cout << std::endl;
+    }
+    if (!interpolant.empty()){
+        std::cout << ")";
     }
 }
 
