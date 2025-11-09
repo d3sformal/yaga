@@ -339,11 +339,24 @@ public:
         return std::nullopt;
     }
 
+    /*
+     * Check if a variable is defined in the model.
+     */
+    bool is_defined(Variable::Type type, int var_ord) const {
+        return var_models[type]->is_defined(var_ord);
+    }
+
+    /*
+     * Get the model for a given variable type.
+     */
     template <typename T> inline Model<T>& model(Variable::Type type)
     {
         return dynamic_cast<Model<T>&>(*var_models[type]);
     }
 
+    /*
+     * Get the model for a given variable type.
+     */
     template <typename T> inline Model<T> const& model(Variable::Type type) const
     {
         return dynamic_cast<Model<T>&>(*var_models[type]);
