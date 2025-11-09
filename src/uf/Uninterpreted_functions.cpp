@@ -62,8 +62,9 @@ void Uninterpreted_functions::decide(yaga::Database&, yaga::Trail&, yaga::Variab
     // empty (decisions are made by other plugins)
 }
 
-void Uninterpreted_functions::decide(yaga::Database&, yaga::Trail&, yaga::Variable, yaga::TrailModelsSnapshot const&) {
+std::vector<Clause> Uninterpreted_functions::decide(yaga::Database&, yaga::Trail&, yaga::Variable, yaga::TrailModelsSnapshot const&) {
     // empty (decisions are made by other plugins)
+    return {};
 }
 
 std::optional<Variable> Uninterpreted_functions::term_to_var(terms::term_t t) {

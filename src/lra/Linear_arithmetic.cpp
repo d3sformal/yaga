@@ -544,10 +544,10 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
     trail.decide(var);
 }
 
-void Linear_arithmetic::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model) {
+std::vector<Clause> Linear_arithmetic::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model) {
     if (var.type() != Variable::rational)
     {
-        return;
+        return {};
     }
 
     auto models = relevant_models(trail);
@@ -555,9 +555,39 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var, TrailModel
     Rational value = input_model.model<Rational>(Variable::Type::rational).value(var.ord());
 
     // decide the value
+    std::vector<Clause> conflict_clauses;
     cached_values.set_value(var.ord(), value);
     models.owned().set_value(var.ord(), value);
     trail.decide(var);
+
+    // check if the decision is consistent with the constraints
+    auto constr = watched[var.ord()];
+    for (auto&& watched_constr : constr)
+    {
+        auto cons = watched_constr.constraint;
+        if (is_fully_assigned(models.owned(), cons))
+        {
+            if (eval(models.owned(), cons) != eval(models.boolean(), cons.lit())){
+                auto reason_clause = trail.reason(cons.lit().var());
+                assert(reason_clause != nullptr);
+                conflict_clauses.push_back(*reason_clause);
+
+                //set the value of the literal so that it reflects the now fully assigned constraint
+                bool current_value = models.boolean().value(cons.lit().var().ord());
+                models.boolean().set_value(cons.lit().var().ord(), !current_value);
+                assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
+
+                // change the reason of the literal to nullptr, because the conflict results
+                // from the decision from the input model -> show that the literal is decision variable
+                trail.change_reason(cons.lit().var(), nullptr);
+                assert(trail.reason(cons.lit().var()) == nullptr);
+
+                return conflict_clauses;
+            }
+        }
+    }
+
+    return conflict_clauses;
 }
 
 

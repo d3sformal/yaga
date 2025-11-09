@@ -166,9 +166,9 @@ void Solver::decide(Variable var)
     theory()->decide(db(), trail(), var);
 }
 
-void Solver::decide(Variable var, TrailModelsSnapshot const& input_model){
+std::vector<Clause> Solver::decide(Variable var, TrailModelsSnapshot const& input_model){
     ++total_decisions;
-    theory()->decide(db(), trail(), var, input_model);
+    return theory()->decide(db(), trail(), var, input_model);
 }
 
 void Solver::init()
@@ -288,7 +288,17 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
                     if (res.has_value())
                     {
                         Variable var(res.value(), static_cast<Variable::Type>(i));
-                        decide(var, input_model);
+
+                        auto decision_conflicts = decide(var, input_model);
+
+                        if (!decision_conflicts.empty())
+                        {
+                            // deal with the conflict clauses that have arisen from the decision
+                            auto [learned, level] = analyze_conflicts(std::move(decision_conflicts));
+                            auto final = analyze_final(std::move(learned));
+                            interpolant.insert(interpolant.end(), final.begin(), final.end());
+                            return Result::unsat;
+                        }
 
                         break;
                     }

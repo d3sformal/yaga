@@ -48,8 +48,9 @@ public:
      * @param trail current trail
      * @param var variable to decide
      * @param input_model partial model that holds the value of variable
+     * @return conflict clauses if there is a conflict, empty vector otherwise
      */
-    virtual void decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) = 0;
+    virtual std::vector<Clause> decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) = 0;
 
     /** Reset the last checked position on the @p trail for the next `assigned()` call
      * 

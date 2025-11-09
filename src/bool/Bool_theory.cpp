@@ -27,13 +27,46 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
 }
 
 
-void Bool_theory::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model){
-    if (var.type() == Variable::boolean){
-        auto& model = trail.model<bool>(Variable::boolean);
-        auto value = input_model.model<bool>(Variable::boolean).value(var.ord());
+std::vector<Clause> Bool_theory::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model){
+    if (var.type() != Variable::boolean){
+        return {};
+    }
+
+    auto conflict_clauses = std::vector<Clause>();
+    auto& model = trail.model<bool>(Variable::boolean);
+
+    auto value = input_model.model<bool>(Variable::boolean).value(var.ord());
+
+    if (model.is_defined(var.ord())) {
+        if (model.value(var.ord()) != value){
+            auto lit = model.value(var.ord()) ? Literal{var.ord()} : ~Literal{var.ord()};
+            auto reason_clause = trail.reason(lit.var());
+            assert(reason_clause != nullptr);
+
+            conflict_clauses.push_back(*reason_clause);
+
+            //set the value of the bool variable to one from themodel to create conflict
+            model.set_value(var.ord(), value);
+            assert(model.value(var.ord()) == value);
+
+            //change the reason to nullptr to show that var is decided variable
+            trail.change_reason(var, nullptr);
+
+            return conflict_clauses;
+        }
+        else {
+            //we need to call the decide method on the trail so to increase the decision level
+            trail.decide(var);
+
+            return conflict_clauses;
+        }
+    }
+    else {
         model.set_value(var.ord(), value);
         trail.decide(var);
     }
+
+    return conflict_clauses;
 }
 
 void Bool_theory::on_variable_resize(Variable::Type type, int num_vars)
