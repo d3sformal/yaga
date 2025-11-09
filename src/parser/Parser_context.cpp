@@ -210,14 +210,14 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
 }
 
 void Parser_context::get_interpolant() {
-    if (!interpolant.empty()){
+    if (interpolant.size() > 1){
         std::cout << "(and ";
     }
     for (auto t : interpolant){
         utils::Utils::pretty_print_term(t, term_manager, std::cout);
-        std::cout << std::endl;
+        std::cout << " ";
     }
-    if (!interpolant.empty()){
+    if (interpolant.size() > 1){
         std::cout << ")";
     }
 }
