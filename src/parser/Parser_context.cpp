@@ -209,16 +209,16 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
     return Solver_answer::UNKNOWN;
 }
 
-void Parser_context::get_interpolant() {
+void Parser_context::get_interpolant(std::ostream& output) {
     if (interpolant.size() > 1){
-        std::cout << "(and ";
+        output << "(and ";
     }
     for (auto t : interpolant){
-        utils::Utils::pretty_print_term(t, term_manager, std::cout);
-        std::cout << " ";
+        utils::Utils::pretty_print_term(t, term_manager, output);
+        output << " ";
     }
     if (interpolant.size() > 1){
-        std::cout << ")";
+        output << ")";
     }
 }
 
