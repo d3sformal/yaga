@@ -209,6 +209,30 @@ public:
         var_reason[var.type()][var.ord()] = reason;
     }
 
+    /** Change the reason of a propagation of a variable @p var to @p reason.
+     *  WARNING: Only used in interpolation when we want to change the reason of a variable
+     * that was propagated and the propagated value is in conflict with the input model.
+     * We need to show, that the value of this variable is from the input model, so we need to 
+     * change the reason to nullptr.
+     *
+     * @param var variable to change the reason of
+     * @param reason new reason for the variable
+     */
+    inline void change_reason(Variable var, Clause* reason)
+    {
+        auto level = decision_level(var);
+        assert(level.has_value());
+        auto& assignments = trail[level.value()];
+        for (auto& assignment : assignments)
+        {
+            if (assignment.var.ord() == var.ord())
+            {
+                assignment.reason = reason;
+            }
+        }
+        var_reason[var.type()][var.ord()] = reason;
+    }
+
     /** Make all variables decided or propagated at levels > @p level unassigned.
      *
      * @param level decision level to backtrack to
@@ -339,11 +363,24 @@ public:
         return std::nullopt;
     }
 
+    /*
+     * Check if a variable is defined in the model.
+     */
+    bool is_defined(Variable::Type type, int var_ord) const {
+        return var_models[type]->is_defined(var_ord);
+    }
+
+    /*
+     * Get the model for a given variable type.
+     */
     template <typename T> inline Model<T>& model(Variable::Type type)
     {
         return dynamic_cast<Model<T>&>(*var_models[type]);
     }
 
+    /*
+     * Get the model for a given variable type.
+     */
     template <typename T> inline Model<T> const& model(Variable::Type type) const
     {
         return dynamic_cast<Model<T>&>(*var_models[type]);

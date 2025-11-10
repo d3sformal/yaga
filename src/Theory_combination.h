@@ -44,8 +44,9 @@ public:
      * @param trail current trail
      * @param var variable to decide
      * @param input_model partial model that holds the value of variable
+     * @return conflict clauses if there is a conflict, empty vector otherwise
      */
-    void decide(Database& db, Trail& trail, Variable var, TrailModelsSnapshot const& input_model) override;
+    std::vector<Clause> decide(Database& db, Trail& trail, Variable var, TrailModelsSnapshot const& input_model) override;
 
     /** Call the event in all theories.
      *

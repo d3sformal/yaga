@@ -176,23 +176,16 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
     std::vector<term_t> group2_and_interpolant(group2);
     interpolant.clear();
 
-    //for (; ;)
-    //{
+    for (; ;)
+    {
         solver.reset();
 
         auto res = solver.check(group2_and_interpolant);
         if (res == Solver_answer::UNSAT){
-            std::cout << "result is unsat" << std::endl;
+            if (interpolant.empty()){
+                interpolant.emplace_back(terms::true_term);
+            }
             return Solver_answer::UNSAT;
-        }
-        if (res == Solver_answer::UNKNOWN){
-            std::cout << "result is unknown" << std::endl;
-        }
-        if (res == Solver_answer::ERROR){
-            std::cout << "result is error" << std::endl;
-        }
-        if (res == Solver_answer::SAT){
-            std::cout << "result is sat" << std::endl;
         }
         auto model = solver.get_trail_models_snapshot();
         auto mapping = solver.get_variable_mapping();
@@ -218,15 +211,20 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
             utils::Utils::pretty_print_term(t, term_manager, std::cout);
             std::cout << std::endl;
         }
-    //}
+    }
     return Solver_answer::UNKNOWN;
 }
 
-void Parser_context::get_interpolant() {
-
+void Parser_context::get_interpolant(std::ostream& output) {
+    if (interpolant.size() > 1){
+        output << "(and ";
+    }
     for (auto t : interpolant){
-        utils::Utils::pretty_print_term(t, term_manager, std::cout);
-        std::cout << std::endl;
+        utils::Utils::pretty_print_term(t, term_manager, output);
+        output << " ";
+    }
+    if (interpolant.size() > 1){
+        output << ")";
     }
 }
 

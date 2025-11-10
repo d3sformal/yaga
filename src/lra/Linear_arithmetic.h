@@ -87,8 +87,9 @@ public:
      * @param trail current trail
      * @param var variable to decide
      * @param input_model partial model that holds the value of variable
+     * @return conflict clauses if there is a conflict, empty vector otherwise
      */
-    virtual void decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) override;
+    virtual std::vector<Clause> decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) override;
 
     /** Propagate a fully assigned constraint @p cons to @p trail
      *

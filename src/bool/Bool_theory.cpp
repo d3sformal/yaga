@@ -1,5 +1,5 @@
 #include "Bool_theory.h"
-#include <iostream>
+
 namespace yaga {
 
 void Bool_theory::decide(Database&, Trail& trail, Variable var)
@@ -28,13 +28,46 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
 }
 
 
-void Bool_theory::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model){
-    if (var.type() == Variable::boolean){
-        auto& model = trail.model<bool>(Variable::boolean);
-        auto value = input_model.model<bool>(Variable::boolean).value(var.ord());
+std::vector<Clause> Bool_theory::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model){
+    if (var.type() != Variable::boolean){
+        return {};
+    }
+
+    auto conflict_clauses = std::vector<Clause>();
+    auto& model = trail.model<bool>(Variable::boolean);
+
+    auto value = input_model.model<bool>(Variable::boolean).value(var.ord());
+
+    if (model.is_defined(var.ord())) {
+        if (model.value(var.ord()) != value){
+            auto lit = model.value(var.ord()) ? Literal{var.ord()} : ~Literal{var.ord()};
+            auto reason_clause = trail.reason(lit.var());
+            assert(reason_clause != nullptr);
+
+            conflict_clauses.push_back(*reason_clause);
+
+            //set the value of the bool variable to one from themodel to create conflict
+            model.set_value(var.ord(), value);
+            assert(model.value(var.ord()) == value);
+
+            //change the reason to nullptr to show that var is decided variable
+            trail.change_reason(var, nullptr);
+
+            return conflict_clauses;
+        }
+        else {
+            //we need to call the decide method on the trail so to increase the decision level
+            trail.decide(var);
+
+            return conflict_clauses;
+        }
+    }
+    else {
         model.set_value(var.ord(), value);
         trail.decide(var);
     }
+
+    return conflict_clauses;
 }
 
 void Bool_theory::on_variable_resize(Variable::Type type, int num_vars)
@@ -82,7 +115,6 @@ void Bool_theory::on_learned_clause(Database& db, Trail&, Clause const& learned)
 
 void Bool_theory::initialize(Database& db, Trail& trail)
 {
-    std::cout << "initialize(Database& db, Trail& trail)" << std::endl;
     auto const& model = trail.model<bool>(Variable::boolean);
 
     // allocate space for new variables if necessary
@@ -90,8 +122,6 @@ void Bool_theory::initialize(Database& db, Trail& trail)
 
     if (trail.empty()) // initialize watch lists
     {
-        std::cout << "trail is empty" << std::endl;
-
         // clear watch lists
         for (auto& list : watched)
         {
@@ -123,7 +153,6 @@ void Bool_theory::initialize(Database& db, Trail& trail)
     // propagate assigned variables
     for (auto [var, reason] : assigned(trail))
     {
-        std::cout << "we are in assigned" << std::endl;
         if (var.type() == Variable::boolean)
         {
             auto lit = model.value(var.ord()) ? Literal{var.ord()} : ~Literal{var.ord()};
@@ -134,7 +163,6 @@ void Bool_theory::initialize(Database& db, Trail& trail)
 
 std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
 {
-    std::cout << "Bool propagate(Database& db, Trail& trail)" << std::endl;
     satisfied.clear();
 
     auto& model = trail.model<bool>(Variable::boolean);
@@ -151,7 +179,7 @@ std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
         // propagate the literal if necessary
         if (reason != nullptr && !model.is_defined(lit.var().ord()))
         {
-            std::cout << "we need to propagate the literal" << std::endl;
+            std::cout << "we need to propagate the literal " << lit.var() << std::endl;
             model.set_value(lit.var().ord(), !lit.is_negation());
             trail.propagate(lit.var(), reason, trail.decision_level());
         }
@@ -205,7 +233,6 @@ bool Bool_theory::replace_second_watch(Model<bool> const& model, Watched_clause&
 std::optional<Clause> 
 Bool_theory::falsified([[maybe_unused]] Trail const& trail, Model<bool> const& model, Literal falsified_lit)
 {
-    std::cout << "Bool falsified" << std::endl;
     assert(eval(model, falsified_lit) == false);
 
     auto& watchlist = watched[falsified_lit];

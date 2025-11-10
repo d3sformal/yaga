@@ -234,7 +234,7 @@ private:
     void init();
 
     [[nodiscard]] std::vector<Clause> analyze_final(std::vector<Clause>&& learned_clauses);
-    void decide(Variable var, TrailModelsSnapshot const& input_model);
+    [[nodiscard]] std::vector<Clause> decide(Variable var, TrailModelsSnapshot const& input_model);
 };
 
 } // namespace yaga

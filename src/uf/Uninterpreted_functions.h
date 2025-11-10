@@ -51,8 +51,9 @@ public:
      * @param trail current trail
      * @param var variable to decide
      * @param input_model partial model that holds the value of variable
+     * @return conflict clauses if there is a conflict, empty vector otherwise
      */
-    void decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) override;
+    std::vector<Clause> decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) override;
 
     /** Take action before the solver backtracks to decision level @p new_level
      *
