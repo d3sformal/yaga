@@ -565,7 +565,7 @@ std::vector<Clause> Linear_arithmetic::decide(Database&, Trail& trail, Variable 
     for (auto&& watched_constr : constr)
     {
         auto cons = watched_constr.constraint;
-        if (is_fully_assigned(models.owned(), cons))
+        if (is_fully_assigned(models.owned(), cons) && models.boolean().is_defined(cons.lit().var().ord()))
         {
             if (eval(models.owned(), cons) != eval(models.boolean(), cons.lit())){
                 auto reason_clause = trail.reason(cons.lit().var());
