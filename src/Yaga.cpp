@@ -62,6 +62,7 @@ Yaga::Yaga(terms::Term_manager const& tm,
 
 void Yaga::init()
 {
+    solver().restart();
     smt.db().learned().clear();
     smt.db().asserted().clear();
 }
