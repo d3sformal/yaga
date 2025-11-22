@@ -40,11 +40,11 @@ TEST_CASE("Simple interpolation test", "[test_parser]")
         REQUIRE(actual_interpolant == expected_interpolant);
     }
 
-    SECTION("simple interpolant with complement group")
+    SECTION("simple interpolant with named complement groups")
     {
         test.input() << "(assert (! (> x y) :named A))";
-        test.input() << "(assert (> y 2))";
-        test.input() << "(assert (< x 1))";
+        test.input() << "(assert (! (> y 2) :named B))";
+        test.input() << "(assert (! (< x 1) :named C))";
         test.input() << "(check-sat)";
         test.input() << "(get-interpolant A)";
         test.run(false, true);
@@ -65,9 +65,8 @@ TEST_CASE("Simple interpolation test", "[test_parser]")
         test.run(false, true);
         
         REQUIRE(test.answer() == Solver_answer::UNSAT);
-        std::cout << "After unsat" << std::endl;
         std::string actual_interpolant = Yaga_test::normalize_sexpr(test.interpolant());
-        std::string expected_interpolant = Yaga_test::normalize_sexpr("(not (>= x 5))");
+        std::string expected_interpolant = Yaga_test::normalize_sexpr("(>= (+ (- 5) x) 0)"); // (x >= 5)
         REQUIRE(actual_interpolant == expected_interpolant);
     }
 }
@@ -88,6 +87,7 @@ TEST_CASE("Interpolation result verification", "[interpolation]")
         test.input() << "(assert (! (>= x 0) :named A))";
         test.input() << "(assert (! (= (+ x 1) y) :named B))";
         test.input() << "(assert (! (< y 0) :named C))";
+        test.input() << "(check-sat)";
         test.input() << "(get-interpolant (A B) (C))";
         
         test.run(false, true);
@@ -95,7 +95,7 @@ TEST_CASE("Interpolation result verification", "[interpolation]")
         REQUIRE(test.answer() == Solver_answer::UNSAT);
         
         std::string actual_interpolant = Yaga_test::normalize_sexpr(test.interpolant());
-        std::string expected_interpolant = Yaga_test::normalize_sexpr("(>= y 0)");
+        std::string expected_interpolant = Yaga_test::normalize_sexpr("(>= (+ (- 1) y) 0)");
         REQUIRE(actual_interpolant == expected_interpolant);
     }
 }
@@ -116,19 +116,16 @@ TEST_CASE("Interpolation with complicated inputs", "[interpolation]")
     test.input() << "(declare-fun a () Real)";
     test.input() << "(assert (!  (and (= x 0) (= y 1) (= z 2)) :named B))";
     test.input() << "(assert (!  (and (or (not (= x 0)) (< z 0) (< (+ z w) 2)) (or (not (= y 1)) (> (+ w a) 0) (> w 0)) (or (< a 0) (< (+ x y z) 0))) :named A))";
-    
-    SECTION("multiple groups")
-    {
-        test.input() << "(get-interpolant A B)";
-        test.run(false, true);
 
-        REQUIRE(test.answer() == Solver_answer::UNSAT);
+    test.input() << "(check-sat)";
+    test.input() << "(get-interpolant A B)";
+    test.run(false, true);
 
-        std::string actual_interpolant = Yaga_test::normalize_sexpr(test.interpolant());
-        std::string expected_interpolant = Yaga_test::normalize_sexpr("(or (not (= x 0)) (not (= y 1)) (not (>= z 0)) (not (>= (+ x y z) 0)) (not (>= (+ (- 2) z) 0)))");
-        REQUIRE(actual_interpolant == expected_interpolant);
+    REQUIRE(test.answer() == Solver_answer::UNSAT);
 
-    }
+    std::string actual_interpolant = Yaga_test::normalize_sexpr(test.interpolant());
+    std::string expected_interpolant = Yaga_test::normalize_sexpr("(or (not (= x 0)) (not (= y 1)) (not (>= z 0)) (not (>= (+ x y z) 0)) (not (>= (+ (- 2) z) 0)))");
+    REQUIRE(actual_interpolant == expected_interpolant);
 }
 
 TEST_CASE("Interpolation triggering conflict inside decide method", "[interpolation]"){
@@ -147,7 +144,9 @@ TEST_CASE("Interpolation triggering conflict inside decide method", "[interpolat
 
         test.input() << "(assert (! (and (> x z) (> z 1)) :named A))";
         test.input() << "(assert (! (= 0 x) :named B))";
+        test.input() << "(check-sat)";
         test.input() << "(get-interpolant A B)";
+
         test.run(false, true);
         REQUIRE(test.answer() == Solver_answer::UNSAT);
 
@@ -160,7 +159,9 @@ TEST_CASE("Interpolation triggering conflict inside decide method", "[interpolat
 
         test.input() << "(assert (! (and (not a) (or a (= x 0))) :named A))";
         test.input() << "(assert (! (= 1 x) :named B))";
+        test.input() << "(check-sat)";
         test.input() << "(get-interpolant A B)";
+
         test.run(false, true);
         REQUIRE(test.answer() == Solver_answer::UNSAT);
 
@@ -171,9 +172,11 @@ TEST_CASE("Interpolation triggering conflict inside decide method", "[interpolat
 
     SECTION("Variation 3"){
 
-        test.input() << "(assert (! (and (> x y) (a) (or (not a) (> y 0)) ) :named A))";
-        test.input() << "(assert (! (and (a) (= 0 x)) :named B))";
+        test.input() << "(assert (! (and (> x y) a (or (not a) (> y 0))) :named A))";
+        test.input() << "(assert (! (and a (= 0 x)) :named B))";
+        test.input() << "(check-sat)";
         test.input() << "(get-interpolant A B)";
+
         test.run(false, true);
         REQUIRE(test.answer() == Solver_answer::UNSAT);
 
