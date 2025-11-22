@@ -215,11 +215,20 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
     return Solver_answer::UNKNOWN;
 }
 
-void Parser_context::get_interpolant(std::ostream& output) {
+std::vector<term_t> Parser_context::get_interpolant() {
+    if (interpolant.empty()){
+        return {terms::true_term};
+    }
+
+    return interpolant;
+}
+
+void Parser_context::print_interpolant(std::ostream & output){
     if (interpolant.size() > 1){
         output << "(and ";
     }
-    for (auto t : interpolant){
+
+    for (auto t : get_interpolant()){
         utils::Utils::pretty_print_term(t, term_manager, output);
         output << " ";
     }
@@ -227,6 +236,5 @@ void Parser_context::get_interpolant(std::ostream& output) {
         output << ")";
     }
 }
-
 
 } // namespace yaga::parser

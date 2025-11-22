@@ -151,7 +151,7 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
     std::unordered_map<terms::term_t, int> real_vars;
     std::unordered_map<terms::term_t, Literal> bool_vars;
     Yaga smt{terms::Term_manager(), std::ranges::views::all(real_vars), std::ranges::views::all(bool_vars)};
-    smt.set_logic(logic::qf_lra, opts);
+    smt.set_logic(logic_enum::QF_LRA, opts);
     Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 
@@ -184,7 +184,7 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
     std::unordered_map<terms::term_t, int> real_vars;
     std::unordered_map<terms::term_t, Literal> bool_vars;
     Yaga smt{terms::Term_manager(), std::ranges::views::all(real_vars), std::ranges::views::all(bool_vars)};
-    smt.set_logic(logic::qf_uflra, opts);
+    smt.set_logic(logic_enum::QF_UFLRA, opts);
     Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 
