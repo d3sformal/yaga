@@ -209,11 +209,7 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
     return Solver_answer::UNKNOWN;
 }
 
-std::vector<term_t> Parser_context::get_interpolant() {
-    if (interpolant.empty()){
-        return {terms::true_term};
-    }
-
+std::vector<term_t> const& Parser_context::get_interpolant() {
     return interpolant;
 }
 

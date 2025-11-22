@@ -347,6 +347,9 @@ bool Smt2_parser::parse_command(std::ostream& output, Smt2_term_parser& term_par
             if (last_answer == Solver_answer::UNSAT){
                 parser_context.print_interpolant(output);
             }
+            else if (last_answer == Solver_answer::SAT){
+                print_answer(*last_answer, output);
+            }
         }
 
         return true;    // we consumed all the input for this token, we can return
