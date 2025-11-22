@@ -254,6 +254,7 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
         {
             if (trail().decision_level() == 0)
             {
+                interpolant.emplace_back(); // add empty clause (false)
                 return Result::unsat;
             }
             auto [learned, level] = analyze_conflicts(std::move(conflicts));

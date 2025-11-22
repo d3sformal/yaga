@@ -142,6 +142,29 @@ TEST_CASE("Interpolation with complicated inputs", "[interpolation]")
     REQUIRE(actual_interpolant == expected_interpolant);
 }
 
+TEST_CASE("Interpolation where A is UNSAT", "[interpolation]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::parser;
+
+    Yaga_test test;
+    test.input() << "(set-logic QF_LRA)";
+    test.input() << "(declare-fun x () Real)";
+    test.input() << "(declare-fun y () Real)";
+    test.input() << "(assert (! (< y 0) :named B))";
+    test.input() << "(assert (! (and (>= x 0) (< (+ x 1) 0) (= y 2)) :named A))";
+    test.input() << "(check-sat)";
+    test.input() << "(get-interpolant A B)";
+
+    test.run(false, true);
+    REQUIRE(test.answer() == Solver_answer::UNSAT);
+
+    std::string actual_interpolant = Yaga_test::normalize_sexpr(test.interpolant());
+    std::string expected_interpolant = Yaga_test::normalize_sexpr("(not (true))");
+    REQUIRE(actual_interpolant == expected_interpolant);
+}
+
 TEST_CASE("Interpolation triggering conflict inside decide method", "[interpolation]"){
     using namespace yaga;
     using namespace yaga::test;
