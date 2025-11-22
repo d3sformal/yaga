@@ -199,7 +199,7 @@ public:
     void store_defined_fun(std::string const& name, term_t definition, std::vector<term_t> && formal_args, type_t ret_sort);
 
     Solver_answer interpolate(std::vector<term_t> const& group1, std::vector<term_t> const& group2);
-    std::vector<term_t> get_interpolant();
+    std::vector<term_t> const& get_interpolant();
     void print_interpolant(std::ostream& output);
 
 private:
