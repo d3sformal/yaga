@@ -69,6 +69,20 @@ TEST_CASE("Simple interpolation test", "[test_parser]")
         std::string expected_interpolant = Yaga_test::normalize_sexpr("(>= (+ (- 5) x) 0)"); // (x >= 5)
         REQUIRE(actual_interpolant == expected_interpolant);
     }
+
+    SECTION("Formulas are SAT - no interpolant")
+    {
+        test.input() << "(assert (! (>= x 5) :named A))";
+        test.input() << "(assert (< x 10))";
+        test.input() << "(get-interpolant (A))";
+        test.run(false, true);
+
+        REQUIRE(test.answer() == Solver_answer::SAT);
+
+        std::string actual_interpolant = Yaga_test::normalize_sexpr(test.interpolant());
+        std::string expected_interpolant = Yaga_test::normalize_sexpr("");
+        REQUIRE(actual_interpolant == expected_interpolant);
+    }
 }
 
 TEST_CASE("Interpolation result verification", "[interpolation]")
