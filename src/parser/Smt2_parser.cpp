@@ -345,8 +345,7 @@ bool Smt2_parser::parse_command(std::ostream& output, Smt2_term_parser& term_par
             }
             last_answer = parser_context.interpolate(groups_terms.first, groups_terms.second);
             if (last_answer == Solver_answer::UNSAT){
-                // TODO: Print or process interpolant as needed
-                parser_context.get_interpolant(output);
+                parser_context.print_interpolant(output);
             }
         }
 
