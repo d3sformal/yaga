@@ -27,6 +27,11 @@ void Subsumption::on_variable_resize(Variable::Type type, int num_vars)
     }
 }
 
+void Subsumption::on_init(Database& db, Trail&)
+{
+    old_size = db.learned().size();
+}
+
 void Subsumption::on_restart(Database& db, Trail&) { remove_subsumed(db); }
 
 bool Subsumption::subsumes(Subsumption::Clause_ptr first, Subsumption::Clause_ptr second)
