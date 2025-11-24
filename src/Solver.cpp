@@ -272,6 +272,7 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
             //interpolant.insert(interpolant.end(), conflicts.begin(), conflicts.end());
             if (trail().decision_level() == 0)
             {
+                interpolant.emplace_back(); // add empty clause (false)
                 return Result::unsat;
             }
             std::cout << "Analysis" << std::endl;
