@@ -161,7 +161,7 @@ TEST_CASE("Interpolation where A is UNSAT", "[interpolation]")
     REQUIRE(test.answer() == Solver_answer::UNSAT);
 
     std::string actual_interpolant = Yaga_test::normalize_sexpr(test.interpolant());
-    std::string expected_interpolant = Yaga_test::normalize_sexpr("(not (true))");
+    std::string expected_interpolant = Yaga_test::normalize_sexpr("(not true)");
     REQUIRE(actual_interpolant == expected_interpolant);
 }
 
