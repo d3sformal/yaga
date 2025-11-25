@@ -260,7 +260,7 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
             auto [learned, level] = analyze_conflicts(std::move(conflicts));
 
             if (std::any_of(learned.begin(), learned.end(), [](auto const& clause) { return clause.empty(); })
-                || level < input_model.size())
+                || level < static_cast<int>(input_model.size()))
             {
                 auto final = analyze_final(std::move(learned));
                 interpolant.insert(interpolant.end(), final.begin(), final.end());
@@ -281,7 +281,7 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
         else // no conflict
         {
             //decide value from the input model
-            if (trail().decision_level() < input_model.size())
+            if (trail().decision_level() < static_cast<int>(input_model.size()))
             {
                 for (size_t i = 0; i <= Variable::Type::LAST_ELEMENT; ++i)
                 {
