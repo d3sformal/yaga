@@ -32,8 +32,8 @@ public:
     std::pair<Clause, int> analyze(Trail const& trail, Clause&& conflict,
                                    Resolve_callback&& on_resolve)
     {
-        auto const& model = trail.model<bool>(Variable::boolean);
-        assert(eval(model, conflict) == false);
+        auto const* model = trail.model<bool>(Variable::boolean);
+        assert(model && eval(*model, conflict) == false);
 
         init(trail, conflict);
 
@@ -45,7 +45,7 @@ public:
                 trail.decision_level(var).value() == top_level)
             {
                 auto lit =
-                    model.value(var.ord()) ? ~Literal{var.ord()} : Literal{var.ord()};
+                    model->value(var.ord()) ? ~Literal{var.ord()} : Literal{var.ord()};
                 if (can_resolve(lit))
                 {
                     on_resolve(*reason);
@@ -70,8 +70,8 @@ public:
      * @return clause without any propagated literals.
      */
     Clause analyze_final(Trail const& trail, Clause&& clause){
-        auto const& model = trail.model<bool>(Variable::boolean);
-        assert(eval(model, clause) == false);
+        auto const* model = trail.model<bool>(Variable::boolean);
+        assert(model && eval(*model, clause) == false);
 
         init(trail, clause);
 
@@ -84,7 +84,7 @@ public:
 
                 if (var.type() == Variable::boolean && reason != nullptr){
                     auto lit =
-                        model.value(var.ord()) ? ~Literal{var.ord()} : Literal{var.ord()};
+                        model->value(var.ord()) ? ~Literal{var.ord()} : Literal{var.ord()};
                     if (can_resolve(lit)){
                         final_resolve(*reason, lit);
                     }
@@ -93,7 +93,7 @@ public:
         }
 
         Clause result(conflict.begin(), conflict.end());
-        assert(eval(model, result) == false);
+        assert(eval(*model, result) == false);
         return result;
     }
 

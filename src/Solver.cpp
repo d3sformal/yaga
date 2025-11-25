@@ -108,7 +108,7 @@ void Solver::backtrack_with(Clause_range clauses, int level)
 {
     dispatcher.on_before_backtrack(db(), trail(), level);
 
-    auto& model = trail().model<bool>(Variable::boolean);
+    auto* model = trail().model<bool>(Variable::boolean);
     if (is_semantic_split(clauses[0]))
     {
         assert(std::all_of(clauses.begin(), clauses.end(), [&](auto const& other_clause) {
@@ -136,7 +136,7 @@ void Solver::backtrack_with(Clause_range clauses, int level)
         trail().backtrack(level);
         // decide one of the literals at the highest decision level
         trail().decide(top_it->var());
-        model.set_value(top_it->var().ord(), !top_it->is_negation());
+        model->set_value(top_it->var().ord(), !top_it->is_negation());
     }
     else // UIP
     {
@@ -149,10 +149,10 @@ void Solver::backtrack_with(Clause_range clauses, int level)
         // propagate top level literals from all clauses
         for (auto& clause : clauses)
         {
-            if (!model.is_defined(clause[0].var().ord()))
+            if (!model->is_defined(clause[0].var().ord()))
             {
                 trail().propagate(clause[0].var(), &clause, level);
-                model.set_value(clause[0].var().ord(), !clause[0].is_negation());
+                model->set_value(clause[0].var().ord(), !clause[0].is_negation());
             }
         }
     }

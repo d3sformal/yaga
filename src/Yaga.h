@@ -194,7 +194,13 @@ public:
             throw std::logic_error{"This logic does not support linear constraints."};
         }
 
-        auto num_real_vars = static_cast<int>(solver().trail().model(Variable::rational).num_vars());
+        auto* rational_model = solver().trail().model(Variable::rational);
+        if (!rational_model)
+        {
+            throw std::logic_error{"Rational model not initialized."};
+        }
+        
+        auto num_real_vars = static_cast<int>(rational_model->num_vars());
         for (auto&& var : vars)
         {
             if (var < 0 || var >= num_real_vars)

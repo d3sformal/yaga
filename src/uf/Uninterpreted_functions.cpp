@@ -166,13 +166,13 @@ Uninterpreted_functions::Term_evaluation Uninterpreted_functions::evaluate(const
 
         switch (term_manager.get_type(t)) {
         case terms::types::real_type: {
-            Model<Rational> const& r_model = trail.model<Rational>(Variable::rational);
-            result.value = r_model.value(maybe_var.value().ord());
+            Model<Rational> const* r_model = trail.model<Rational>(Variable::rational);
+            result.value = r_model->value(maybe_var.value().ord());
             break;
         }
         case terms::types::bool_type: {
-            Model<bool> const& b_model = trail.model<bool>(Variable::boolean);
-            bool bool_model_value = b_model.value(maybe_var.value().ord());
+            Model<bool> const* b_model = trail.model<bool>(Variable::boolean);
+            bool bool_model_value = b_model->value(maybe_var.value().ord());
             result.value = bool_model_value;
             break;
         }
@@ -290,7 +290,7 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
         Literal lit = solver->linear_constraint(p.vars, p.coef, Order_predicate::Type::eq, -p.constant);
         assert(!lit.is_negation());
 
-        auto& trail_model = trail.model<bool>(Variable::boolean);
+        auto* trail_model = trail.model<bool>(Variable::boolean);
 
         if (!make_equal)
             lit.negate();
@@ -301,7 +301,7 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
         bool are_equal = !make_equal;
 
         // no literal L can be propagated to the trail, if L or -L is already on the trail
-        if (trail_model.is_defined(lit.var().ord())) {
+        if (trail_model->is_defined(lit.var().ord())) {
             propagate = false;
         }
 
@@ -312,7 +312,7 @@ void Uninterpreted_functions::assert_equality(terms::term_t t, terms::term_t u, 
 
             int propagation_level = std::max<int>(t_eval.decision_level, u_eval.decision_level);
             trail.propagate(lit.var(), nullptr, propagation_level);
-            trail_model.set_value(lit.var().ord(), are_equal);
+            trail_model->set_value(lit.var().ord(), are_equal);
         }
 
         result_clause.push_back(lit);

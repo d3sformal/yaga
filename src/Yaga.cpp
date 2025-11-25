@@ -117,7 +117,7 @@ bool Yaga::has_uf() {
 
 Variable Yaga::make(Variable::Type type)
 {
-    auto num_vars = static_cast<int>(smt.trail().model(type).num_vars());
+    auto num_vars = static_cast<int>(smt.trail().model(type)->num_vars());
     smt.trail().resize(type, num_vars + 1);
     return Variable{num_vars, type};
 }

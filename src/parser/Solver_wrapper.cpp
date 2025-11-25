@@ -100,21 +100,21 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 
 void Solver_wrapper::model(Default_model_visitor& visitor)
 {
-    auto& bool_model = solver.solver().trail().model<bool>(Variable::boolean);
-    auto& lra_model = solver.solver().trail().model<Rational>(Variable::rational);
+    auto bool_model = solver.solver().trail().model<bool>(Variable::boolean);
+    auto lra_model = solver.solver().trail().model<Rational>(Variable::rational);
 
     for (auto& [term, var] : variables)
     {
         if (term_manager.get_kind(term) != terms::Kind::UNINTERPRETED_TERM)
             continue;
 
-        if (var.type() == Variable::boolean && bool_model.is_defined(var.ord()))
+        if (var.type() == Variable::boolean && bool_model->is_defined(var.ord()))
         {
-            visitor.visit(term, static_cast<bool>(bool_model.value(var.ord())));
+            visitor.visit(term, static_cast<bool>(bool_model->value(var.ord())));
         }
-        else if (var.type() == Variable::rational && lra_model.is_defined(var.ord()))
+        else if (var.type() == Variable::rational && lra_model->is_defined(var.ord()))
         {
-            visitor.visit(term, lra_model.value(var.ord()));
+            visitor.visit(term, lra_model->value(var.ord()));
         }
     }
 
@@ -142,6 +142,10 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
     prepare_assertions_and_assert_clauses(assertions);
     remember_term_variable_mapping();
 
+    // Transfer model values from the input_model to a new model snapshot.
+    // Since variables for the input formula may have different mapping then the ones in the input model,
+    // we need to map each term's value from its old variable ordinal (in variables_mapping)
+    // to its new variable ordinal (in variables).
     TrailModelsSnapshot model(solver.solver().trail());
     for (auto& [term, var] : variables){
         auto old_map_it = variables_mapping.find(term);
@@ -151,10 +155,10 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
             switch (var.type())
             {
             case Variable::boolean:
-                model.model<bool>(Variable::boolean).set_value(var.ord(), input_model.model<bool>(Variable::boolean).value(old_var.ord()));
+                model.model<bool>(Variable::boolean)->set_value(var.ord(), input_model.model<bool>(Variable::boolean)->value(old_var.ord()));
                 break;
             case Variable::rational:
-                model.model<Rational >(Variable::rational).set_value(var.ord(), input_model.model<Rational>(Variable::rational).value(old_var.ord()));
+                model.model<Rational>(Variable::rational)->set_value(var.ord(), input_model.model<Rational>(Variable::rational)->value(old_var.ord()));
                 break;
             default:
                 std::cerr << "Not supported variable type" << std::endl;
@@ -162,6 +166,7 @@ Solver_answer Solver_wrapper::check(const std::vector<terms::term_t>& assertions
             }
         }
     }
+    
     auto res = solver.solver().check(model);
 
     if (res == Solver::Result::sat)

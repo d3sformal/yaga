@@ -14,26 +14,26 @@ using b_map_t = std::unordered_map<yaga::terms::term_t, Literal>;
 
 void propagate_var(Trail& trail, Literal lit)
 {
-    auto& model = trail.model<bool>(Variable::boolean);
-    assert(!model.is_defined(lit.var().ord()));
-    model.set_value(lit.var().ord(), !lit.is_negation());
+    auto* model = trail.model<bool>(Variable::boolean);
+    assert(model && !model->is_defined(lit.var().ord()));
+    model->set_value(lit.var().ord(), !lit.is_negation());
     trail.propagate(lit.var(), nullptr, trail.decision_level());
 }
 
 void decide_lit(Trail& trail, Literal lit)
 {
-    auto& model = trail.model<bool>(Variable::boolean);
-    assert(!model.is_defined(lit.var().ord()));
-    model.set_value(lit.var().ord(), !lit.is_negation());
+    auto* model = trail.model<bool>(Variable::boolean);
+    assert(model && !model->is_defined(lit.var().ord()));
+    model->set_value(lit.var().ord(), !lit.is_negation());
     trail.decide(lit.var());
 }
 
 // decide that a real variable var is equal to a value val
 void decide_var(Trail& trail, Variable var, Rational value)
 {
-    auto& model = trail.model<Rational>(Variable::rational);
-    assert(!model.is_defined(var.ord()));
-    model.set_value(var.ord(), value);
+    auto* model = trail.model<Rational>(Variable::rational);
+    assert(model && !model->is_defined(var.ord()));
+    model->set_value(var.ord(), value);
     trail.decide(var);
 }
 

@@ -552,7 +552,7 @@ std::vector<Clause> Linear_arithmetic::decide(Database&, Trail& trail, Variable 
 
     auto models = relevant_models(trail);
 
-    Rational value = input_model.model<Rational>(Variable::Type::rational).value(var.ord());
+    Rational value = input_model.model<Rational>(Variable::Type::rational)->value(var.ord());
 
     // decide the value
     std::vector<Clause> conflict_clauses;

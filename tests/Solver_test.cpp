@@ -27,13 +27,13 @@ TEST_CASE("Check a satisfiable boolean formula", "[sat][integration]")
     auto result = solver.check();
     REQUIRE(result == Solver::Result::sat);
 
-    auto& model = solver.trail().model<bool>(Variable::boolean);
-    REQUIRE(model.is_defined(0));
-    REQUIRE(model.value(0) == false);
-    REQUIRE(model.is_defined(1));
-    REQUIRE(model.value(1) == true);
-    REQUIRE(model.is_defined(2));
-    REQUIRE(model.value(2) == false);
+    auto model = solver.trail().model<bool>(Variable::boolean);
+    REQUIRE(model->is_defined(0));
+    REQUIRE(model->value(0) == false);
+    REQUIRE(model->is_defined(1));
+    REQUIRE(model->value(1) == true);
+    REQUIRE(model->is_defined(2));
+    REQUIRE(model->value(2) == false);
 }
 
 TEST_CASE("Check an unsatisfiable boolean formula", "[unsat][integration]")

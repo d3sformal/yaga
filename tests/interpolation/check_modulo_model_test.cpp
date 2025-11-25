@@ -1,19 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
-
 #include <fstream>
 
 #include "test.h"
 #include "Solver.h"
 #include "Bool_theory.h"
-#include "Combined_order.h"
-#include "Generalized_vsids.h"
 #include "Linear_arithmetic.h"
 #include "Theory_combination.h"
 #include "Restart.h"
 #include "First_unassigned.h"
 #include "Smtlib_parser.h"
 #include "Rational.h"
-#include "Yaga.h"
 
 using namespace yaga;
 using namespace yaga::test;
@@ -36,7 +32,7 @@ TEST_CASE("Solve a formula with an input model", "[integration][lra][sat]")
     solver.db().assert_clause(clause(linear(x + 1 == y)));
 
     TrailModelsSnapshot modelsSnapshot(solver.trail());
-    modelsSnapshot.model<Rational>(Variable::rational).set_value(x.ord(), 1);
+    modelsSnapshot.model<Rational>(Variable::rational)->set_value(x.ord(), 1);
 
     auto result = solver.check(modelsSnapshot);
     REQUIRE(result == Solver::Result::sat);
@@ -70,12 +66,12 @@ TEST_CASE("Solve a formula with an input model that cause conflict", "[integrati
     solver.db().assert_clause(clause(linear(x + 1 == y)));
 
     TrailModelsSnapshot modelsSnapshot(solver.trail());
-    modelsSnapshot.model<Rational>(Variable::rational).set_value(x.ord(), -1);
+    modelsSnapshot.model<Rational>(Variable::rational)->set_value(x.ord(), -1);
 
     auto result = solver.check(modelsSnapshot);
     REQUIRE(result == Solver::Result::unsat);
 }
-/*
+
 TEST_CASE("Solve a propositional formula with an input model that cause conflict", "[integration][bool_theory][sat]")
 {
     // sat formula
@@ -93,22 +89,22 @@ TEST_CASE("Solve a propositional formula with an input model that cause conflict
     solver.db().assert_clause(~lit(b.ord()), ~lit(c.ord()));
 
     TrailModelsSnapshot modelsSnapshot(solver.trail());
-    modelsSnapshot.model<bool>(Variable::boolean).set_value(a.ord(), true);
+    modelsSnapshot.model<bool>(Variable::boolean)->set_value(a.ord(), true);
 
     auto result = solver.check(modelsSnapshot);
     REQUIRE(result == Solver::Result::sat);
 
-    auto& model = solver.trail().model<bool>(Variable::boolean);
-    REQUIRE(model.is_defined(a.ord()));
-    REQUIRE(model.value(a.ord()) == true);
-    REQUIRE(model.is_defined(b.ord()));
-    REQUIRE(model.value(b.ord()) == false);
-    REQUIRE(model.is_defined(c.ord()));
-    REQUIRE(model.value(c.ord()) == true);
+    auto model = solver.trail().model<bool>(Variable::boolean);
+    REQUIRE(model->is_defined(a.ord()));
+    REQUIRE(model->value(a.ord()) == true);
+    REQUIRE(model->is_defined(b.ord()));
+    REQUIRE(model->value(b.ord()) == false);
+    REQUIRE(model->is_defined(c.ord()));
+    REQUIRE(model->value(c.ord()) == true);
 
     REQUIRE(solver.get_model_interpolant().size() == 0);
 }
-*/
+
 TEST_CASE("Solve a formula with an input model that cause conflict in decide method in Boolean theory plugin", "[integration][lra][unsat]")
 {
     // sat formula
@@ -128,7 +124,7 @@ TEST_CASE("Solve a formula with an input model that cause conflict in decide met
     solver.db().assert_clause(~lit(a.ord()), linear(x == 0).lit());
 
     TrailModelsSnapshot modelsSnapshot(solver.trail());
-    modelsSnapshot.model<Rational>(Variable::rational).set_value(x.ord(), 1);
+    modelsSnapshot.model<Rational>(Variable::rational)->set_value(x.ord(), 1);
 
     auto result = solver.check(modelsSnapshot);
     REQUIRE(result == Solver::Result::unsat);
@@ -153,7 +149,7 @@ TEST_CASE("Solve a formula with an input model that cause conflict in decide met
     solver.db().assert_clause(~lit(a.ord()), linear(x == 0).lit());
 
     TrailModelsSnapshot modelsSnapshot(solver.trail());
-    modelsSnapshot.model<bool>(Variable::boolean).set_value(a.ord(), false);
+    modelsSnapshot.model<bool>(Variable::boolean)->set_value(a.ord(), false);
 
     auto result = solver.check(modelsSnapshot);
     REQUIRE(result == Solver::Result::unsat);

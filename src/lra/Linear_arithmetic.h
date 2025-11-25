@@ -151,7 +151,10 @@ public:
      */
     [[nodiscard]] inline Models relevant_models(Trail& trail) const
     {
-        return {trail.model<bool>(Variable::boolean), trail.model<Rational>(Variable::rational)};
+        auto* bool_model = trail.model<bool>(Variable::boolean);
+        auto* rational_model = trail.model<Rational>(Variable::rational);
+        assert(bool_model != nullptr && rational_model != nullptr);
+        return {*bool_model, *rational_model};
     }
 
     /** Get constraint which implements @p bool_var_ord

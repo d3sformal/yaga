@@ -157,10 +157,10 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
 
     auto result = smt.solver().check();
 
-    auto& real_model = smt.solver().trail().model<Rational>(Variable::rational);
-    auto sko_x = real_model.value(parser.listener().var("skoX").ord());
-    auto sko_y = real_model.value(parser.listener().var("skoY").ord());
-    auto pi = real_model.value(parser.listener().var("pi").ord());
+    auto real_model = smt.solver().trail().model<Rational>(Variable::rational);
+    auto sko_x = real_model->value(parser.listener().var("skoX").ord());
+    auto sko_y = real_model->value(parser.listener().var("skoY").ord());
+    auto pi = real_model->value(parser.listener().var("pi").ord());
 
     REQUIRE(result == Solver::Result::sat);
     REQUIRE(pi < 31415927_r / 10000000);

@@ -4,10 +4,10 @@ namespace yaga {
 
 void Subsumption::minimize(Trail const& trail, Clause& clause)
 {
-    auto const& model = trail.model<bool>(Variable::boolean);
+    auto const* model = trail.model<bool>(Variable::boolean);
 
     auto is_redundant = [&](auto lit) {
-        if (eval(model, ~lit) == true)
+        if (eval(*model, ~lit) == true)
         {
             auto reason = trail.reason(lit.var());
             return reason && selfsubsumes(*reason, clause, ~lit);

@@ -26,7 +26,7 @@ class Event_dispatcher;
  * ~~~~~{.cpp}
  * int var_ord = 0;
  * trail.decide(Variable{var_ord, Variable::rational});
- * trail.model<Rational>(Variable::rational).set_value(var_ord, Rational{1} / Rational{2});
+ * trail.model<Rational>(Variable::rational)->set_value(var_ord, Rational{1} / Rational{2});
  * ~~~~~
  * 
  * Similarly, we can propagate a variable:
@@ -34,7 +34,7 @@ class Event_dispatcher;
  * Clause reason{...};
  * int level = ...;
  * trail.propagate(Variable{var_ord, Variable::boolean}, &reason, level);
- * trail.model<bool>(Variable::boolean).set_value(var_ord, true);
+ * trail.model<bool>(Variable::boolean)->set_value(var_ord, true);
  * ~~~~~
  * 
  * Trail manages (partial) models of all variable types in the system. Models can be added:
@@ -126,24 +126,39 @@ public:
      *
      * @tparam T type of values in the model
      * @param type type of variables
-     * @return partial model for @p type managed by this trail
+     * @return partial model for @p type managed by this trail, or nullptr if model doesn't exist
      */
-    template <typename T> inline Model<T>& model(Variable::Type type)
+    template <typename T> inline Model<T>* model(Variable::Type type)
     {
-        return dynamic_cast<Model<T>&>(*var_models[type]);
+        if (type >= var_models.size() || var_models[type] == nullptr)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<Model<T>*>(var_models[type].get());
     }
 
-    template <typename T> inline Model<T> const& model(Variable::Type type) const
+    template <typename T> inline Model<T> const* model(Variable::Type type) const
     {
-        return dynamic_cast<Model<T>&>(*var_models[type]);
+        if (type >= var_models.size() || var_models[type] == nullptr)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<Model<T> const*>(var_models[type].get());
     }
 
     /** Get base model instance for variables of type @p type
      * 
      * @param type type of variables
-     * @return partial model of variables of type @p type
+     * @return partial model of variables of type @p type, or nullptr if model doesn't exist
      */
-    inline Model_base const& model(Variable::Type type) const { return *var_models[type]; }
+    inline Model_base const* model(Variable::Type type) const 
+    { 
+        if (type >= var_models.size() || var_models[type] == nullptr)
+        {
+            return nullptr;
+        }
+        return var_models[type].get(); 
+    }
 
     // get model for each type in this trail
     inline auto models() const
@@ -324,7 +339,8 @@ public:
         indexes.resize(num_models);
 
         for (int i = 0; i < num_models; ++i) {
-            var_models[i] = trail.model(static_cast<Variable::Type>(i)).clone_as_ptr();
+            auto model = trail.model(static_cast<Variable::Type>(i));
+            var_models[i] = model == nullptr ? nullptr : model->clone_as_ptr();
         }
     }
 
@@ -335,7 +351,9 @@ public:
         return std::accumulate(
             var_models.begin(), var_models.end(), std::size_t{0},
             [](std::size_t sum, const std::unique_ptr<Model_base>& m) {
-
+                if (m == nullptr){
+                    return static_cast<size_t>(0);
+                }
                 for (size_t i = 0; i < m->num_vars(); ++i) {
                     if (m->is_defined(i)) {
                         ++sum;
@@ -349,6 +367,10 @@ public:
      * Get the next decision for a given type @p
      */
     std::optional<size_t> next_decision(Variable::Type type) {
+
+        if (var_models[type] == nullptr){
+            return std::nullopt;
+        }
 
         auto& model = *var_models[type];
 
@@ -373,17 +395,25 @@ public:
     /*
      * Get the model for a given variable type.
      */
-    template <typename T> inline Model<T>& model(Variable::Type type)
+    template <typename T> inline Model<T>* model(Variable::Type type)
     {
-        return dynamic_cast<Model<T>&>(*var_models[type]);
+        if (type >= var_models.size() || var_models[type] == nullptr)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<Model<T>*>(var_models[type].get());
     }
 
     /*
      * Get the model for a given variable type.
      */
-    template <typename T> inline Model<T> const& model(Variable::Type type) const
+    template <typename T> inline Model<T> const* model(Variable::Type type) const
     {
-        return dynamic_cast<Model<T>&>(*var_models[type]);
+        if (type >= var_models.size() || var_models[type] == nullptr)
+        {
+            return nullptr;
+        }
+        return dynamic_cast<Model<T> const*>(var_models[type].get());
     }
 
     /**
