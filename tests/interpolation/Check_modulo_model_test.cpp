@@ -15,7 +15,7 @@ using namespace yaga;
 using namespace yaga::test;
 using namespace yaga::literals;
 
-TEST_CASE("Solve a formula with an input model", "[integration][lra][sat]")
+TEST_CASE("Check a formula with an input model", "[integration][lra][sat]")
 {
     Solver solver;
     solver.trail().set_model<bool>(Variable::boolean, 0);
@@ -48,7 +48,7 @@ TEST_CASE("Solve a formula with an input model", "[integration][lra][sat]")
     REQUIRE(solver.get_model_interpolant().size() == 0);
 }
 
-TEST_CASE("Solve a formula with an input model that cause conflict", "[integration][lra][unsat]")
+TEST_CASE("Check a formula with an input model that causes a conflict", "[integration][lra][unsat]")
 {
     // sat formula
     Solver solver;
@@ -72,7 +72,7 @@ TEST_CASE("Solve a formula with an input model that cause conflict", "[integrati
     REQUIRE(result == Solver::Result::unsat);
 }
 
-TEST_CASE("Solve a propositional formula with an input model that cause conflict", "[integration][bool_theory][sat]")
+TEST_CASE("Check a propositional formula with an input model that causes a conflict", "[integration][bool_theory][sat]")
 {
     // sat formula
     Solver solver;
@@ -105,7 +105,7 @@ TEST_CASE("Solve a propositional formula with an input model that cause conflict
     REQUIRE(solver.get_model_interpolant().size() == 0);
 }
 
-TEST_CASE("Solve a formula with an input model that cause conflict in decide method in Boolean theory plugin", "[integration][lra][unsat]")
+TEST_CASE("Check a formula with an input model that causes a conflict in decide method in Boolean theory plugin", "[integration][lra][unsat]")
 {
     // sat formula
     Solver solver;
@@ -130,7 +130,7 @@ TEST_CASE("Solve a formula with an input model that cause conflict in decide met
     REQUIRE(result == Solver::Result::unsat);
 }
 
-TEST_CASE("Solve a formula with an input model that cause conflict in decide method in LRA plugin", "[integration][lra][unsat]")
+TEST_CASE("Check a formula with an input model that causes a conflict in decide method in LRA plugin", "[integration][lra][unsat]")
 {
     // sat formula
     Solver solver;

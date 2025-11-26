@@ -13,7 +13,7 @@
 #include "Smt2_parser.h"
 #include "Yaga.h"
 
-TEST_CASE("Parse real terms with :named attributes", "[test_parser]")
+TEST_CASE("Parse real terms with :named attributes", "[test_parser][interpolation_token]")
 {
     using namespace yaga;
     using namespace yaga::test;
@@ -34,7 +34,7 @@ TEST_CASE("Parse real terms with :named attributes", "[test_parser]")
     }
 }
 
-TEST_CASE("Interpolation token parsing", "[test_parser]")
+TEST_CASE("Interpolation token parsing", "[test_parser][interpolation_token]")
 {
     using namespace yaga;
     using namespace yaga::test;
@@ -59,7 +59,7 @@ TEST_CASE("Interpolation token parsing", "[test_parser]")
         REQUIRE(test.answer() == Solver_answer::UNSAT);
     }
 
-    SECTION("test interpolation groups parsing with paranthesis")
+    SECTION("test interpolation groups parsing with parenthesis")
     {
         test.input() << "(check-sat)";
         test.input() << "(get-interpolant (A) (B))";
@@ -87,7 +87,7 @@ TEST_CASE("Interpolation token parsing", "[test_parser]")
     }
 }
 
-TEST_CASE("Interpolation parser error handling", "[test_parser]")
+TEST_CASE("Interpolation parser error handling", "[test_parser][interpolation_token][error]")
 {
     using namespace yaga;
     using namespace yaga::test;
@@ -100,7 +100,7 @@ TEST_CASE("Interpolation parser error handling", "[test_parser]")
     test.input() << "(assert (! (>= x 0) :named A))";
     test.input() << "(assert (! (= (+ x 1) y) :named B))";
 
-    SECTION("test interpolation with SAT result")
+    SECTION("test interpolation with SAT result - error")
     {
         test.input() << "(check-sat)";
         test.input() << "(get-interpolant (A) (B))";  // Should be SAT, no interpolant exists
@@ -110,18 +110,18 @@ TEST_CASE("Interpolation parser error handling", "[test_parser]")
 
     test.input() << "(assert (! (< y 0) :named C))";
 
-    SECTION("test non-disjoint interpolation groups error")
+    SECTION("test non-disjoint interpolation groups error - B appears in both  groups")
     {
         test.input() << "(check-sat)";
-        test.input() << "(get-interpolant (A B) (B C))";  // B appears in both groups
+        test.input() << "(get-interpolant (A B) (B C))";
         
         REQUIRE_THROWS_AS(test.run(), std::runtime_error);
     }
 
-    SECTION("test empty interpolation groups error")
+    SECTION("test empty interpolation groups error - first group is empty")
     {
         test.input() << "(check-sat)";
-        test.input() << "(get-interpolant () (A))";  // First group is empty
+        test.input() << "(get-interpolant () (A))";
         
         REQUIRE_THROWS_AS(test.run(), std::runtime_error);
     }
@@ -129,15 +129,15 @@ TEST_CASE("Interpolation parser error handling", "[test_parser]")
     SECTION("test both empty interpolation groups error")
     {
         test.input() << "(check-sat)";
-        test.input() << "(get-interpolant () ())";  // Both groups are empty
+        test.input() << "(get-interpolant () ())";
         
         REQUIRE_THROWS_AS(test.run(), std::runtime_error);
     }
 
-    SECTION("test interpolation with non-existent named assertions")
+    SECTION("test interpolation with non-existent named assertions error")
     {
         test.input() << "(check-sat)";
-        test.input() << "(get-interpolant (A) (NonExistent))";  // Non-existent assertion name
+        test.input() << "(get-interpolant (A) (NonExistent))";
         
         REQUIRE_THROWS_AS(test.run(), std::runtime_error);
     }
