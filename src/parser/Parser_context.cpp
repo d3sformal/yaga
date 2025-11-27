@@ -176,6 +176,16 @@ Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, con
     std::vector<term_t> group2_and_interpolant(group2);
     interpolant.clear();
 
+    // first, check that formula A is SAT
+    // TODO: after set-options is implemented, add option to skip this validation check
+#ifdef YAGA_VALIDATE_INTERPOLATION_GROUP1
+    // Validation check: ensure that formula A (group1) is SAT
+    auto res_check_a = solver.check(group1);
+    if (res_check_a == Solver_answer::UNSAT){
+        throw std::logic_error("First formula must be SAT");
+    }
+#endif
+
     for (; ;)
     {
         solver.reset();
