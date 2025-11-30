@@ -305,7 +305,7 @@ Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
                     }
                 }
             }
-            else { //if no previous decision then this branch
+            else { //if no decision from input model
                 auto var = pick_variable();
                 if (!var)
                 {

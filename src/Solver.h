@@ -190,12 +190,6 @@ public:
         interpolant.clear();
     };
 
-    // reset the solver for a new check()
-    void init();
-
-    // restart the solver
-    void restart();
-
 private:
     Event_dispatcher dispatcher;
     Trail solver_trail;
@@ -232,8 +226,12 @@ private:
     bool is_semantic_split(Clause const& clause) const;
     // pick the next variable to assign
     [[nodiscard]] std::optional<Variable> pick_variable();
-    // decide value of an unassigned variable
+    // decide the value of an unassigned variable
     void decide(Variable var);
+    // initialize the solver for a new check()
+    void init();
+    // restart the solver
+    void restart();
 
     [[nodiscard]] std::vector<Clause> analyze_final(std::vector<Clause>&& learned_clauses);
     [[nodiscard]] std::vector<Clause> decide(Variable var, TrailModelsSnapshot const& input_model);
