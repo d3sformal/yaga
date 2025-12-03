@@ -483,6 +483,10 @@ void Smt2_parser::parse_file(std::string const& file_name)
 
 void Smt2_parser::parse(std::istream& input, std::ostream& output)
 {
+    // Reset the parser state
+    assertions.clear();
+    last_answer.reset();
+
     Parser_context parser_context(term_manager, options);
     Smt2_term_parser term_parser(lexer, parser_context);
 
