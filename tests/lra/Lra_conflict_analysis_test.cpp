@@ -6,6 +6,26 @@
 #include "test.h"
 #include "Rational.h"
 
+namespace {
+
+void propagate_bool(yaga::Trail& trail, yaga::Literal lit)
+{
+    auto& model = trail.model<bool>(yaga::Variable::boolean);
+    REQUIRE(!model.is_defined(lit.var().ord()));
+    model.set_value(lit.var().ord(), !lit.is_negation());
+    trail.propagate(lit.var(), /*reason=*/nullptr, trail.decision_level());
+}
+
+void decide_rational(yaga::Trail& trail, yaga::Variable var, yaga::Rational value)
+{
+    auto& model = trail.model<yaga::Rational>(yaga::Variable::rational);
+    REQUIRE(!model.is_defined(var.ord()));
+    model.set_value(var.ord(), value);
+    trail.decide(var);
+}
+
+} // namespace
+
 TEST_CASE("FM elimination", "[fm]")
 {
     using namespace yaga;
@@ -267,4 +287,111 @@ TEST_CASE("Derive inequality conflict when some variables are not assigned", "[i
         make(c - a < -3),
         make(2 * b - 3 * c < -7)
     )));
+}
+
+TEST_CASE("Derive bound conflict in LIA when there is no integer between bounds", "[bound_conflict][lia]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
+
+    constexpr int num_reals = 1;
+
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Rational>(Variable::rational, num_reals);
+
+    Bounds bounds;
+    bounds.resize(num_reals);
+    auto [x] = real_vars<num_reals>();
+    auto make = factory(lra, trail);
+    auto models = lra.relevant_models(trail);
+
+    auto gt0 = make(x > 0);
+    auto lt1 = make(x < 1);
+    propagate_bool(trail, gt0.lit());
+    propagate_bool(trail, lt1.lit());
+
+    bounds[x.ord()].add_lower_bound(models, {x.ord(), 0, gt0, models});
+    bounds[x.ord()].add_upper_bound(models, {x.ord(), 1, lt1, models});
+
+    Bound_conflict_analysis analysis{&lra, /*lia=*/true};
+    auto conflict = analysis.analyze(trail, bounds, x.ord());
+    REQUIRE(conflict);
+    REQUIRE_THAT(*conflict, Catch::Matchers::UnorderedEquals(clause(~gt0, ~lt1)));
+}
+
+TEST_CASE("Derive bound conflict in LIA from a fractional equality", "[bound_conflict][lia]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
+
+    constexpr int num_reals = 2;
+
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Rational>(Variable::rational, num_reals);
+
+    Bounds bounds;
+    bounds.resize(num_reals);
+    auto [x, y] = real_vars<num_reals>();
+    auto make = factory(lra, trail);
+    auto models = lra.relevant_models(trail);
+
+    auto eq = make(2 * x == y);
+    propagate_bool(trail, eq.lit());
+    decide_rational(trail, y, 1);
+
+    bounds[x.ord()].add_lower_bound(models, {x.ord(), 1_r / 2, eq, models});
+    bounds[x.ord()].add_upper_bound(models, {x.ord(), 1_r / 2, eq, models});
+
+    Bound_conflict_analysis analysis{&lra, /*lia=*/true};
+    auto conflict = analysis.analyze(trail, bounds, x.ord());
+    REQUIRE(conflict);
+    REQUIRE_THAT(*conflict, Catch::Matchers::UnorderedEquals(clause(~eq, ~make(y == 1))));
+}
+
+TEST_CASE("Derive inequality conflict in LIA when the only integer value is disallowed", "[inequality_conflict][lia]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+    using namespace yaga::literals;
+
+    constexpr int num_reals = 1;
+
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Rational>(Variable::rational, num_reals);
+
+    Bounds bounds;
+    bounds.resize(num_reals);
+    auto [x] = real_vars<num_reals>();
+    auto make = factory(lra, trail);
+    auto models = lra.relevant_models(trail);
+
+    auto lb = make(10 * x >= 1);
+    auto ub = make(10 * x <= 19);
+    auto neq = make(x != 1);
+    propagate_bool(trail, lb.lit());
+    propagate_bool(trail, ub.lit());
+    propagate_bool(trail, neq.lit());
+
+    bounds[x.ord()].add_lower_bound(models, {x.ord(), 1_r / 10, lb, models});
+    bounds[x.ord()].add_upper_bound(models, {x.ord(), 19_r / 10, ub, models});
+    bounds[x.ord()].add_inequality(models, {x.ord(), 1, neq, models});
+
+    Inequality_conflict_analysis analysis{&lra, /*lia=*/true};
+    auto conflict = analysis.analyze(trail, bounds, x.ord());
+    REQUIRE(conflict);
+    REQUIRE_THAT(*conflict, Catch::Matchers::UnorderedEquals(clause(~lb, ~ub, ~neq)));
 }

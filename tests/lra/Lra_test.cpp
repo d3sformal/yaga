@@ -151,7 +151,7 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
     std::unordered_map<terms::term_t, int> real_vars;
     std::unordered_map<terms::term_t, Literal> bool_vars;
     Yaga smt{terms::Term_manager(), std::ranges::views::all(real_vars), std::ranges::views::all(bool_vars)};
-    smt.set_logic(QF_LRA, opts);
+    smt.set_logic(logic::qf_lra, opts);
     Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 
@@ -184,7 +184,7 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
     std::unordered_map<terms::term_t, int> real_vars;
     std::unordered_map<terms::term_t, Literal> bool_vars;
     Yaga smt{terms::Term_manager(), std::ranges::views::all(real_vars), std::ranges::views::all(bool_vars)};
-    smt.set_logic(QF_UFLRA, opts);
+    smt.set_logic(logic::qf_uflra, opts);
     Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 
@@ -220,4 +220,28 @@ TEST_CASE("Formula which forces the solver to generate duplicate constraints and
         REQUIRE(*test.real("z") + *test.real("y") < 0);
         REQUIRE(*test.real("z") > 0);
     }
+}
+
+TEST_CASE("Check an unsatisfiable formula in LIA", "[lia][unsat][integration]")
+{
+    Solver solver;
+    solver.trail().set_model<bool>(Variable::boolean, 0);
+    solver.trail().set_model<Rational>(Variable::rational, 1);
+    solver.set_restart_policy<No_restart>();
+    solver.set_variable_order<First_unassigned>();
+
+    auto& theories = solver.set_theory<Theory_combination>();
+    theories.add_theory<Bool_theory>();
+    auto& lia = theories.add_theory<Linear_arithmetic>();
+    Linear_arithmetic::Options lia_opts;
+    lia_opts.prop_integer = true;
+    lia.set_options(lia_opts);
+
+    auto linear = factory(lia, solver.trail());
+    auto [x] = real_vars<1>();
+    solver.db().assert_clause(clause(linear(x > 0)));
+    solver.db().assert_clause(clause(linear(x < 1)));
+
+    auto result = solver.check();
+    REQUIRE(result == Solver::Result::unsat);
 }

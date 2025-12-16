@@ -452,7 +452,15 @@ public:
 
         function_map_t const& fn_map = it_f->second;
         auto it = fn_map.find(args);
-        return it != fn_map.end() ? std::optional{it->second} : std::nullopt;
+        if (it != fn_map.end())
+        {
+            return it->second;
+        }
+
+        // If the argument combination is not explicitly listed, fall back to the trailing (else)
+        // value of the ite-expression.
+        auto it_else = fnc_trailing_values.find(name);
+        return it_else != fnc_trailing_values.end() ? std::optional{it_else->second} : std::nullopt;
     }
 };
 

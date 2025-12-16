@@ -1,7 +1,77 @@
 #include "Lra_conflict_analysis.h"
+#include "Conflict_analysis.h"
 #include "Linear_arithmetic.h"
 
+#include <array>
+
 namespace yaga {
+
+namespace {
+
+using Models = Theory_models<Rational>;
+using Bound = Implied_value<Rational>;
+
+Rational integer_lower_bound(Bound const& lb)
+{
+    auto result = lb.value().ceil();
+    if (lb.is_strict() && lb.value().isInteger())
+    {
+        result += 1;
+    }
+    return result;
+}
+
+Rational integer_upper_bound(Bound const& ub)
+{
+    auto result = ub.value().floor();
+    if (ub.is_strict() && ub.value().isInteger())
+    {
+        result -= 1;
+    }
+    return result;
+}
+
+void collect_assigned_vars(Fm_elimination const& fm, int excluded_var, std::vector<int>& out)
+{
+    for (auto const& [var, _] : fm.derived())
+    {
+        if (var != excluded_var)
+        {
+            out.push_back(var);
+        }
+    }
+}
+
+void add_assignment_literal(Linear_arithmetic* lra, Trail& trail, Models& models, Clause& out,
+                            int var_ord)
+{
+    if (!models.owned().is_defined(var_ord))
+    {
+        return;
+    }
+
+    std::array<int, 1> vars{var_ord};
+    std::array<Rational, 1> coef{Rational{1}};
+    auto eq = lra->constraint(trail, vars, coef, Order_predicate::eq, models.owned().value(var_ord));
+
+    // Make sure the equality is assigned in the boolean model.
+    if (!models.boolean().is_defined(eq.lit().var().ord()))
+    {
+        lra->propagate(trail, models, eq);
+    }
+
+    assert(eval(models.owned(), eq) == true);
+    assert(eval(models.boolean(), eq.lit()) == true);
+    out.push_back(~eq.lit()); // add inequality: var != current_value
+}
+
+Clause compute_uip(Trail const& trail, Clause&& conflict)
+{
+    Conflict_analysis analysis;
+    return analysis.analyze(trail, std::move(conflict)).first;
+}
+
+} // namespace
 
 void Fm_elimination::init(Constraint const& cons)
 {
@@ -175,39 +245,60 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
         {
             return {}; // no conflict
         }
-    }
-    else
-    {
-        if ((lb->value() == ub->value() && !is_strict) ||
-            (lb->value() + 1 < ub->value()) ||
-            (lb->value() + 1 == ub->value() &&
-                (!lb->value().isInteger() ||
-                !lb->is_strict() || !ub->is_strict())))
+        assert(lb->var() == ub->var());
+
+        // Derive a conflict using FM elimination. We implicitly use resolution to resolve intermediate
+        // results.
+        Lra_conflict_analysis analysis{lra, lia};
+        auto fm = analysis.eliminate(models, bounds, *lb);
+        fm.resolve(analysis.eliminate(models, bounds, *ub), ub->var());
+
+        auto& conflict = analysis.finish();
+        auto derived = fm.finish(trail);
+        if (!derived.empty())
         {
-            return {};
+            assert(eval(models.boolean(), derived.lit()) == false);
+            assert(eval(models.owned(), derived) == false);
+            conflict.push_back(derived.lit());
         }
+
+        assert(conflict.size() >= 2);
+        assert(eval(models.boolean(), conflict) == false);
+        return conflict;
     }
-
-    assert(lb->var() == ub->var());
-
-    // Derive a conflict using FM elimination. We implicitly use resolution to resolve intermediate
-    // results.
-    Lra_conflict_analysis analysis{lra, lia};
-    auto fm = analysis.eliminate(models, bounds, *lb);
-    fm.resolve(analysis.eliminate(models, bounds, *ub), ub->var());
-
-    auto& conflict = analysis.finish();
-    auto derived = fm.finish(trail);
-    if (!derived.empty())
+    else  // lia
     {
-        assert(eval(models.boolean(), derived.lit()) == false);
-        assert(eval(models.owned(), derived) == false);
-        conflict.push_back(derived.lit());
+        auto const lb_int = integer_lower_bound(*lb);
+        auto const ub_int = integer_upper_bound(*ub);
+        if (lb_int <= ub_int)
+        {
+            return {}; // there is an integer value between the bounds
+        }
+
+        // Explain the conflict by collecting constraint assumptions and equalities of all
+        // assigned variables that were used to derive the conflicting bounds.
+        Lra_conflict_analysis analysis{lra, lia};
+        auto fm_lb = analysis.eliminate(models, bounds, *lb);
+        auto fm_ub = analysis.eliminate(models, bounds, *ub);
+
+        std::vector<int> assigned_vars;
+        assigned_vars.reserve(static_cast<std::size_t>(fm_lb.derived().size() + fm_ub.derived().size()));
+        collect_assigned_vars(fm_lb, var_ord, assigned_vars);
+        collect_assigned_vars(fm_ub, var_ord, assigned_vars);
+        std::sort(assigned_vars.begin(), assigned_vars.end());
+        assigned_vars.erase(std::unique(assigned_vars.begin(), assigned_vars.end()), assigned_vars.end());
+
+        for (auto assigned_var : assigned_vars)
+        {
+            add_assignment_literal(lra, trail, models, analysis.conflict(), assigned_var);
+        }
+
+        auto clause = analysis.finish();
+        assert(!clause.empty());
+        assert(eval(models.boolean(), clause) == false);
+        return compute_uip(trail, std::move(clause));
     }
 
-    assert(conflict.size() >= 2);
-    assert(eval(models.boolean(), conflict) == false);
-    return conflict;
 }
 
 std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds& bounds,
@@ -228,45 +319,89 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds
         {
             return {};
         }
-    } else {
-        // check if there is still an integer between the bounds
-        if (lb->value() != ub->value() || lb->reason().is_strict() || ub->reason().is_strict() ||
-            !lb->value().isInteger())
+
+        // check if `x != D` where D, L, U evaluate to the same value
+        auto neq = bounds[var_ord].inequality(models, lb->value());
+        if (!neq)
         {
             return {};
         }
-    }
+        assert(lb->var() == ub->var());
+        assert(neq->var() == lb->var());
 
+        Lra_conflict_analysis analysis{lra, lia};
+        analysis.conflict().push_back(~neq->reason().lit());
 
-    // check if `x != D` where D, L, U evaluate to the same value
-    auto neq = bounds[var_ord].inequality(models, lb->value());
-    if (!neq)
-    {
-        return {};
-    }
-    assert(lb->var() == ub->var());
-    assert(neq->var() == lb->var());
-
-    Lra_conflict_analysis analysis{lra, lia};
-    analysis.conflict().push_back(~neq->reason().lit());
-
-    auto mult = neq->reason().coef().front() > 0 ? 1 : -1;
-    for (auto bound_ptr : {lb, ub})
-    {
-        auto fm = analysis.eliminate(models, bounds, *bound_ptr);
-        fm.resolve(Fm_elimination{lra, neq->reason(), Order_predicate::lt, mult}, neq->var());
-        auto derived = fm.finish(trail);
-        if (!derived.empty())
+        auto mult = neq->reason().coef().front() > 0 ? 1 : -1;
+        for (auto bound_ptr : {lb, ub})
         {
-            assert(eval(models.owned(), derived) == false);
-            assert(eval(models.boolean(), derived.lit()) == false);
-            analysis.conflict().push_back(derived.lit());
+            auto fm = analysis.eliminate(models, bounds, *bound_ptr);
+            fm.resolve(Fm_elimination{lra, neq->reason(), Order_predicate::lt, mult}, neq->var());
+            auto derived = fm.finish(trail);
+            if (!derived.empty())
+            {
+                assert(eval(models.owned(), derived) == false);
+                assert(eval(models.boolean(), derived.lit()) == false);
+                analysis.conflict().push_back(derived.lit());
+            }
+            mult = -mult;
         }
-        mult = -mult;
-    }
 
-    assert(eval(models.boolean(), analysis.conflict()) == false);
-    return analysis.finish();
+        assert(eval(models.boolean(), analysis.conflict()) == false);
+        return analysis.finish();
+    } else {  // lia
+        auto const lb_int = integer_lower_bound(*lb);
+        auto const ub_int = integer_upper_bound(*ub);
+
+        if (lb_int > ub_int)
+        {
+            return {}; // bound conflict (handled by Bound_conflict_analysis)
+        }
+        if (lb_int != ub_int)
+        {
+            return {}; // there is an integer value different from the disallowed one
+        }
+
+        auto const& value = lb_int; // the only integer value allowed by the bounds
+        auto neq = bounds[var_ord].inequality(models, value);
+        if (!neq)
+        {
+            return {};
+        }
+        assert(lb->var() == ub->var());
+        assert(neq->var() == lb->var());
+
+        Lra_conflict_analysis analysis{lra, lia};
+        analysis.conflict().push_back(~neq->reason().lit()); // add equality: x == value
+
+        auto fm_lb = analysis.eliminate(models, bounds, *lb);
+        auto fm_ub = analysis.eliminate(models, bounds, *ub);
+
+        std::vector<int> assigned_vars;
+        assigned_vars.reserve(static_cast<std::size_t>(fm_lb.derived().size() + fm_ub.derived().size() +
+                                                       neq->reason().size()));
+        collect_assigned_vars(fm_lb, var_ord, assigned_vars);
+        collect_assigned_vars(fm_ub, var_ord, assigned_vars);
+        for (auto other_var : neq->reason().vars())
+        {
+            if (other_var != var_ord && models.owned().is_defined(other_var))
+            {
+                assigned_vars.push_back(other_var);
+            }
+        }
+        std::sort(assigned_vars.begin(), assigned_vars.end());
+        assigned_vars.erase(std::unique(assigned_vars.begin(), assigned_vars.end()), assigned_vars.end());
+
+        for (auto assigned_var : assigned_vars)
+        {
+            add_assignment_literal(lra, trail, models, analysis.conflict(), assigned_var);
+        }
+
+        auto clause = analysis.finish();
+        assert(!clause.empty());
+        assert(eval(models.boolean(), clause) == false);
+        return compute_uip(trail, std::move(clause));
+    }
 }
 
 } // namespace yaga
