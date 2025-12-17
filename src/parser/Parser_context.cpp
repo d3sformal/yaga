@@ -235,6 +235,7 @@ void Parser_context::print_interpolant(std::ostream & output){
     if (interpolant.size() > 1){
         output << ")";
     }
+    std::cout << std::endl;
 }
 
 } // namespace yaga::parser
