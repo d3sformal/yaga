@@ -82,7 +82,14 @@ std::optional<Variable> Generalized_vsids::pick_effectively_decided(Trail& trail
     for (int var_ord : lra->effectively_decided())
     {
         Variable var{var_ord, Variable::rational};
-        effectively_decided.push(var, score(var));
+        if (effectively_decided.contains(var))
+        {
+            effectively_decided.update(var, score(var));
+        }
+        else
+        {
+            effectively_decided.push(var, score(var));
+        }
     }
 
     // decide effectively decided variables first

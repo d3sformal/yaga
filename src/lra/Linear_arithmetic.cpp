@@ -1,6 +1,45 @@
 #include "Linear_arithmetic.h"
 
+#include "Conflict_analysis.h"
+
+#include <array>
+#include <unordered_set>
+
 namespace yaga {
+
+namespace {
+
+using Models = Linear_arithmetic::Models;
+
+Clause compute_uip(Trail const& trail, Clause&& conflict)
+{
+    Conflict_analysis analysis;
+    return analysis.analyze(trail, std::move(conflict)).first;
+}
+
+void add_assignment_literal(Linear_arithmetic* lra, Trail& trail, Models& models, Clause& out,
+                            int var_ord)
+{
+    if (!models.owned().is_defined(var_ord))
+    {
+        return;
+    }
+
+    std::array<int, 1> vars{var_ord};
+    std::array<Rational, 1> coef{Rational{1}};
+    auto eq = lra->constraint(trail, vars, coef, Order_predicate::eq, models.owned().value(var_ord));
+
+    if (!models.boolean().is_defined(eq.lit().var().ord()))
+    {
+        lra->propagate(trail, models, eq);
+    }
+
+    assert(eval(models.owned(), eq) == true);
+    assert(eval(models.boolean(), eq.lit()) == true);
+    out.push_back(~eq.lit()); // add inequality: var != current_value
+}
+
+} // namespace
 
 void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
 {
@@ -36,16 +75,22 @@ bool Linear_arithmetic::is_effectively_decided(Models const& models, int lra_var
 
 std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 {
+    pending_conflict.reset();
     auto models = relevant_models(trail);
 
     // find relevant variables which have been assigned at current decision level
     std::vector<Variable> variables;
+    std::vector<int> scan_vars;
     for (auto [var, _] : assigned(trail))
     {
         if (var.type() == Variable::rational ||
             (var.type() == Variable::boolean && !constraints[var.ord()].empty()))
         {
             variables.push_back(var);
+            if (var.type() == Variable::rational)
+            {
+                scan_vars.push_back(var.ord());
+            }
         }
     }
 
@@ -58,7 +103,20 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 
             if (is_fully_assigned(models.owned(), cons))
             {
-                assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
+                auto bool_val = eval(models.boolean(), cons.lit());
+                auto theory_val = eval(models.owned(), cons);
+                if (bool_val.has_value() && theory_val.has_value() && bool_val != theory_val)
+                {
+                    Clause conflict;
+                    conflict.reserve(static_cast<std::size_t>(cons.size()) + 1);
+                    conflict.push_back(*theory_val ? cons.lit() : ~cons.lit());
+                    for (auto lra_var_ord : cons.vars())
+                    {
+                        add_assignment_literal(this, trail, models, conflict, lra_var_ord);
+                    }
+                    pending_conflict = compute_uip(trail, std::move(conflict));
+                    break;
+                }
             }
             else if (is_unit(models.owned(), cons))
             {
@@ -68,6 +126,10 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
         else if (var.type() == Variable::rational)
         {
             replace_watch(trail, models, var.ord());
+            if (pending_conflict)
+            {
+                break;
+            }
         }
         else
         {
@@ -75,14 +137,25 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
         }
     }
 
+    if (pending_conflict)
+    {
+        return {std::move(*pending_conflict)};
+    }
+
     if (options.prop_bounds)
     {
         propagate_bounds(trail, models);
     }
 
-    if (options.prop_unassigned)
+    auto const& changed = bounds.changed();
+    to_check.insert(to_check.end(), changed.begin(), changed.end());
+    scan_vars.insert(scan_vars.end(), changed.begin(), changed.end());
+
+    if (options.prop_unassigned && !scan_vars.empty())
     {
-        propagate_unassigned(trail, models);
+        std::sort(scan_vars.begin(), scan_vars.end());
+        scan_vars.erase(std::unique(scan_vars.begin(), scan_vars.end()), scan_vars.end());
+        propagate_unassigned(trail, models, scan_vars);
     }
     return finish(trail);
 }
@@ -187,6 +260,11 @@ void Linear_arithmetic::replace_watch(Trail& trail, Models& models, int lra_var_
     auto& watchlist = watched[lra_var_ord];
     for (std::size_t i = 0; i < watchlist.size();)
     {
+        if (pending_conflict)
+        {
+            return;
+        }
+
         auto& watch = watchlist[i];
         auto& cons = watch.constraint;
 
@@ -202,7 +280,20 @@ void Linear_arithmetic::replace_watch(Trail& trail, Models& models, int lra_var_
             {
                 if (is_fully_assigned(models.owned(), cons))
                 {
-                    assert(eval(models.owned(), cons) == eval(models.boolean(), cons.lit()));
+                    auto bool_val = eval(models.boolean(), cons.lit());
+                    auto theory_val = eval(models.owned(), cons);
+                    if (bool_val.has_value() && theory_val.has_value() && bool_val != theory_val)
+                    {
+                        Clause conflict;
+                        conflict.reserve(static_cast<std::size_t>(cons.size()) + 1);
+                        conflict.push_back(*theory_val ? cons.lit() : ~cons.lit());
+                        for (auto other_var_ord : cons.vars())
+                        {
+                            add_assignment_literal(this, trail, models, conflict, other_var_ord);
+                        }
+                        pending_conflict = compute_uip(trail, std::move(conflict));
+                        return;
+                    }
                 }
                 else // cons is unit
                 {
@@ -296,29 +387,36 @@ void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& model
     }
 }
 
-void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models)
+void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models,
+                                             std::vector<int> const& vars_to_check)
 {
-    if (trail.decision_level() == 0)
+    if (vars_to_check.empty())
     {
         return;
     }
 
-    auto decided_var = trail.assigned(trail.decision_level()).front().var;
-    if (decided_var.type() != Variable::rational)
+    std::unordered_set<int> seen;
+    for (auto var_ord : vars_to_check)
     {
-        return;
-    }
-
-    for (auto cons : occur[decided_var.ord()])
-    {
-        if (!models.boolean().is_defined(cons.lit().var().ord()))
+        for (auto cons : occur[var_ord])
         {
+            auto bool_ord = cons.lit().var().ord();
+            if (models.boolean().is_defined(bool_ord))
+            {
+                continue;
+            }
+            if (!seen.insert(bool_ord).second)
+            {
+                continue;
+            }
+
             for (auto c : {cons, ~cons})
             {
                 if (bounds.is_implied(models, c))
                 {
                     trail.propagate(c.lit().var(), nullptr, trail.decision_level());
-                    models.boolean().set_value(c.lit().var().ord(), !c.lit().is_negation());
+                    models.boolean().set_value(bool_ord, !c.lit().is_negation());
+                    break;
                 }
             }
         }
@@ -327,10 +425,6 @@ void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models)
 
 std::vector<Clause> Linear_arithmetic::finish(Trail& trail)
 {
-    // find all rational variables whose bound has changed
-    auto const& changed = bounds.changed();
-    to_check.insert(to_check.end(), changed.begin(), changed.end());
-
     // check for conflict
     auto models = relevant_models(trail);
     std::unordered_set<int> checked;

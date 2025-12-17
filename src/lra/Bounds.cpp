@@ -74,6 +74,7 @@ void Bounds::deduce_from_equality(Models const& models, Constraint const& cons)
     }
 
     float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
+    max_deps = std::min<float>(max_deps, 200.f);
     int i = 0;
     for (auto& prop : props)
     {
@@ -152,6 +153,7 @@ void Bounds::deduce_from_inequality(Models const& models, Constraint const& cons
     }
 
     float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
+    max_deps = std::min<float>(max_deps, 200.f);
     if (count_distinct_bounds(deps) <= max_deps && num_unbounded == 1)
     {
         bound /= unbounded_coef;

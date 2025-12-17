@@ -73,6 +73,18 @@ Clause compute_uip(Trail const& trail, Clause&& conflict)
 
 } // namespace
 
+Rational Fm_elimination::integer_step() const
+{
+    Rational denom_lcm{1};
+    for (auto const& [_, coef] : poly.variables)
+    {
+        denom_lcm = lcm(denom_lcm, coef.denominator());
+    }
+    denom_lcm = lcm(denom_lcm, poly.constant.denominator());
+    assert(denom_lcm.isInteger());
+    return Rational{1} / denom_lcm;
+}
+
 void Fm_elimination::init(Constraint const& cons)
 {
     assert(cons.pred() != Order_predicate::eq || !cons.lit().is_negation()); // cons is not !=
@@ -111,6 +123,15 @@ void Fm_elimination::init(Constraint const& cons, Order_predicate p, Rational mu
         poly.variables.emplace_back(*var_it, *coef_it * mult);
     }
     poly.constant = -cons.rhs() * mult;
+
+    if (lia && pred == Order_predicate::lt)
+    {
+        // Strengthening for integer variables:
+        // For `poly < 0`, where poly evaluates to values in `k * step`, we can replace it by
+        // `poly + step <= 0`, which is equivalent over integers.
+        pred = Order_predicate::leq;
+        poly.constant += integer_step();
+    }
 }
 
 void Fm_elimination::init(Fm_elimination&& other)
@@ -210,7 +231,7 @@ Fm_elimination Lra_conflict_analysis::eliminate(Models const& models, Bounds& bo
     clause.push_back(~bound.reason().lit());
 
     // eliminate all unassigned variables in the linear constraint except for `bound.var()`
-    Fm_elimination fm{lra, bound.reason()};
+    Fm_elimination fm{lra, bound.reason(), lia};
     for (auto const& other : bound.bounds())
     {
         if (!models.owned().is_defined(other.var()))
@@ -275,8 +296,10 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
             return {}; // there is an integer value between the bounds
         }
 
-        // Explain the conflict by collecting constraint assumptions and equalities of all
-        // assigned variables that were used to derive the conflicting bounds.
+        // Explain the conflict by (1) trying to derive a value-independent contradiction using
+        // FM elimination with integer strengthening and, if that fails, (2) falling back to
+        // adding assignment equalities for all assigned variables participating in the
+        // conflicting derivation.
         Lra_conflict_analysis analysis{lra, lia};
         auto fm_lb = analysis.eliminate(models, bounds, *lb);
         auto fm_ub = analysis.eliminate(models, bounds, *ub);
@@ -288,9 +311,34 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
         std::sort(assigned_vars.begin(), assigned_vars.end());
         assigned_vars.erase(std::unique(assigned_vars.begin(), assigned_vars.end()), assigned_vars.end());
 
-        for (auto assigned_var : assigned_vars)
+        // Try to derive a contradiction independent of the current assignments.
+        auto fm = std::move(fm_lb);
+        fm.resolve(fm_ub, var_ord);
+        auto const is_contradiction = [&]() -> bool {
+            auto const& poly = fm.derived();
+            if (!poly.variables.empty())
+            {
+                return false;
+            }
+            switch (fm.predicate())
+            {
+            case Order_predicate::eq:
+                return poly.constant != 0;
+            case Order_predicate::lt:
+                return poly.constant >= 0;
+            case Order_predicate::leq:
+                return poly.constant > 0;
+            }
+            assert(false);
+            return false;
+        }();
+
+        if (!is_contradiction)
         {
-            add_assignment_literal(lra, trail, models, analysis.conflict(), assigned_var);
+            for (auto assigned_var : assigned_vars)
+            {
+                add_assignment_literal(lra, trail, models, analysis.conflict(), assigned_var);
+            }
         }
 
         auto clause = analysis.finish();
@@ -357,36 +405,47 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds
         {
             return {}; // bound conflict (handled by Bound_conflict_analysis)
         }
-        if (lb_int != ub_int)
-        {
-            return {}; // there is an integer value different from the disallowed one
-        }
-
-        auto const& value = lb_int; // the only integer value allowed by the bounds
-        auto neq = bounds[var_ord].inequality(models, value);
-        if (!neq)
-        {
-            return {};
-        }
         assert(lb->var() == ub->var());
-        assert(neq->var() == lb->var());
 
         Lra_conflict_analysis analysis{lra, lia};
-        analysis.conflict().push_back(~neq->reason().lit()); // add equality: x == value
+
+        // Collect all disallowed integer values in the interval [lb_int, ub_int].
+        // If there is any integer value that is not disallowed, there is no conflict.
+        std::vector<Constraint> neq_reasons;
+        for (Rational value = lb_int; value <= ub_int; value += 1)
+        {
+            auto neq = bounds[var_ord].inequality(models, value);
+            if (!neq)
+            {
+                return {};
+            }
+            neq_reasons.push_back(neq->reason());
+        }
+        assert(!neq_reasons.empty());
+
+        for (auto const& reason : neq_reasons)
+        {
+            assert(reason.pred() == Order_predicate::eq && reason.lit().is_negation());
+            analysis.conflict().push_back(~reason.lit()); // add equality: x == value
+        }
 
         auto fm_lb = analysis.eliminate(models, bounds, *lb);
         auto fm_ub = analysis.eliminate(models, bounds, *ub);
 
         std::vector<int> assigned_vars;
         assigned_vars.reserve(static_cast<std::size_t>(fm_lb.derived().size() + fm_ub.derived().size() +
-                                                       neq->reason().size()));
+                                                       neq_reasons.size() * 2));
         collect_assigned_vars(fm_lb, var_ord, assigned_vars);
         collect_assigned_vars(fm_ub, var_ord, assigned_vars);
-        for (auto other_var : neq->reason().vars())
+
+        for (auto const& reason : neq_reasons)
         {
-            if (other_var != var_ord && models.owned().is_defined(other_var))
+            for (auto other_var : reason.vars())
             {
-                assigned_vars.push_back(other_var);
+                if (other_var != var_ord && models.owned().is_defined(other_var))
+                {
+                    assigned_vars.push_back(other_var);
+                }
             }
         }
         std::sort(assigned_vars.begin(), assigned_vars.end());

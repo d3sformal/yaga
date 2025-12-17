@@ -341,6 +341,38 @@ TEST_CASE("Parse linear polynomial", "[test_parser]")
     }
 }
 
+TEST_CASE("Defined function substitution (QF_LIA)", "[test_parser]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+
+    Yaga_test test;
+    test.input() << "(set-logic QF_LIA)\n";
+    test.input() << "(define-fun max ((x Int) (y Int)) Int (ite (< x y) y x))\n";
+
+    SECTION("Max is substituted and evaluated")
+    {
+        test.input() << "(declare-fun b () Int)\n";
+        test.input() << "(assert (= b (max 0 1)))\n";
+        test.run();
+
+        REQUIRE(test.answer() == Solver_answer::SAT);
+        REQUIRE(test.real("b") == Rational{1});
+    }
+
+    SECTION("Max constraints participate in UNSAT")
+    {
+        test.input() << "(declare-fun a () Int)\n";
+        test.input() << "(declare-fun b () Int)\n";
+        test.input() << "(assert (= a 178))\n";
+        test.input() << "(assert (= b (max 0 (- (+ a 13) 22))))\n";
+        test.input() << "(assert (= b 0))\n";
+        test.run();
+
+        REQUIRE(test.answer() == Solver_answer::UNSAT);
+    }
+}
+
 TEST_CASE("Parse if-then-else with real output", "[test_parser]")
 {
     using namespace yaga;

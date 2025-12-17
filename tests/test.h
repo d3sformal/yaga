@@ -370,7 +370,7 @@ private:
                     {
                         bool_model.insert({name, value.str() == "true"});
                     }
-                    else if (type == "Real")
+                    else if (type == "Real" || type == "Int")
                     {
                         lra_model.insert({name, parse_rational(value)});
                     }

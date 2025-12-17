@@ -217,6 +217,8 @@ private:
     Model<Rational> cached_values;
     // list of rational variables whose bound has changed at this level
     std::vector<int> to_check;
+    // conflict detected during propagation (e.g., a fully assigned constraint mismatch)
+    std::optional<Clause> pending_conflict;
     // map real variable -> list of constraints in which it occurs
     std::vector<std::vector<Constraint>> occur;
     // parameters of optional features
@@ -288,7 +290,7 @@ private:
      * @param trail current solver trail
      * @param models partial assignment of variables
      */
-    void propagate_unassigned(Trail& trail, Models& models);
+    void propagate_unassigned(Trail& trail, Models& models, std::vector<int> const& vars_to_check);
 
     /** Finish propagation by checking if there are any conflicts.
      *

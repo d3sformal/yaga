@@ -66,16 +66,6 @@ Solver::Clause_range Solver::learn(std::vector<Clause>&& clauses)
     });
     clauses.erase(std::unique(clauses.begin(), clauses.end()), clauses.end());
 
-    // prefer UIP clauses (propagations) over semantic split clauses (decisions)
-    if (std::any_of(clauses.begin(), clauses.end(), [&](auto const& learned) {
-        return !is_semantic_split(learned);
-    }))
-    {
-        clauses.erase(std::remove_if(clauses.begin(), clauses.end(), [&](auto const& learned) {
-            return is_semantic_split(learned);
-        }), clauses.end());
-    }
-
     for (auto const& clause : clauses)
     {
         ++total_learned_clauses;

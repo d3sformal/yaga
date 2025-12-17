@@ -245,3 +245,87 @@ TEST_CASE("Check an unsatisfiable formula in LIA", "[lia][unsat][integration]")
     auto result = solver.check();
     REQUIRE(result == Solver::Result::unsat);
 }
+
+TEST_CASE("Check an unsatisfiable formula in LIA (no integer between strict bounds)",
+          "[lia][unsat][integration]")
+{
+    Solver solver;
+    solver.trail().set_model<bool>(Variable::boolean, 0);
+    solver.trail().set_model<Rational>(Variable::rational, 2);
+    solver.set_restart_policy<No_restart>();
+    solver.set_variable_order<First_unassigned>();
+
+    auto& theories = solver.set_theory<Theory_combination>();
+    theories.add_theory<Bool_theory>();
+    auto& lia = theories.add_theory<Linear_arithmetic>();
+    Linear_arithmetic::Options lia_opts;
+    lia_opts.prop_integer = true;
+    lia.set_options(lia_opts);
+
+    auto linear = factory(lia, solver.trail());
+    auto [x, y] = real_vars<2>();
+    solver.db().assert_clause(clause(linear(x < y)));
+    solver.db().assert_clause(clause(linear(y < x + 1)));
+
+    auto result = solver.check();
+    REQUIRE(result == Solver::Result::unsat);
+}
+
+TEST_CASE("Check an unsatisfiable formula in LIA (all integers in interval disallowed)",
+          "[lia][unsat][integration]")
+{
+    Solver solver;
+    solver.trail().set_model<bool>(Variable::boolean, 0);
+    solver.trail().set_model<Rational>(Variable::rational, 1);
+    solver.set_restart_policy<No_restart>();
+    solver.set_variable_order<First_unassigned>();
+
+    auto& theories = solver.set_theory<Theory_combination>();
+    theories.add_theory<Bool_theory>();
+    auto& lia = theories.add_theory<Linear_arithmetic>();
+    Linear_arithmetic::Options lia_opts;
+    lia_opts.prop_integer = true;
+    lia.set_options(lia_opts);
+
+    auto linear = factory(lia, solver.trail());
+    auto [x] = real_vars<1>();
+    solver.db().assert_clause(clause(linear(x >= 0)));
+    solver.db().assert_clause(clause(linear(x <= 2)));
+    solver.db().assert_clause(clause(linear(x != 0)));
+    solver.db().assert_clause(clause(linear(x != 1)));
+    solver.db().assert_clause(clause(linear(x != 2)));
+
+    auto result = solver.check();
+    REQUIRE(result == Solver::Result::unsat);
+}
+
+TEST_CASE("Check an unsatisfiable formula in LIA (deep bound propagation without decisions)",
+          "[lia][unsat][integration]")
+{
+    Solver solver;
+    solver.trail().set_model<bool>(Variable::boolean, 0);
+    solver.trail().set_model<Rational>(Variable::rational, 4);
+    solver.set_restart_policy<No_restart>();
+    solver.set_variable_order<First_unassigned>();
+
+    auto& theories = solver.set_theory<Theory_combination>();
+    theories.add_theory<Bool_theory>();
+    auto& lia = theories.add_theory<Linear_arithmetic>();
+    Linear_arithmetic::Options lia_opts;
+    lia_opts.prop_bounds = true;
+    lia_opts.prop_integer = true;
+    lia.set_options(lia_opts);
+
+    auto linear = factory(lia, solver.trail());
+    auto [x0, x1, x2, x3] = real_vars<4>();
+    solver.db().assert_clause(clause(linear(x0 >= 0)));
+    solver.db().assert_clause(clause(linear(x0 <= 0)));
+    solver.db().assert_clause(clause(linear(x1 >= x0 + 1)));
+    solver.db().assert_clause(clause(linear(x2 >= x1 + 1)));
+    solver.db().assert_clause(clause(linear(x3 >= x2 + 1)));
+    solver.db().assert_clause(clause(linear(x0 >= x3 + 1)));
+
+    auto result = solver.check();
+    REQUIRE(result == Solver::Result::unsat);
+    REQUIRE(solver.num_decisions() <= 1);
+}
