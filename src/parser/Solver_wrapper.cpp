@@ -191,21 +191,17 @@ std::vector<terms::term_t> Solver_wrapper::get_interpolant()
 std::vector<terms::term_t> Solver_wrapper::convert_from_internal_to_tree_representation(std::vector<std::vector<Literal>> const& clauses ) {
     std::vector<terms::term_t> result;
 
-    // Build a reverse mapping from Literal.var().ord() to term_t for boolean variables.
-    // Additionally, remember whether the stored literal is originally negated so that we can
-    // correctly reconstruct the polarity of the term when we later process a literal that
-    // refers to the same boolean variable with potentially different sign.
     std::unordered_map<int, std::pair<terms::term_t, bool>> literal_to_term;
     for (const auto& [term, lit] : internalizer_config.bool_vars()) {
         literal_to_term[lit.var().ord()] = {term, lit.is_negation()};
     }
+
     // Build a reverse mapping from rational variable ordinal to term_t
     std::unordered_map<int, terms::term_t> rational_var_to_term;
     for (const auto& [term, var_ord] : internalizer_config.rational_vars()) {
         rational_var_to_term[var_ord] = term;
     }
 
-    // Get the LRA theory plugin (if available)
     yaga::Linear_arithmetic* lra = nullptr;
     if (auto* combo = dynamic_cast<yaga::Theory_combination*>(solver.solver().theory())) {
         for (auto* theory : combo->theories()) {
@@ -223,14 +219,12 @@ std::vector<terms::term_t> Solver_wrapper::convert_from_internal_to_tree_represe
             auto it = literal_to_term.find(var_ord);
             if (it != literal_to_term.end()) {
                 auto [mapped_term, mapped_negated] = it->second;
-                // If the polarity of the current literal differs from the polarity that was
-                // stored during internalization, negate the reconstructed term.
                 bool need_negate = lit.is_negation() != mapped_negated;
                 terms::term_t term = need_negate ? term_manager.mk_negated(mapped_term) : mapped_term;
                 or_args.push_back(term);
                 continue;
             }
-            // Fallback: try to find in variables mapping (for uninterpreted/app terms)
+            // try to find in variables mapping for uninterpreted/app terms
             auto vit = std::find_if(variables.begin(), variables.end(),
                                     [var_ord](const auto& p) { return p.second.type() == Variable::boolean && p.second.ord() == var_ord; });
             if (vit != variables.end()) {
@@ -265,8 +259,8 @@ std::vector<terms::term_t> Solver_wrapper::convert_from_internal_to_tree_represe
                         coefs.push_back(c);
                     }
                     // Build the polynomial term
-                    // If only one variable, just use it; otherwise, build a sum
                     terms::term_t poly_term;
+
                     if (poly_terms.size() == 1 && coefs[0] == yaga::Rational(1) && cons.rhs() == 0) {
                         poly_term = poly_terms[0];
                     } else {
@@ -280,12 +274,14 @@ std::vector<terms::term_t> Solver_wrapper::convert_from_internal_to_tree_represe
                                 sum_terms.push_back(term_manager.mk_arithmetic_times(factors));
                             }
                         }
+
                         if (cons.rhs() != 0) {
                             sum_terms.push_back(term_manager.mk_rational_constant((-cons.rhs()).get_str()));
                         }
+
                         poly_term = term_manager.mk_arithmetic_plus(sum_terms);
                     }
-                    // Determine the predicate and build the atom
+
                     yaga::Order_predicate pred = cons.pred();
                     terms::term_t atom;
                     if (pred == yaga::Order_predicate::leq) {
@@ -297,6 +293,7 @@ std::vector<terms::term_t> Solver_wrapper::convert_from_internal_to_tree_represe
                     } else {
                         continue;
                     }
+
                     if (lit.is_negation()){
                         atom = term_manager.mk_negated(atom);
                     }
@@ -309,10 +306,10 @@ std::vector<terms::term_t> Solver_wrapper::convert_from_internal_to_tree_represe
             continue;
         }
 
-        if (clause.empty()) {   //we encountered empty clause
+        if (clause.empty()) {
             result.push_back(terms::false_term);
         } else if(or_args.empty()) {
-            // Clause could not be reconstructed; treat it as a tautology
+            // Clause could not be reconstructed -> treat it as a tautology
             result.push_back(terms::true_term);
         } else if (or_args.size() == 1) {
             result.push_back(or_args[0]);
