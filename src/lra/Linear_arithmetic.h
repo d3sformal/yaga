@@ -280,10 +280,14 @@ private:
 
     /** Deduce new bounds using bounds added at this decision level
      *
-     * @param trail current solver trail
      * @param models partial assignment of variables
+     * @param assigned_vars new trail assignments since last propagate() call
+     * @param assigned_rationals newly assigned rational variables
+     * @param out_changed all variables whose bounds changed
      */
-    void propagate_bounds(Trail const& trail, Models const& models);
+    void propagate_bounds(Models const& models, std::vector<Variable> const& assigned_vars,
+                          std::vector<int> const& assigned_rationals,
+                          std::vector<int>& out_changed);
 
     /** Propagate true constraints to the trail
      *

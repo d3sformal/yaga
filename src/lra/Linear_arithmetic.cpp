@@ -1,7 +1,5 @@
 #include "Linear_arithmetic.h"
 
-#include "Conflict_analysis.h"
-
 #include <array>
 #include <unordered_set>
 
@@ -10,12 +8,6 @@ namespace yaga {
 namespace {
 
 using Models = Linear_arithmetic::Models;
-
-Clause compute_uip(Trail const& trail, Clause&& conflict)
-{
-    Conflict_analysis analysis;
-    return analysis.analyze(trail, std::move(conflict)).first;
-}
 
 void add_assignment_literal(Linear_arithmetic* lra, Trail& trail, Models& models, Clause& out,
                             int var_ord)
@@ -114,7 +106,7 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
                     {
                         add_assignment_literal(this, trail, models, conflict, lra_var_ord);
                     }
-                    pending_conflict = compute_uip(trail, std::move(conflict));
+                    pending_conflict = std::move(conflict);
                     break;
                 }
             }
@@ -144,12 +136,17 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
 
     if (options.prop_bounds)
     {
-        propagate_bounds(trail, models);
+        std::vector<int> changed_bounds;
+        propagate_bounds(models, variables, scan_vars, changed_bounds);
+        to_check.insert(to_check.end(), changed_bounds.begin(), changed_bounds.end());
+        scan_vars.insert(scan_vars.end(), changed_bounds.begin(), changed_bounds.end());
     }
-
-    auto const& changed = bounds.changed();
-    to_check.insert(to_check.end(), changed.begin(), changed.end());
-    scan_vars.insert(scan_vars.end(), changed.begin(), changed.end());
+    else
+    {
+        auto const& changed = bounds.changed();
+        to_check.insert(to_check.end(), changed.begin(), changed.end());
+        scan_vars.insert(scan_vars.end(), changed.begin(), changed.end());
+    }
 
     if (options.prop_unassigned && !scan_vars.empty())
     {
@@ -291,7 +288,7 @@ void Linear_arithmetic::replace_watch(Trail& trail, Models& models, int lra_var_
                         {
                             add_assignment_literal(this, trail, models, conflict, other_var_ord);
                         }
-                        pending_conflict = compute_uip(trail, std::move(conflict));
+                        pending_conflict = std::move(conflict);
                         return;
                     }
                 }
@@ -343,8 +340,9 @@ bool Linear_arithmetic::is_unit(Model<Rational> const& model, Constraint const& 
 bool Linear_arithmetic::is_fully_assigned(Model<Rational> const& model,
                                           Constraint const& cons) const
 {
-    return cons.empty() || std::all_of(cons.vars().begin(), cons.vars().end(), [&](int v){return model.is_defined(v);});
-    //return cons.empty() || model.is_defined(cons.vars().front());
+    return cons.empty() ||
+           std::all_of(cons.vars().begin(), cons.vars().end(),
+                       [&](int v) { return model.is_defined(v); });
 }
 
 std::optional<Clause> Linear_arithmetic::check_bounds(Trail& trail, int var_ord)
@@ -366,25 +364,120 @@ void Linear_arithmetic::unit(Models const& models, Constraint const& cons)
     bounds.update(models, cons); 
 }
 
-void Linear_arithmetic::propagate_bounds(Trail const& trail, Models const& models)
+void Linear_arithmetic::propagate_bounds(Models const& models,
+                                         std::vector<Variable> const& assigned_vars,
+                                         std::vector<int> const& assigned_rationals,
+                                         std::vector<int>& out_changed)
 {
-    for (auto& [var, _] : trail.assigned(trail.decision_level()))
-    {
-        if (var.type() == Variable::boolean)
+    out_changed.clear();
+
+    std::vector<int> queue;
+    queue.reserve(128);
+
+    std::vector<char> in_queue(models.boolean().num_vars(), false);
+    auto enqueue = [&](int bool_ord) {
+        if (bool_ord < 0 || bool_ord >= static_cast<int>(in_queue.size()))
         {
-            auto cons = constraint(var.ord());
-            if (cons.empty())
-            {
-                continue; // var does not represent a linear constraint
-            }
-            if (!models.boolean().value(var.ord()))
-            {
-                cons.negate();
-            }
-            assert(models.boolean().value(cons.lit().var().ord()) == !cons.lit().is_negation());
-            bounds.deduce(models, cons);
+            return;
+        }
+        if (!in_queue[bool_ord])
+        {
+            in_queue[bool_ord] = true;
+            queue.push_back(bool_ord);
+        }
+    };
+
+    // Seed with constraints whose boolean variables were just assigned.
+    for (auto var : assigned_vars)
+    {
+        if (var.type() == Variable::boolean && !constraints[var.ord()].empty())
+        {
+            enqueue(var.ord());
         }
     }
+
+    // Seed with constraints that mention newly assigned rational variables.
+    for (auto var_ord : assigned_rationals)
+    {
+        for (auto cons : occur[var_ord])
+        {
+            auto bool_ord = cons.lit().var().ord();
+            if (models.boolean().is_defined(bool_ord))
+            {
+                enqueue(bool_ord);
+            }
+        }
+    }
+
+    // Also seed with any bounds/inequalities derived before we got here (e.g., from unit
+    // constraints while replacing watches).
+    auto initial_changed = bounds.changed();
+    out_changed.insert(out_changed.end(), initial_changed.begin(), initial_changed.end());
+    for (auto var_ord : initial_changed)
+    {
+        for (auto cons : occur[var_ord])
+        {
+            auto bool_ord = cons.lit().var().ord();
+            if (models.boolean().is_defined(bool_ord))
+            {
+                enqueue(bool_ord);
+            }
+        }
+    }
+
+    // Propagate FM deductions to a fixpoint (with a coarse budget cap).
+    std::size_t index = 0;
+    int budget = 20000;
+    while (index < queue.size() && budget > 0)
+    {
+        auto bool_ord = queue[index++];
+        in_queue[bool_ord] = false;
+        --budget;
+
+        if (!models.boolean().is_defined(bool_ord))
+        {
+            continue;
+        }
+
+        auto cons = constraint(bool_ord);
+        if (cons.empty())
+        {
+            continue;
+        }
+
+        if (!models.boolean().value(bool_ord))
+        {
+            cons.negate();
+        }
+        assert(models.boolean().value(cons.lit().var().ord()) == !cons.lit().is_negation());
+        bounds.deduce(models, cons);
+
+        if (index == queue.size())
+        {
+            auto const& changed = bounds.changed();
+            if (changed.empty())
+            {
+                continue;
+            }
+
+            out_changed.insert(out_changed.end(), changed.begin(), changed.end());
+            for (auto var_ord : changed)
+            {
+                for (auto occ : occur[var_ord])
+                {
+                    auto occ_bool_ord = occ.lit().var().ord();
+                    if (models.boolean().is_defined(occ_bool_ord))
+                    {
+                        enqueue(occ_bool_ord);
+                    }
+                }
+            }
+        }
+    }
+
+    // Drain any remaining bound updates.
+    auto const& trailing_changed = bounds.changed();
+    out_changed.insert(out_changed.end(), trailing_changed.begin(), trailing_changed.end());
 }
 
 void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models,

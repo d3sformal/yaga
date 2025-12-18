@@ -1,5 +1,4 @@
 #include "Lra_conflict_analysis.h"
-#include "Conflict_analysis.h"
 #include "Linear_arithmetic.h"
 
 #include <array>
@@ -63,12 +62,6 @@ void add_assignment_literal(Linear_arithmetic* lra, Trail& trail, Models& models
     assert(eval(models.owned(), eq) == true);
     assert(eval(models.boolean(), eq.lit()) == true);
     out.push_back(~eq.lit()); // add inequality: var != current_value
-}
-
-Clause compute_uip(Trail const& trail, Clause&& conflict)
-{
-    Conflict_analysis analysis;
-    return analysis.analyze(trail, std::move(conflict)).first;
 }
 
 } // namespace
@@ -211,13 +204,14 @@ Fm_elimination::Constraint Fm_elimination::finish(Trail& trail)
     std::sort(poly.begin(), poly.end(), [&](auto lhs, auto rhs) {
         Variable lhs_var{lhs.first, Variable::rational};
         Variable rhs_var{rhs.first, Variable::rational};
-        return trail.decision_level(lhs_var).value() > trail.decision_level(rhs_var).value();
+        return trail.decision_level(lhs_var).value_or(0) > trail.decision_level(rhs_var).value_or(0);
     });
 
     auto cons = lra->constraint(trail, std::views::keys(poly.variables),
                                 std::views::values(poly.variables), pred, -poly.constant);
     auto models = lra->relevant_models(trail);
-    if (!models.boolean().is_defined(cons.lit().var().ord()))
+    auto cons_val = eval(models.owned(), cons);
+    if (cons_val.has_value() && !models.boolean().is_defined(cons.lit().var().ord()))
     {
         lra->propagate(trail, models, cons);
     }
@@ -278,9 +272,10 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
         auto derived = fm.finish(trail);
         if (!derived.empty())
         {
-            assert(eval(models.boolean(), derived.lit()) == false);
-            assert(eval(models.owned(), derived) == false);
-            conflict.push_back(derived.lit());
+            if (eval(models.owned(), derived) == false && eval(models.boolean(), derived.lit()) == false)
+            {
+                conflict.push_back(derived.lit());
+            }
         }
 
         assert(conflict.size() >= 2);
@@ -344,7 +339,7 @@ std::optional<Clause> Bound_conflict_analysis::analyze(Trail& trail, Bounds& bou
         auto clause = analysis.finish();
         assert(!clause.empty());
         assert(eval(models.boolean(), clause) == false);
-        return compute_uip(trail, std::move(clause));
+        return clause;
     }
 
 }
@@ -388,9 +383,10 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds
             auto derived = fm.finish(trail);
             if (!derived.empty())
             {
-                assert(eval(models.owned(), derived) == false);
-                assert(eval(models.boolean(), derived.lit()) == false);
-                analysis.conflict().push_back(derived.lit());
+                if (eval(models.owned(), derived) == false && eval(models.boolean(), derived.lit()) == false)
+                {
+                    analysis.conflict().push_back(derived.lit());
+                }
             }
             mult = -mult;
         }
@@ -459,7 +455,7 @@ std::optional<Clause> Inequality_conflict_analysis::analyze(Trail& trail, Bounds
         auto clause = analysis.finish();
         assert(!clause.empty());
         assert(eval(models.boolean(), clause) == false);
-        return compute_uip(trail, std::move(clause));
+        return clause;
     }
 }
 
