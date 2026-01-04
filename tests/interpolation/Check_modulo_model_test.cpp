@@ -48,7 +48,7 @@ TEST_CASE("Check a formula with an input model", "[integration][lra][sat]")
     REQUIRE(solver.get_model_interpolant().size() == 0);
 }
 
-TEST_CASE("Check a formula with an input model that causes a conflict", "[integration][lra][unsat]")
+TEST_CASE("Check a formula with an input model that cannot be extended to full model", "[integration][lra][unsat]")
 {
     // sat formula
     Solver solver;
@@ -66,13 +66,16 @@ TEST_CASE("Check a formula with an input model that causes a conflict", "[integr
     solver.db().assert_clause(clause(linear(x + 1 == y)));
 
     TrailModelsSnapshot modelsSnapshot(solver.trail());
-    modelsSnapshot.model<Rational>(Variable::rational)->set_value(x.ord(), -1);
+    modelsSnapshot.model<Rational>(Variable::rational)->set_value(y.ord(), -2);
 
     auto result = solver.check(modelsSnapshot);
     REQUIRE(result == Solver::Result::unsat);
+
+    std::vector<Clause> expected = {{linear(y >= 1).lit()}};
+    REQUIRE(solver.get_model_interpolant() == expected);
 }
 
-TEST_CASE("Check a propositional formula with an input model that causes a conflict", "[integration][bool_theory][sat]")
+TEST_CASE("Check a propositional formula with an input model that can be extended to full model", "[integration][bool_theory][sat]")
 {
     // sat formula
     Solver solver;
@@ -128,6 +131,9 @@ TEST_CASE("Check a formula with an input model that causes a conflict in decide 
 
     auto result = solver.check(modelsSnapshot);
     REQUIRE(result == Solver::Result::unsat);
+
+    std::vector<Clause> expected = {{linear(x == 0).lit()}};
+    REQUIRE(solver.get_model_interpolant() == expected);
 }
 
 TEST_CASE("Check a formula with an input model that causes a conflict in decide method in LRA plugin", "[integration][lra][unsat]")
@@ -153,4 +159,7 @@ TEST_CASE("Check a formula with an input model that causes a conflict in decide 
 
     auto result = solver.check(modelsSnapshot);
     REQUIRE(result == Solver::Result::unsat);
+
+    std::vector<Clause> expected = {{lit(a.ord())}};
+    REQUIRE(solver.get_model_interpolant() == expected);
 }
