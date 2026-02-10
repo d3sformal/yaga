@@ -151,16 +151,16 @@ TEST_CASE("Check a satisfiable LRA formula parsed from SMTLIB", "[lra][unsat][in
     std::unordered_map<terms::term_t, int> real_vars;
     std::unordered_map<terms::term_t, Literal> bool_vars;
     Yaga smt{terms::Term_manager(), std::ranges::views::all(real_vars), std::ranges::views::all(bool_vars)};
-    smt.set_logic(logic::qf_lra, opts);
+    smt.set_logic(logic_enum::QF_LRA, opts);
     Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 
     auto result = smt.solver().check();
 
-    auto& real_model = smt.solver().trail().model<Rational>(Variable::rational);
-    auto sko_x = real_model.value(parser.listener().var("skoX").ord());
-    auto sko_y = real_model.value(parser.listener().var("skoY").ord());
-    auto pi = real_model.value(parser.listener().var("pi").ord());
+    auto real_model = smt.solver().trail().model<Rational>(Variable::rational);
+    auto sko_x = real_model->value(parser.listener().var("skoX").ord());
+    auto sko_y = real_model->value(parser.listener().var("skoY").ord());
+    auto pi = real_model->value(parser.listener().var("pi").ord());
 
     REQUIRE(result == Solver::Result::sat);
     REQUIRE(pi < 31415927_r / 10000000);
@@ -184,7 +184,7 @@ TEST_CASE("Check an unsatisfiable LRA formula parsed from SMTLIB", "[lra][unsat]
     std::unordered_map<terms::term_t, int> real_vars;
     std::unordered_map<terms::term_t, Literal> bool_vars;
     Yaga smt{terms::Term_manager(), std::ranges::views::all(real_vars), std::ranges::views::all(bool_vars)};
-    smt.set_logic(logic::qf_uflra, opts);
+    smt.set_logic(logic_enum::QF_UFLRA, opts);
     Smtlib_parser<Direct_interpreter> parser{smt};
     parser.parse(input);
 
@@ -210,7 +210,7 @@ TEST_CASE("Formula which forces the solver to generate duplicate constraints and
     test.input() << "(assert (< y 1002))\n";
     test.input() << "(assert (< y 1003))\n";
     test.input() << "(assert (< y 1004))\n";
-    test.run();
+    test.run_check();
 
     REQUIRE(test.answer() == Solver_answer::SAT);
     if (*test.boolean("b"))

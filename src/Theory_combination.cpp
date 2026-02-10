@@ -36,6 +36,17 @@ void Theory_combination::decide(Database& db, Trail& trail, Variable var)
     }
 }
 
+std::vector<Clause> Theory_combination::decide(Database& db, Trail& trail, Variable var, TrailModelsSnapshot const& input_model) {
+    std::vector<Clause> conflicts;
+    for (auto&& theory : theories())
+    {
+        auto theory_conflicts = theory->decide(db, trail, var, input_model);
+        conflicts.insert(conflicts.end(), theory_conflicts.begin(), theory_conflicts.end());
+    }
+    return conflicts;
+}
+
+
 void Theory_combination::on_init(Database& db, Trail& trail)
 {
     for (auto&& theory : theories())

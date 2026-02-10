@@ -14,26 +14,26 @@ using b_map_t = std::unordered_map<yaga::terms::term_t, Literal>;
 
 void propagate_var(Trail& trail, Literal lit)
 {
-    auto& model = trail.model<bool>(Variable::boolean);
-    assert(!model.is_defined(lit.var().ord()));
-    model.set_value(lit.var().ord(), !lit.is_negation());
+    auto* model = trail.model<bool>(Variable::boolean);
+    assert(model && !model->is_defined(lit.var().ord()));
+    model->set_value(lit.var().ord(), !lit.is_negation());
     trail.propagate(lit.var(), nullptr, trail.decision_level());
 }
 
 void decide_lit(Trail& trail, Literal lit)
 {
-    auto& model = trail.model<bool>(Variable::boolean);
-    assert(!model.is_defined(lit.var().ord()));
-    model.set_value(lit.var().ord(), !lit.is_negation());
+    auto* model = trail.model<bool>(Variable::boolean);
+    assert(model && !model->is_defined(lit.var().ord()));
+    model->set_value(lit.var().ord(), !lit.is_negation());
     trail.decide(lit.var());
 }
 
 // decide that a real variable var is equal to a value val
 void decide_var(Trail& trail, Variable var, Rational value)
 {
-    auto& model = trail.model<Rational>(Variable::rational);
-    assert(!model.is_defined(var.ord()));
-    model.set_value(var.ord(), value);
+    auto* model = trail.model<Rational>(Variable::rational);
+    assert(model && !model->is_defined(var.ord()));
+    model->set_value(var.ord(), value);
     trail.decide(var);
 }
 
@@ -73,7 +73,7 @@ TEST_CASE("UF: propagation introduces conflict", "[uf]")
     b_map_t bm;
 
     Yaga yaga(tm, std::ranges::views::all(rm), std::ranges::views::all(bm));
-    yaga.set_logic(logic::qf_uflra, Options());
+    yaga.set_logic(logic_enum::QF_UFLRA, Options());
 
     Variable vx = make_real_var_for_term(tx, rm, yaga);
     Variable vfx = make_real_var_for_app_term(tfx, rm, yaga);
@@ -117,7 +117,7 @@ TEST_CASE("UF: valid function model", "[uf]")
     b_map_t bm;
 
     Yaga yaga(tm, std::ranges::views::all(rm), std::ranges::views::all(bm));
-    yaga.set_logic(logic::qf_uflra, Options());
+    yaga.set_logic(logic_enum::QF_UFLRA, Options());
     yaga.solver().trail().resize(Variable::rational, 3); // TODO - is it necessary?
 
     Variable vx = make_real_var_for_term(tx, rm, yaga);
@@ -148,7 +148,7 @@ TEST_CASE("UF: Parse a simple satisfiable formula", "[uf][sat][integration]")
     test.input() << "(declare-fun y () Real)\n";
     test.input() << "(declare-fun f (Real) Real)\n";
     test.input() << "(assert (distinct (f x) (f y)))\n";
-    test.run();
+    test.run_check();
 
     REQUIRE(test.answer() == Solver_answer::SAT);
     REQUIRE(test.real("x").has_value());
@@ -170,7 +170,7 @@ TEST_CASE("UF: Parse a binary function", "[uf][sat][integration]")
     test.input() << "(declare-fun f (Real Real) Real)\n";
     // implies x!=y && x!=0 && y!=0
     test.input() << "(assert (distinct (f 0 x) (f 0 y) (f x 0) (f y 0)))\n";
-    test.run();
+    test.run_check();
 
     REQUIRE(test.answer() == Solver_answer::SAT);
     REQUIRE(test.real("x").has_value());
@@ -204,7 +204,7 @@ TEST_CASE("UF: Parse an unsat binary function", "[uf][unsat][integration]")
     test.input() << "(declare-fun f (Real Real) Real)\n";
     test.input() << "(assert (distinct (f 0 x) (f x 0)))\n";
     test.input() << "(assert (= x 0))\n";
-    test.run();
+    test.run_check();
 
     REQUIRE(test.answer() == Solver_answer::UNSAT);
 }

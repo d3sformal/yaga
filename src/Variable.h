@@ -11,6 +11,7 @@ public:
     enum Type {
         boolean = 0,
         rational = 1,
+        LAST_ELEMENT = rational     //to safely iterate through enum elements
     };
 
     // default constructible

@@ -55,14 +55,14 @@ bool Evsids::is_before(Variable lhs, Variable rhs) const
 
 std::optional<Variable> Evsids::pick(Database&, Trail& trail)
 {
-    auto const& model = trail.model<bool>(Variable::boolean);
+    auto const* model = trail.model<bool>(Variable::boolean);
 
     int best_var = -1;       // none
     float best_score = -1.f; // replace this score even if the best score is 0
 
     for (int i = 0; i < static_cast<int>(vsids.size()); ++i)
     {
-        if (!model.is_defined(i) && score(i) > best_score)
+        if (!model->is_defined(i) && score(i) > best_score)
         {
             best_score = score(i);
             best_var = i;

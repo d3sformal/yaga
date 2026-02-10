@@ -27,6 +27,7 @@ enum class Token : int
     GET_OPTION_TOK,
     GET_UNSAT_CORE_TOK,
     GET_VALUE_TOK,
+    GET_INTERPOLANT_TOK,
     HEX_LITERAL,
     INDEX_TOK,
     INTEGER_LITERAL,

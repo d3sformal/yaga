@@ -98,6 +98,15 @@ struct logic {
     inline static Qf_lra const qf_lra{};
 };
 
+/*
+ * Enum for the logic of the solver
+ */
+enum logic_enum {
+    PROPOSITIONAL,
+    QF_UFLRA,
+    QF_LRA
+};
+
 /** A facade for the SMT solver.
  * 
  * Typical usage:
@@ -126,16 +135,22 @@ public:
          std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > b_m,
          std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > r_m);
 
-    /** Reinitialize the solver with a different logic.
-     * 
-     * This operation removes all clauses and variables.
-     * 
-     * @param init initializer for a logic
-     * @param options solver options
-     */
+
     void init();
 
-    void set_logic(Initializer const& init, Options const& options);
+    /** Reinitialize the solver with a different logic.
+     *
+     * This operation removes all clauses and variables.
+     *
+     * @param logic type of logic to initialize the solver to
+     * @param options solver options
+     */
+    void set_logic(logic_enum logic, Options const& options);
+
+    /*
+     * Reset the solver
+     */
+    void reset();
 
     bool has_uf();
 
@@ -179,7 +194,13 @@ public:
             throw std::logic_error{"This logic does not support linear constraints."};
         }
 
-        auto num_real_vars = static_cast<int>(solver().trail().model(Variable::rational).num_vars());
+        auto* rational_model = solver().trail().model(Variable::rational);
+        if (!rational_model)
+        {
+            throw std::logic_error{"Rational model not initialized."};
+        }
+        
+        auto num_real_vars = static_cast<int>(rational_model->num_vars());
         for (auto&& var : vars)
         {
             if (var < 0 || var >= num_real_vars)
@@ -222,6 +243,8 @@ private:
     Uninterpreted_functions* uf;
     std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, int> > real_mapping;
     std::ranges::ref_view<std::unordered_map<yaga::terms::term_t, Literal> > bool_mapping;
+    logic_enum _logic;
+    Options _options;
 };
 
 }

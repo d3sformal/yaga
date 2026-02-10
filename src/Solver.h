@@ -174,6 +174,22 @@ public:
      */
     inline Theory* theory() { return solver_theory.get(); }
 
+    /** Check satisfiability modulo model of asserted clauses in database `db()`
+     *
+     * @return `sat` if asserted clauses are satisfiable, `unsat` otherwise
+     */
+    Result check(TrailModelsSnapshot& input_model);
+
+    inline const std::vector<Clause>& get_model_interpolant() { return interpolant; }
+
+    /*
+     * Reset the solver
+     */
+    void reset(){
+        trail().clear();
+        interpolant.clear();
+    };
+
 private:
     Event_dispatcher dispatcher;
     Trail solver_trail;
@@ -196,6 +212,8 @@ private:
     int total_restarts = 0;
     int total_decisions = 0;
 
+    std::vector<Clause> interpolant;
+
     // run propagate in theory
     [[nodiscard]] std::vector<Clause> propagate();
     // analyze conflict clauses
@@ -208,12 +226,15 @@ private:
     bool is_semantic_split(Clause const& clause) const;
     // pick the next variable to assign
     [[nodiscard]] std::optional<Variable> pick_variable();
-    // decide value of an unassigned variable
+    // decide the value of an unassigned variable
     void decide(Variable var);
+    // initialize the solver for a new check()
+    void init();
     // restart the solver
     void restart();
-    // reset the solver for a new check()
-    void init();
+
+    [[nodiscard]] std::vector<Clause> analyze_final(std::vector<Clause>&& learned_clauses);
+    [[nodiscard]] std::vector<Clause> decide(Variable var, TrailModelsSnapshot const& input_model);
 };
 
 } // namespace yaga

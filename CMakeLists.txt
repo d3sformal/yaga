@@ -35,6 +35,13 @@ endif ()
 
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
+# Option to enable validation check that first formula (A) is SAT in interpolation
+option(YAGA_VALIDATE_INTERPOLATION_GROUP1 "Validate that the first group in interpolation is SAT before computing interpolant" OFF)
+
+if(YAGA_VALIDATE_INTERPOLATION_GROUP1)
+    add_compile_definitions(YAGA_VALIDATE_INTERPOLATION_GROUP1)
+endif()
+
 add_library(yaga src/lra/Fraction.h src/lra/Rational.h src/lra/Long_fraction.cpp)
 target_link_libraries(yaga PUBLIC GMP::GMP)
 add_executable(test)

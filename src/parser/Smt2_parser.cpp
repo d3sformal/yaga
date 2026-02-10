@@ -151,37 +151,17 @@ public:
     }
 };
 
-class Smt2_command_context {
-    std::istream& input;
-    std::ostream& output;
-    smt2_lexer lexer;
+bool sets_are_disjoint(const std::unordered_set<std::string>& setA,
+                       const std::unordered_set<std::string>& setB) {
+    const auto& smaller = (setA.size() < setB.size()) ? setA : setB;
+    const auto& larger = (setA.size() < setB.size()) ? setB : setA;
 
-    Smt2_term_parser term_parser;
-    Parser_context parser_context;
-    terms::Term_manager& term_manager;
-    std::vector<term_t> assertions;
-    std::optional<Solver_answer> last_answer;
-
-    bool parse_command();
-
-    void parse_error(std::string const& msg);
-
-    void print_answer(Solver_answer answer);
-
-public:
-    Smt2_command_context(std::istream& input, std::ostream& output, terms::Term_manager& term_manager, Options const& opts)
-        : input(input), output(output), term_parser(lexer, parser_context), parser_context(term_manager, opts), term_manager(term_manager)
-    {}
-    void execute();
-};
-
-void Smt2_command_context::execute()
-{
-    lexer.yyrestart(input);
-    while(parse_command()) { /* empty */ }
+    return std::none_of(smaller.begin(), smaller.end(), [&](const auto& item) {
+        return larger.contains(item);
+    });
 }
 
-bool Smt2_command_context::parse_command()
+bool Smt2_parser::parse_command(std::ostream& output, Smt2_term_parser& term_parser, Parser_context& parser_context)
 {
     if (lexer.eat_token_choice(Token::EOF_TOK, Token::LPAREN_TOK))
     {
@@ -210,7 +190,7 @@ bool Smt2_command_context::parse_command()
     case Token::CHECK_SAT_TOK:
     {
         last_answer = parser_context.check_sat(assertions);
-        print_answer(*last_answer);
+        print_answer(*last_answer, output);
     }
     break;
 
@@ -234,7 +214,7 @@ bool Smt2_command_context::parse_command()
 
         terms::type_t ret_type = term_parser.parse_sort();
 
-        if (sorts.size() == 0)
+        if (sorts.empty())
             parser_context.declare_uninterpreted_constant(ret_type, name);
         else if (parser_context.has_uf())
             parser_context.declare_uninterpreted_function(ret_type, std::move(sorts), name);
@@ -347,6 +327,34 @@ bool Smt2_command_context::parse_command()
         UNIMPLEMENTED;
     }
     break;
+    case Token::GET_INTERPOLANT_TOK:
+    {
+        auto groups = term_parser.parse_interpolation_groups();
+
+        if (!sets_are_disjoint(groups.first, groups.second)){
+            parse_error("Expected disjoint sets of interpolation groups");
+        }
+
+        if (last_answer == Solver_answer::SAT) {
+            parse_error("The environment status is not UNSAT");
+        } else {
+            auto groups_terms = assign_terms_by_name_to_groups(groups.first, groups.second);
+
+            if (groups_terms.first.empty() || groups_terms.second.empty()){
+                parse_error("Invalid interpolation groups: both groups must contain at least one assertion");
+            }
+            last_answer = parser_context.interpolate(groups_terms.first, groups_terms.second);
+            if (last_answer == Solver_answer::UNSAT){
+                parser_context.print_interpolant(output);
+            }
+            else if (last_answer == Solver_answer::SAT){
+                print_answer(*last_answer, output);
+            }
+        }
+
+        return true;    // we consumed all the input for this token, we can return
+    }
+    break;
 
     // (pop <numeral>?)
     case Token::POP_TOK:
@@ -381,9 +389,9 @@ bool Smt2_command_context::parse_command()
     {
         std::string name = term_parser.parse_symbol();
         if (name == "QF_UFLRA") {
-            parser_context.set_logic(logic::qf_uflra);
+            parser_context.set_logic(logic_enum::QF_UFLRA);
         } else if (name == "QF_LRA") {
-            parser_context.set_logic(logic::qf_lra);
+            parser_context.set_logic(logic_enum::QF_LRA);
         } else {
             std::cerr << "Unsupported logic " << name << std::endl;
             return false;
@@ -412,11 +420,11 @@ bool Smt2_command_context::parse_command()
     lexer.eat_token(Token::RPAREN_TOK);
     return true;
 }
-void Smt2_command_context::parse_error(std::string const&)
+void Smt2_parser::parse_error(std::string const& msg)
 {
-    UNIMPLEMENTED;
+    throw std::runtime_error(msg);
 }
-void Smt2_command_context::print_answer(Solver_answer answer)
+void Smt2_parser::print_answer(Solver_answer answer,  std::ostream& output)
 {
     switch (answer)
     {
@@ -436,6 +444,34 @@ void Smt2_command_context::print_answer(Solver_answer answer)
 
 }
 
+std::pair<std::vector<term_t>, std::vector<term_t>> Smt2_parser::assign_terms_by_name_to_groups(const std::unordered_set<std::string>& group1, const std::unordered_set<std::string>& group2){
+    std::vector<term_t> group1_terms;
+    std::vector<term_t> group2_terms;
+
+    bool group2_is_complement = group2.empty();
+
+    for (const auto& assertion : assertions) {
+        auto maybe_name = term_manager.get_term_name(assertion);
+
+        if (!maybe_name){
+            if (group2_is_complement){
+                group2_terms.push_back(assertion);  // No name, assign to complement group
+            }
+            continue; // No name, skip further checks
+        }
+
+        auto name = std::string(*maybe_name);  // Convert string_view to string
+
+        if (group1.contains(name)) {
+            group1_terms.push_back(assertion);
+        }
+        else if (group2_is_complement || group2.contains(name)) {
+            group2_terms.push_back(assertion);
+        }
+    }
+    return {group1_terms, group2_terms};
+}
+
 void Smt2_parser::parse_file(std::string const& file_name)
 {
     std::ifstream file_stream;
@@ -447,9 +483,15 @@ void Smt2_parser::parse_file(std::string const& file_name)
 
 void Smt2_parser::parse(std::istream& input, std::ostream& output)
 {
-    terms::Term_manager tm;
-    Smt2_command_context ctx(input, output, tm, options);
-    ctx.execute();
+    // Reset the parser state
+    assertions.clear();
+    last_answer.reset();
+
+    Parser_context parser_context(term_manager, options);
+    Smt2_term_parser term_parser(lexer, parser_context);
+
+    lexer.yyrestart(input);
+    while(parse_command(output, term_parser, parser_context)) { /* empty */ }
 }
 
 } // namespace yaga::parser

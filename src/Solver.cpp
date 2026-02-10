@@ -47,6 +47,16 @@ std::pair<std::vector<Clause>, int> Solver::analyze_conflicts(std::vector<Clause
     return {learned, level};
 }
 
+std::vector<Clause> Solver::analyze_final(std::vector<Clause>&& learned_clauses){
+
+    std::vector<Clause> final;
+
+    for (auto&& clause : learned_clauses){
+        final.emplace_back(analysis.analyze_final(trail(), std::move(clause)));
+    }
+    return final;
+}
+
 Solver::Clause_range Solver::learn(std::vector<Clause>&& clauses)
 {
     // remove duplicate clauses
@@ -98,7 +108,7 @@ void Solver::backtrack_with(Clause_range clauses, int level)
 {
     dispatcher.on_before_backtrack(db(), trail(), level);
 
-    auto& model = trail().model<bool>(Variable::boolean);
+    auto* model = trail().model<bool>(Variable::boolean);
     if (is_semantic_split(clauses[0]))
     {
         assert(std::all_of(clauses.begin(), clauses.end(), [&](auto const& other_clause) {
@@ -126,7 +136,7 @@ void Solver::backtrack_with(Clause_range clauses, int level)
         trail().backtrack(level);
         // decide one of the literals at the highest decision level
         trail().decide(top_it->var());
-        model.set_value(top_it->var().ord(), !top_it->is_negation());
+        model->set_value(top_it->var().ord(), !top_it->is_negation());
     }
     else // UIP
     {
@@ -139,10 +149,10 @@ void Solver::backtrack_with(Clause_range clauses, int level)
         // propagate top level literals from all clauses
         for (auto& clause : clauses)
         {
-            if (!model.is_defined(clause[0].var().ord()))
+            if (!model->is_defined(clause[0].var().ord()))
             {
                 trail().propagate(clause[0].var(), &clause, level);
-                model.set_value(clause[0].var().ord(), !clause[0].is_negation());
+                model->set_value(clause[0].var().ord(), !clause[0].is_negation());
             }
         }
     }
@@ -154,6 +164,11 @@ void Solver::decide(Variable var)
 {
     ++total_decisions;
     theory()->decide(db(), trail(), var);
+}
+
+std::vector<Clause> Solver::decide(Variable var, TrailModelsSnapshot const& input_model){
+    ++total_decisions;
+    return theory()->decide(db(), trail(), var, input_model);
 }
 
 void Solver::init()
@@ -223,6 +238,81 @@ Solver::Result Solver::check()
                 return Result::sat;
             }
             decide(var.value());
+        }
+    }
+}
+
+Solver::Result Solver::check(TrailModelsSnapshot& input_model) {
+
+    init();
+
+    for (;;)
+    {
+        auto conflicts = propagate();
+
+        if (!conflicts.empty())
+        {
+            if (trail().decision_level() == 0)
+            {
+                interpolant.emplace_back(); // add empty clause (false)
+                return Result::unsat;
+            }
+            auto [learned, level] = analyze_conflicts(std::move(conflicts));
+
+            if (std::any_of(learned.begin(), learned.end(), [](auto const& clause) { return clause.empty(); })
+                || level < static_cast<int>(input_model.size()))
+            {
+                auto final = analyze_final(std::move(learned));
+                interpolant.insert(interpolant.end(), final.begin(), final.end());
+                return Result::unsat;
+            }
+
+            auto clauses = learn(std::move(learned));
+            if (restart_policy->should_restart())
+            {
+                input_model.restart();
+                restart();
+            }
+            else // backtrack instead of restarting
+            {
+                backtrack_with(clauses, level);
+            }
+        }
+        else // no conflict
+        {
+            //decide value from the input model
+            if (trail().decision_level() < static_cast<int>(input_model.size()))
+            {
+                for (size_t i = 0; i <= Variable::Type::LAST_ELEMENT; ++i)
+                {
+                    auto res = input_model.next_decision(static_cast<Variable::Type>(i));
+                    if (res.has_value())
+                    {
+                        Variable var(res.value(), static_cast<Variable::Type>(i));
+
+                        auto decision_conflicts = decide(var, input_model);
+
+                        if (!decision_conflicts.empty())
+                        {
+                            // deal with the conflict clauses that have arisen from the decision
+                            auto [learned, level] = analyze_conflicts(std::move(decision_conflicts));
+                            auto final = analyze_final(std::move(learned));
+                            interpolant.insert(interpolant.end(), final.begin(), final.end());
+                            return Result::unsat;
+                        }
+
+                        break;
+                    }
+                }
+            }
+            else { //if no decision from input model
+                auto var = pick_variable();
+                if (!var)
+                {
+                    return Result::sat;
+                }
+                decide(var.value());
+            }
         }
     }
 }

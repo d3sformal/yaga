@@ -66,8 +66,30 @@ void Yaga::init()
     smt.db().asserted().clear();
 }
 
-void Yaga::set_logic(Initializer const& init, Options const& options) {
-    init.setup(this, options);
+void Yaga::set_logic(logic_enum logic, Options const& options) {
+
+    _logic = logic;
+    _options = options;
+    reset();
+}
+
+void Yaga::reset(){
+
+    switch (_logic)
+    {
+    case PROPOSITIONAL:
+        logic::propositional.setup(this, _options);
+        break;
+    case QF_UFLRA:
+        logic::qf_uflra.setup(this, _options);
+        break;
+    case QF_LRA:
+        logic::qf_lra.setup(this, _options);
+        break;
+    default:
+        std::cerr << "Unsupported logic " << _logic << std::endl;
+        return;
+    }
 
     // find the LRA and UF plugins so we can add linear constraints and function applications
     lra = nullptr;
@@ -85,6 +107,8 @@ void Yaga::set_logic(Initializer const& init, Options const& options) {
             }
         }
     }
+
+    solver().reset();
 }
 
 bool Yaga::has_uf() {
@@ -93,7 +117,7 @@ bool Yaga::has_uf() {
 
 Variable Yaga::make(Variable::Type type)
 {
-    auto num_vars = static_cast<int>(smt.trail().model(type).num_vars());
+    auto num_vars = static_cast<int>(smt.trail().model(type)->num_vars());
     smt.trail().resize(type, num_vars + 1);
     return Variable{num_vars, type};
 }

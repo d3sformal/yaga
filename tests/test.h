@@ -80,6 +80,7 @@ private:
     std::unordered_map<std::string, terms::var_value_t> fnc_trailing_values;
     type_map_t fnc_ret_types;
     yaga::parser::Smt2_parser parser;
+    std::string interpolant_output;
 
     /** Read parser answer from the output
      */
@@ -392,6 +393,47 @@ private:
             }
         }
     }
+
+    /** Read interpolant from output stream
+     * 
+     * Reads the remaining content from the output stream which should contain
+     * the interpolant formula returned by (get-interpolant ...) command.
+     * The interpolant is expected to be on a single line.
+     */
+    inline void read_interpolant()
+    {
+        interpolant_output.clear();
+        
+        char c;
+        int balance = 0;
+        bool started = false;
+        
+        // Skip initial whitespace
+        while (output().get(c)) {
+            if (!std::isspace(c)) {
+                output().putback(c);
+                break;
+            }
+        }
+        
+        while (output().get(c)) {
+            interpolant_output += c;
+            if (c == '(') {
+                balance++;
+                started = true;
+            } else if (c == ')') {
+                balance--;
+            }
+            
+            if (started && balance == 0) break;
+            
+            if (!started && std::isspace(c)) {
+                interpolant_output.pop_back();
+                break; 
+            }
+        }
+    }
+
 public:
     /** Stream with SMT-LIB input
      * 
@@ -411,15 +453,36 @@ public:
      */
     inline yaga::Solver_answer answer() const { return last_answer; }
 
-    /** Run the parser with `input()`.
+    /** Get the interpolant from the last `run()` call.
+     * 
+     * @return interpolant formula as a string, or empty string if no interpolant was computed
      */
-    inline void run()
-    {
-        input() << "(check-sat)\n(get-model)\n";
+    inline std::string const& interpolant() const { return interpolant_output; }
+
+    /** Run the parser with `input()`.
+     * 
+     * @param should_read_model if true, read the model from the output stream. Default is false.
+     * @param should_read_interpolant if true, read the interpolant from the output stream. Default is false.
+     */
+    inline void run(bool should_read_model = false, bool should_read_interpolant = false){
         parser.parse(input(), output());
         output().seekg(0, std::ios::beg);
         read_answer();
-        read_model();
+
+        if (should_read_model){
+            read_model();
+        }
+        if (should_read_interpolant){
+            read_interpolant();
+        }
+    }
+
+    /** Add check-sat and get-model commands to the input, Run the parser with `input()`.
+     */
+    inline void run_check()
+    {
+        input() << "(check-sat)\n(get-model)\n";
+        run(true, false);
     }
 
     /** Get value of a boolean variable
@@ -466,6 +529,61 @@ public:
         {
             return std::nullopt;
         }
+    }
+
+
+    /** Normalize an S-expression string for comparison
+     *
+     * Removes extra whitespace and normalizes formatting to make it easier
+     * to compare interpolant formulas.
+     *
+     * @param expr S-expression string to normalize
+     * @return normalized S-expression string
+     */
+    inline static std::string normalize_sexpr(std::string const& expr)
+    {
+        std::string result;
+        result.reserve(expr.size());
+        bool in_whitespace = false;
+
+        for (char c : expr)
+        {
+            if (std::isspace(c))
+            {
+                if (!in_whitespace && !result.empty() && result.back() != '(')
+                {
+                    result += ' ';
+                    in_whitespace = true;
+                }
+            }
+            else
+            {
+                if (c == '(' || c == ')')
+                {
+                    // Remove trailing space before closing paren
+                    if (c == ')' && !result.empty() && result.back() == ' ')
+                    {
+                        result.pop_back();
+                    }
+                    result += c;
+                    // Remove space after opening paren
+                    in_whitespace = (c == '(');
+                }
+                else
+                {
+                    result += c;
+                    in_whitespace = false;
+                }
+            }
+        }
+
+        // Remove trailing whitespace
+        while (!result.empty() && result.back() == ' ')
+        {
+            result.pop_back();
+        }
+
+        return result;
     }
 };
 

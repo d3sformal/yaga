@@ -1,4 +1,5 @@
 #include "Parser_context.h"
+#include "utils/Utils.h"
 
 #include "Solver_wrapper.h"
 #include "Term_manager.h"
@@ -62,8 +63,8 @@ Solver_answer Parser_context::check_sat(std::vector<term_t> const& assertions)
     return solver.check(assertions);
 }
 
-void Parser_context::set_logic(Initializer const& init) {
-    solver.set_logic(init);
+void Parser_context::set_logic(logic_enum logic) {
+    solver.set_logic(logic);
 }
 
 bool Parser_context::has_uf() {
@@ -169,6 +170,72 @@ term_t resolve(Function_template const& function_template, std::span<term_t> arg
         subst_map.insert({function_template.signature.args[i], args[i]});
     }
     return terms::simultaneous_variable_substitution(term_manager, subst_map, function_template.body);
+}
+
+Solver_answer Parser_context::interpolate(const std::vector<term_t>& group1, const std::vector<term_t>& group2){
+    std::vector<term_t> group2_and_interpolant(group2);
+    interpolant.clear();
+
+    // first, check that formula A is SAT
+    // TODO: after set-options is implemented, add option to skip this validation check
+#ifdef YAGA_VALIDATE_INTERPOLATION_GROUP1
+    // Validation check: ensure that formula A (group1) is SAT
+    auto res_check_a = solver.check(group1);
+    if (res_check_a == Solver_answer::UNSAT){
+        throw std::logic_error("First formula must be SAT");
+    }
+#endif
+
+    for (; ;)
+    {
+        solver.reset();
+
+        auto res = solver.check(group2_and_interpolant);
+        if (res == Solver_answer::UNSAT){
+            if (interpolant.empty()){
+                interpolant.emplace_back(terms::true_term);
+            }
+            return Solver_answer::UNSAT;
+        }
+        auto model = solver.get_trail_models_snapshot();
+        auto mapping = solver.get_variable_mapping();
+        solver.reset();
+
+        res = solver.check(group1, model, mapping);
+        if (res == Solver_answer::SAT){
+            interpolant.clear();    //there is no interpolant, remove previous model interpolants
+            return Solver_answer::SAT;
+        }
+
+        auto model_interpolant = solver.get_interpolant();
+        interpolant.insert(interpolant.end(), model_interpolant.begin(), model_interpolant.end());
+        group2_and_interpolant.insert(group2_and_interpolant.end(), model_interpolant.begin(), model_interpolant.end());
+
+        // group1 is unsat
+        if (model_interpolant.size() == 1 && model_interpolant[0] == terms::false_term) {
+            return Solver_answer::UNSAT;
+        }
+    }
+    return Solver_answer::UNKNOWN;
+}
+
+std::vector<term_t> const& Parser_context::get_interpolant() {
+    return interpolant;
+}
+
+void Parser_context::print_interpolant(std::ostream & output){
+    if (interpolant.size() > 1){
+        output << "(and ";
+    }
+
+    for (auto t : get_interpolant()){
+        utils::Utils::pretty_print_term(t, term_manager, output);
+        output << " ";
+    }
+    if (interpolant.size() > 1){
+        output << ")";
+    }
+    std::cout << std::endl;
 }
 
 } // namespace yaga::parser

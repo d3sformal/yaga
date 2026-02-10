@@ -2,6 +2,7 @@ target_include_directories(test PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 
 add_subdirectory(bool)
 add_subdirectory(lra)
+add_subdirectory(interpolation)
 add_subdirectory(uf)
 add_subdirectory(variable_order)
 

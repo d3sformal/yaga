@@ -170,9 +170,13 @@ public:
 
     type_t get_type_for_symbol(std::string const& symbol);
 
+    void set_term_name(term_t t, std::string const& name) {
+        term_manager.set_term_name(t, name);
+    }
+
     Solver_answer check_sat(std::vector<term_t> const& assertions);
 
-    void set_logic(Initializer const& init);
+    void set_logic(logic_enum logic);
 
     bool has_uf();
 
@@ -194,6 +198,9 @@ public:
 
     void store_defined_fun(std::string const& name, term_t definition, std::vector<term_t> && formal_args, type_t ret_sort);
 
+    Solver_answer interpolate(std::vector<term_t> const& group1, std::vector<term_t> const& group2);
+    std::vector<term_t> const& get_interpolant();
+    void print_interpolant(std::ostream& output);
 
 private:
     Let_records let_records;
@@ -204,6 +211,7 @@ private:
     terms::Term_manager& term_manager;
 
     Solver_wrapper solver;
+    std::vector<term_t> interpolant;
 
     term_t resolve_defined_function(std::string const& name, std::span<term_t> args);
 };

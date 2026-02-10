@@ -85,8 +85,15 @@ term_t Smt2_term_parser::parse_term() {
                 letBinders.emplace_back();
             }
             break;
-            case Token::MATCH_TOK:
             case Token::ATTRIBUTE_TOK:
+            {
+                // we are inside (!...) expression
+                term_t base_term = parse_term();
+                parse_attributes(base_term);
+                ret = base_term;
+                break;
+            }
+            case Token::MATCH_TOK:
                 UNIMPLEMENTED;
             case Token::SYMBOL:
             case Token::QUOTED_SYMBOL:
@@ -311,6 +318,71 @@ std::vector<Sorted_var> Smt2_term_parser::parse_sorted_var_list()
         lexer.eat_token(Token::RPAREN_TOK);
     }
     return vars;
+}
+
+void Smt2_term_parser::parse_attributes(term_t& term) {
+    while (true) {
+        Token attr_tok = lexer.next_token();
+        if (attr_tok == Token::RPAREN_TOK) {
+            break;  // end of attribute list
+        }
+
+        if (attr_tok != Token::KEYWORD) {
+            lexer.unexpected_token_error(attr_tok);
+        }
+
+        std::string attr_name = lexer.token_string();
+        assert(!attr_name.empty() && attr_name[0] == ':');
+        attr_name.erase(0, 1);
+
+        if (attr_name ==  "named") {
+            Token name_tok = lexer.next_token();
+            if (name_tok != Token::SYMBOL && name_tok != Token::QUOTED_SYMBOL) {
+                lexer.unexpected_token_error(name_tok);
+            }
+            std::string name = token_to_symbol(name_tok);
+            parser_context.set_term_name(term, name);
+        }
+        else {
+            lexer.unexpected_token_error(attr_tok);
+        }
+    }
+}
+
+std::pair<std::unordered_set<std::string>, std::unordered_set<std::string>> Smt2_term_parser::parse_interpolation_groups(){
+    // Parse first group
+    std::unordered_set<std::string> group1 = parse_symbol_group();
+    std::unordered_set<std::string> group2 = parse_symbol_group(true);;
+
+    if ( !group2.empty() && lexer.next_token() != Token::RPAREN_TOK) {
+        lexer.unexpected_token_error(lexer.get_last_token());
+    }
+
+    return {group1, group2};
+}
+
+std::unordered_set<std::string> Smt2_term_parser::parse_symbol_group(bool can_be_empty) {
+    std::unordered_set<std::string> result;
+    Token tok = lexer.next_token();
+
+    if (tok == Token::LPAREN_TOK) {
+        // Parse a list of symbols/quoted symbols
+        Token next = lexer.next_token();
+        while (next != Token::RPAREN_TOK) {
+            if (next != Token::SYMBOL && next != Token::QUOTED_SYMBOL) {
+                lexer.unexpected_token_error(next);
+            }
+            result.insert(token_to_symbol(next));
+            next = lexer.next_token();
+        }
+    } else if (tok == Token::SYMBOL || tok == Token::QUOTED_SYMBOL) {
+        result.insert(token_to_symbol(tok));
+    } else if (can_be_empty && tok == Token::RPAREN_TOK) {
+        return result;
+    } else {
+        lexer.unexpected_token_error(tok);
+    }
+    return result;
 }
 
 } // namespace yaga::parser

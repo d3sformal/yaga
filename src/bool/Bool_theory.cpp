@@ -6,17 +6,17 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
 {
     if (var.type() == Variable::boolean)
     {
-        auto& model = trail.model<bool>(Variable::boolean);
+        auto* model = trail.model<bool>(Variable::boolean);
         switch (var_phase)
         {
             case Phase::positive:
-                model.set_value(var.ord(), true);
+                model->set_value(var.ord(), true);
                 break;
             case Phase::negative:
-                model.set_value(var.ord(), false);
+                model->set_value(var.ord(), false);
                 break;
             case Phase::cache:
-                model.set_value(var.ord(), phase[var.ord()]);
+                model->set_value(var.ord(), phase[var.ord()]);
                 break;
             default:
                 assert(false && "unreachable");
@@ -24,6 +24,49 @@ void Bool_theory::decide(Database&, Trail& trail, Variable var)
         }
         trail.decide(var);
     }
+}
+
+
+std::vector<Clause> Bool_theory::decide(Database&, Trail& trail, Variable var, TrailModelsSnapshot const& input_model){
+    if (var.type() != Variable::boolean){
+        return {};
+    }
+
+    auto conflict_clauses = std::vector<Clause>();
+    auto* model = trail.model<bool>(Variable::boolean);
+
+    auto value = input_model.model<bool>(Variable::boolean)->value(var.ord());
+
+    if (model->is_defined(var.ord())) {
+        if (model->value(var.ord()) != value){
+            auto lit = model->value(var.ord()) ? Literal{var.ord()} : ~Literal{var.ord()};
+            auto reason_clause = trail.reason(lit.var());
+            assert(reason_clause != nullptr);
+
+            conflict_clauses.push_back(*reason_clause);
+
+            //set the value of the bool variable to one from the model to create conflict
+            model->set_value(var.ord(), value);
+            assert(model->value(var.ord()) == value);
+
+            //change the reason to nullptr to show that var is decided variable
+            trail.change_reason(var, nullptr);
+
+            return conflict_clauses;
+        }
+        else {
+            //we need to call the decide method on the trail so to increase the decision level
+            trail.decide(var);
+
+            return conflict_clauses;
+        }
+    }
+    else {
+        model->set_value(var.ord(), value);
+        trail.decide(var);
+    }
+
+    return conflict_clauses;
 }
 
 void Bool_theory::on_variable_resize(Variable::Type type, int num_vars)
@@ -39,14 +82,14 @@ void Bool_theory::on_before_backtrack(Database& db, Trail& trail, int level)
 {
     Theory::on_before_backtrack(db, trail, level);
 
-    auto& model = trail.model<bool>(Variable::boolean);
+    auto* model = trail.model<bool>(Variable::boolean);
     for (int i = trail.decision_level(); i > level; --i)
     {
         for (auto [var, _] : trail.assigned(i))
         {
             if (var.type() == Variable::boolean)
             {
-                phase[var.ord()] = model.value(var.ord());
+                phase[var.ord()] = model->value(var.ord());
             }
         }
     }
@@ -71,10 +114,10 @@ void Bool_theory::on_learned_clause(Database& db, Trail&, Clause const& learned)
 
 void Bool_theory::initialize(Database& db, Trail& trail)
 {
-    auto const& model = trail.model<bool>(Variable::boolean);
+    auto const* model = trail.model<bool>(Variable::boolean);
 
     // allocate space for new variables if necessary
-    watched.resize(model.num_vars());
+    watched.resize(model->num_vars());
 
     if (trail.empty()) // initialize watch lists
     {
@@ -110,7 +153,7 @@ void Bool_theory::initialize(Database& db, Trail& trail)
     {
         if (var.type() == Variable::boolean)
         {
-            auto lit = model.value(var.ord()) ? Literal{var.ord()} : ~Literal{var.ord()};
+            auto lit = model->value(var.ord()) ? Literal{var.ord()} : ~Literal{var.ord()};
             satisfied.push_back({.lit = lit, .reason = reason});
         }
     }
@@ -120,7 +163,7 @@ std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
 {
     satisfied.clear();
 
-    auto& model = trail.model<bool>(Variable::boolean);
+    auto* model = trail.model<bool>(Variable::boolean);
     initialize(db, trail);
 
     std::vector<Clause> conflicts;
@@ -132,18 +175,18 @@ std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)
         satisfied.pop_back();
 
         // propagate the literal if necessary
-        if (reason != nullptr && !model.is_defined(lit.var().ord()))
+        if (reason != nullptr && !model->is_defined(lit.var().ord()))
         {
-            model.set_value(lit.var().ord(), !lit.is_negation());
+            model->set_value(lit.var().ord(), !lit.is_negation());
             trail.propagate(lit.var(), reason, trail.decision_level());
         }
-        assert(eval(model, lit) == true);
+        assert(eval(*model, lit) == true);
         // reason clause is a unit clause which implies lit
         assert(reason == nullptr || std::all_of(reason->begin(), reason->end(), [&](auto other_lit) {
-            return other_lit == lit || eval(model, other_lit) == false;
+            return other_lit == lit || eval(*model, other_lit) == false;
         }));
 
-        if (auto conflict = falsified(trail, model, ~lit))
+        if (auto conflict = falsified(trail, *model, ~lit))
         {
             conflicts.push_back(std::move(conflict.value()));
         }

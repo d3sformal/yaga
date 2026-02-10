@@ -15,11 +15,11 @@ using namespace yaga;
 
 bool is_satisfying(Trail const& trail, Database const& db)
 {
-    auto const& model = trail.model<bool>(Variable::boolean);
+    auto const* model = trail.model<bool>(Variable::boolean);
     return std::all_of(db.asserted().begin(), db.asserted().end(), [&](auto const& clause) {
         return std::any_of(clause.begin(), clause.end(), [&](auto lit) {
-            return model.is_defined(lit.var().ord()) &&
-                   model.value(lit.var().ord()) == !lit.is_negation();
+            return model->is_defined(lit.var().ord()) &&
+                   model->value(lit.var().ord()) == !lit.is_negation();
         });
     });
 }

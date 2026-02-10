@@ -4,3 +4,5 @@ deps/install
 *build-debug
 build-release
 data
+build
+cmake-build-*

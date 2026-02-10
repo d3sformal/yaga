@@ -4,10 +4,10 @@ namespace yaga {
 
 void Subsumption::minimize(Trail const& trail, Clause& clause)
 {
-    auto const& model = trail.model<bool>(Variable::boolean);
+    auto const* model = trail.model<bool>(Variable::boolean);
 
     auto is_redundant = [&](auto lit) {
-        if (eval(model, ~lit) == true)
+        if (eval(*model, ~lit) == true)
         {
             auto reason = trail.reason(lit.var());
             return reason && selfsubsumes(*reason, clause, ~lit);
@@ -25,6 +25,11 @@ void Subsumption::on_variable_resize(Variable::Type type, int num_vars)
         occur.resize(num_vars);
         lit_bitset.resize(num_vars);
     }
+}
+
+void Subsumption::on_init(Database& db, Trail&)
+{
+    old_size = db.learned().size();
 }
 
 void Subsumption::on_restart(Database& db, Trail&) { remove_subsumed(db); }

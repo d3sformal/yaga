@@ -40,6 +40,21 @@ public:
      */
     void decide(Database& db, Trail& trail, Variable var) override;
 
+    /** Decide a valaue from the input model for variable @p
+     *
+     * The method should ignore the request if @p var is not owned by this
+     *
+     * Do not check if the value is correct. If it is not, we want to cause conflict
+     * in the next propagation.
+     *
+     * @param db clause database
+     * @param trail current trail
+     * @param var variable to decide
+     * @param input_model partial model that holds the value of variable
+     * @return conflict clauses if there is a conflict, empty vector otherwise
+     */
+    std::vector<Clause> decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) override;
+
     /** Take action before the solver backtracks to decision level @p new_level
      *
      * @param db current solver clause database

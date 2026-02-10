@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <vector>
+#include <memory>
 
 #include "Clause.h"
 #include "Literal.h"
@@ -52,6 +53,16 @@ public:
      * @param num_vars new number of variables
      */
     virtual void resize(int num_vars) = 0;
+
+    /**
+     * Create a deep copy of this model as a unique_ptr to Model_base.
+     *
+     * This method allows polymorphic copying of models, returning a new instance
+     * of the concrete derived Model<T> as a std::unique_ptr<Model_base>.
+     *
+     * @return std::unique_ptr<Model_base> pointing to a deep copy of this model.
+     */
+    virtual std::unique_ptr<Model_base> clone_as_ptr() const = 0;
 
 protected:
     // bitset which represents subset of defined variables
@@ -104,6 +115,10 @@ public:
         values[ord] = val;
         defined[ord] = true;
         ts[ord] = global_ts++;
+    }
+
+    std::unique_ptr<Model_base> clone_as_ptr() const override {
+        return std::make_unique<Model<Value>>(*this);
     }
 
 private:

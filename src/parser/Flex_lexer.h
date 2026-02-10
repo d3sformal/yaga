@@ -13,7 +13,8 @@
 namespace yaga::parser {
 
 class Flex_lexer : public yyFlexLexer {
-
+private:
+    Token last_token = Token::NONE;
 protected:
     virtual Token lex_scan() = 0;
 
@@ -46,6 +47,11 @@ public:
      * Gets the string representation of the last consumed token
      */
     char const* token_string();
+
+    /**
+     * Gets the last consumed token
+     */
+    Token get_last_token() const { return last_token; }
 
 };
 

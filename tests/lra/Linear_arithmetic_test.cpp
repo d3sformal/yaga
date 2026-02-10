@@ -11,27 +11,27 @@ namespace yaga::test {
 // propagate that lit is true in trail at current decision level without reason
 auto propagate(Trail& trail, Literal lit)
 {
-    auto& model = trail.model<bool>(Variable::boolean);
-    assert(!model.is_defined(lit.var().ord()));
-    model.set_value(lit.var().ord(), !lit.is_negation());
+    auto* model = trail.model<bool>(Variable::boolean);
+    assert(model && !model->is_defined(lit.var().ord()));
+    model->set_value(lit.var().ord(), !lit.is_negation());
     trail.propagate(lit.var(), nullptr, trail.decision_level());
 }
 
 // decide that lit is true in trail
 auto decide(Trail& trail, Literal lit)
 {
-    auto& model = trail.model<bool>(Variable::boolean);
-    assert(!model.is_defined(lit.var().ord()));
-    model.set_value(lit.var().ord(), !lit.is_negation());
+    auto* model = trail.model<bool>(Variable::boolean);
+    assert(model && !model->is_defined(lit.var().ord()));
+    model->set_value(lit.var().ord(), !lit.is_negation());
     trail.decide(lit.var());
 }
 
 // decide that a real variable var is equal to a value val
 auto decide(Trail& trail, Variable var, Rational value)
 {
-    auto& model = trail.model<Rational>(Variable::rational);
-    assert(!model.is_defined(var.ord()));
-    model.set_value(var.ord(), value);
+    auto* model = trail.model<Rational>(Variable::rational);
+    assert(model && !model->is_defined(var.ord()));
+    model->set_value(var.ord(), value);
     trail.decide(var);
 }
 

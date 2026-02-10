@@ -37,6 +37,21 @@ public:
      */
     virtual void decide(Database&, Trail&, Variable) = 0;
 
+    /** Decide a valaue from the input model for variable @p
+     *
+     * The method should ignore the request if @p var is not owned by this
+     *
+     * Do not check if the value is correct. If it is not, we want to cause conflict
+     * in the next propagation.
+     *
+     * @param db clause database
+     * @param trail current trail
+     * @param var variable to decide
+     * @param input_model partial model that holds the value of variable
+     * @return conflict clauses if there is a conflict, empty vector otherwise
+     */
+    virtual std::vector<Clause> decide(Database&, Trail&, Variable, TrailModelsSnapshot const&) = 0;
+
     /** Reset the last checked position on the @p trail for the next `assigned()` call
      * 
      * @param db clause database

@@ -39,6 +39,21 @@ void Conflict_analysis::resolve(Trail const& trail, Clause const& other, Literal
     --num_top_level;
 }
 
+void Conflict_analysis::final_resolve(Clause const& other, Literal conflict_lit)
+{
+    assert(can_resolve(conflict_lit));
+
+    for (auto lit : other)
+    {
+        if (lit != ~conflict_lit)
+        {
+            conflict.insert(lit);
+        }
+    }
+
+    conflict.erase(conflict.find(conflict_lit));
+}
+
 std::pair<Clause, int> Conflict_analysis::finish(Trail const& trail) const
 {
     Clause clause{conflict.begin(), conflict.end()};
@@ -55,9 +70,9 @@ std::pair<Clause, int> Conflict_analysis::finish(Trail const& trail) const
         return lhs_level > rhs_level ||
                (lhs_level == rhs_level && lhs.var().ord() < rhs.var().ord());
     });
-    assert(eval(trail.model<bool>(Variable::boolean), clause) == false);
+    assert(trail.model<bool>(Variable::boolean) && eval(*trail.model<bool>(Variable::boolean), clause) == false);
 
-    if (num_top_level >= 2) // if clause is a semantic split
+    if (num_top_level >= 2) // if a clause is a semantic split
     {
         return {clause, top_level - 1};
     }

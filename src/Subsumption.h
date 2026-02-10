@@ -32,6 +32,13 @@ public:
      */
     void on_variable_resize(Variable::Type type, int num_vars) override;
 
+    /** Reset the subsumption state (old_size) to match the database.
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     */
+    void on_init(Database& db, Trail& trail) override;
+
     /** Find and remove subsumed learned clauses from db
      *
      * @param db clause database
