@@ -221,3 +221,50 @@ TEST_CASE("Formula which forces the solver to generate duplicate constraints and
         REQUIRE(*test.real("z") > 0);
     }
 }
+
+TEST_CASE("Check a satisfiable gated multiplier fragment in LIA", "[lia][sat][integration]")
+{
+    Yaga_test test;
+    test.input() << "(set-logic QF_LIA)\n";
+    test.input() << "(declare-fun b0 () Bool)\n";
+    test.input() << "(declare-fun x0 () Int)\n";
+    test.input() << "(declare-fun y0 () Int)\n";
+    test.input() << "(declare-fun b1 () Bool)\n";
+    test.input() << "(declare-fun x1 () Int)\n";
+    test.input() << "(declare-fun y1 () Int)\n";
+    test.input() << "(declare-fun arg1 () Int)\n";
+    test.input() << "(declare-fun arg2 () Int)\n";
+    test.input() << "(declare-fun mul () Int)\n";
+    test.input() << "(declare-fun sum () Int)\n";
+    test.input() << "(assert (>= arg2 0))\n";
+    test.input() << "(assert (<= arg2 3))\n";
+    test.input() << "(assert (= (- (- arg2 x0) (* 2 x1)) 0))\n";
+    test.input() << "(assert (>= x0 0))\n";
+    test.input() << "(assert (<= x0 1))\n";
+    test.input() << "(assert (or (not b0) (= x0 1)))\n";
+    test.input() << "(assert (or b0 (= x0 0)))\n";
+    test.input() << "(assert (>= x1 0))\n";
+    test.input() << "(assert (<= x1 1))\n";
+    test.input() << "(assert (or (not b1) (= x1 1)))\n";
+    test.input() << "(assert (or b1 (= x1 0)))\n";
+    test.input() << "(assert (>= y0 0))\n";
+    test.input() << "(assert (<= y0 3))\n";
+    test.input() << "(assert (>= y1 0))\n";
+    test.input() << "(assert (<= y1 3))\n";
+    test.input() << "(assert (>= arg1 0))\n";
+    test.input() << "(assert (<= arg1 3))\n";
+    test.input() << "(assert (or (not b0) (= y0 arg1)))\n";
+    test.input() << "(assert (or b0 (= y0 0)))\n";
+    test.input() << "(assert (or (not b1) (= y1 arg1)))\n";
+    test.input() << "(assert (or b1 (= y1 0)))\n";
+    test.input() << "(assert (>= sum 0))\n";
+    test.input() << "(assert (<= sum 15))\n";
+    test.input() << "(assert (= (- (- sum y0) (* 2 y1)) 0))\n";
+    test.input() << "(assert (>= mul 0))\n";
+    test.input() << "(assert (<= mul 15))\n";
+    test.input() << "(assert (= mul sum))\n";
+    test.input() << "(assert (= mul 9))\n";
+    test.run();
+
+    REQUIRE(test.answer() == Solver_answer::SAT);
+}

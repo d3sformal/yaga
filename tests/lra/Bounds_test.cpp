@@ -159,4 +159,38 @@ TEST_CASE("Check if an unassigned constraint is implied by bounds", "[bounds]")
         REQUIRE(bounds.is_implied(models, make(2 * x - 3 * y + 5 * z <= 13)));
         REQUIRE(bounds.is_implied(models, make(2 * x - 3 * y + 5 * z <= 14)));
     }
+
+    SECTION("Do not imply equality from a single side")
+    {
+        auto upper = make(x <= 1);
+        auto lower = make(x >= 0);
+        models.boolean().set_value(upper.lit().var().ord(), !upper.lit().is_negation());
+        models.boolean().set_value(lower.lit().var().ord(), !lower.lit().is_negation());
+        bounds.update(models, upper);
+        bounds.update(models, lower);
+
+        REQUIRE(!bounds.is_implied(models, make(x == 1)));
+        REQUIRE(!bounds.is_implied(models, make(x == 0)));
+    }
+
+    SECTION("Imply equality only from matching lower and upper bounds")
+    {
+        auto upper = make(x <= 1);
+        auto lower = make(x >= 1);
+        models.boolean().set_value(upper.lit().var().ord(), !upper.lit().is_negation());
+        models.boolean().set_value(lower.lit().var().ord(), !lower.lit().is_negation());
+        bounds.update(models, upper);
+        bounds.update(models, lower);
+
+        REQUIRE(bounds.is_implied(models, make(x == 1)));
+    }
+
+    SECTION("Detect disequality from a strict bound")
+    {
+        auto lower = make(x > 0);
+        models.boolean().set_value(lower.lit().var().ord(), !lower.lit().is_negation());
+        bounds.update(models, lower);
+
+        REQUIRE(bounds.is_implied(models, ~make(x == 0)));
+    }
 }
