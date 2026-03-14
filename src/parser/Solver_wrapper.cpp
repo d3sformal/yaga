@@ -1,5 +1,7 @@
 #include "Solver_wrapper.h"
 #include "utils/Utils.h"
+
+#include <algorithm>
 #include <variant>
 
 namespace yaga::parser
@@ -30,20 +32,83 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     // Cnfize and assert clauses to the solver
     solver.init();
 
-    internalizer.visit(assertions);
+    // Internalize all non-trivial terms first. For top-level disjunctions (CNF clauses), avoid
+    // introducing an extra Tseitin variable and assert the clause directly.
+    std::vector<term_t> to_internalize;
+    to_internalize.reserve(assertions.size());
+    for (term_t assertion : assertions)
+    {
+        if (assertion == terms::true_term)
+        {
+            continue;
+        }
+
+        if (term_manager.get_kind(assertion) == terms::Kind::OR_TERM && !term_manager.is_negated(assertion))
+        {
+            for (term_t arg : term_manager.get_args(assertion))
+            {
+                to_internalize.push_back(arg);
+            }
+        }
+        else
+        {
+            to_internalize.push_back(assertion);
+        }
+    }
+    internalizer.visit(to_internalize);
 
     // add top level assertions to the solver
     for (term_t assertion : assertions)
     {
         if (assertion == terms::true_term) { continue; }
-        auto possibly_literal = internalizer_config.get_literal_for(term_manager.positive_term(assertion));
-        assert(possibly_literal.has_value());
-        Literal literal = possibly_literal.value();
-        if (term_manager.is_negated(assertion))
+
+        if (term_manager.get_kind(assertion) == terms::Kind::OR_TERM && !term_manager.is_negated(assertion))
         {
-            literal.negate();
+            auto args = term_manager.get_args(assertion);
+            std::vector<Literal> clause;
+            clause.reserve(args.size());
+            for (term_t arg : args)
+            {
+                auto pos_arg = term_manager.positive_term(arg);
+                auto possibly_literal = internalizer_config.get_literal_for(pos_arg);
+                assert(possibly_literal.has_value());
+                Literal lit = possibly_literal.value();
+                if (term_manager.is_negated(arg))
+                {
+                    lit.negate();
+                }
+                clause.push_back(lit);
+            }
+
+            std::sort(clause.begin(), clause.end(), Literal_comparer{});
+            clause.erase(std::unique(clause.begin(), clause.end()), clause.end());
+
+            bool tautology = false;
+            for (std::size_t i = 0; i + 1 < clause.size(); ++i)
+            {
+                if (clause[i + 1] == ~clause[i])
+                {
+                    tautology = true;
+                    break;
+                }
+            }
+
+            if (!tautology)
+            {
+                solver.assert_clause(std::move(clause));
+            }
         }
-        solver.assert_clause(literal);
+        else
+        {
+            auto possibly_literal = internalizer_config.get_literal_for(term_manager.positive_term(assertion));
+            assert(possibly_literal.has_value());
+            Literal literal = possibly_literal.value();
+            if (term_manager.is_negated(assertion))
+            {
+                literal.negate();
+            }
+            solver.assert_clause(literal);
+        }
     }
 
     // remember term-variable mapping

@@ -26,6 +26,16 @@ public:
      */
     virtual std::vector<Clause> propagate(Database&, Trail&) = 0;
 
+    /** Validate a candidate total model before reporting SAT.
+     *
+     * The default implementation does not add any extra checks.
+     *
+     * @param db clause database
+     * @param trail current trail
+     * @return conflict clauses if the candidate model is inconsistent
+     */
+    virtual std::vector<Clause> check_model(Database&, Trail&) { return {}; }
+
     /** Decide a value for variable @p var
      *
      * The method should ignore the request if @p var is not owned by this

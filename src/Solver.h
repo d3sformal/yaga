@@ -208,6 +208,8 @@ private:
     bool is_semantic_split(Clause const& clause) const;
     // pick the next variable to assign
     [[nodiscard]] std::optional<Variable> pick_variable();
+    // fallback scan for an unassigned variable if the heuristic queue becomes stale
+    [[nodiscard]] std::optional<Variable> find_unassigned_variable() const;
     // decide value of an unassigned variable
     void decide(Variable var);
     // restart the solver

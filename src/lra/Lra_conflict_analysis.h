@@ -126,14 +126,20 @@ public:
     using Polynomial = detail::Linear_polynomial<Rational>;
     using Variable_coefficient = std::pair<int, Rational>;
 
-    inline explicit Fm_elimination(Linear_arithmetic* lra) : lra(lra) {}
+    inline explicit Fm_elimination(Linear_arithmetic* lra, bool lia = false) : lra(lra), lia(lia)
+    {
+    }
 
     /** Create FM elimination starting with the constraint @p cons
      *
      * @param lra LRA plugin
      * @param cons linear constraint
      */
-    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons) : lra(lra) { init(cons); }
+    inline Fm_elimination(Linear_arithmetic* lra, Constraint cons, bool lia = false)
+        : lra(lra), lia(lia)
+    {
+        init(cons);
+    }
 
     /** Create FM elimination starting with the polynomial of @p cons multiplied by @p mult with
      * predicate @p pred
@@ -144,8 +150,8 @@ public:
      * @param mult constant by which we multiply linear polynomial from @p cons
      */
     inline Fm_elimination(Linear_arithmetic* lra, Constraint cons, Order_predicate pred,
-                          Rational mult)
-        : lra(lra)
+                          Rational mult, bool lia = false)
+        : lra(lra), lia(lia)
     {
         init(cons, pred, mult);
     }
@@ -200,6 +206,8 @@ private:
     Order_predicate pred = Order_predicate::eq;
     // LRA plugin
     Linear_arithmetic* lra;
+    // if true, apply integer-specific strengthening when initializing inequalities
+    bool lia;
 
     /** Set current constraint to @p cons
      *
@@ -221,6 +229,12 @@ private:
      * @param mult constant by which we multiply linear polynomial from @p cons
      */
     void init(Constraint const& cons, Order_predicate pred, Rational mult);
+
+    /** Compute minimal positive step size of `derived()` for integer variables.
+     *
+     * Assumes all variables are integer.
+     */
+    [[nodiscard]] Rational integer_step() const;
 
     // check if a linear constraint implies a lower bound for a variable with coefficient `coef`
     inline bool is_lower_bound(Rational coef, Order_predicate pred, bool is_negation) const
@@ -309,7 +323,10 @@ public:
     using Constraint = Linear_constraint<Rational>;
     using Polynomial = detail::Linear_polynomial<Rational>;
 
-    inline Inequality_conflict_analysis(Linear_arithmetic* lra, bool lia) : lra(lra), fm(lra), lia(lia) {}
+    inline Inequality_conflict_analysis(Linear_arithmetic* lra, bool lia)
+        : lra(lra), fm(lra, lia), lia(lia)
+    {
+    }
 
     /** Check if there is an inequality conflict - i.e., `L <= x` and `x <= U` and `x != D`
      * where L, U, D evaluate to the same value in @p trail

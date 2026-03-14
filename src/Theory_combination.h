@@ -28,6 +28,14 @@ public:
      */
     std::vector<Clause> propagate(Database&, Trail&) override;
 
+    /** Ask all theories to validate the current candidate model.
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     * @return conflict clauses if any theory rejects the candidate model
+     */
+    std::vector<Clause> check_model(Database&, Trail&) override;
+
     /** Call decide in all theories
      *
      * @param db clause database

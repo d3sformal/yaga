@@ -66,8 +66,10 @@ void Qf_lia::setup(Yaga* yaga, Options const& options) const
 
     Linear_arithmetic::Options lra_options;
     lra_options.prop_rational = options.prop_rational;
-    lra_options.prop_bounds = options.deduce_bounds;
+    lra_options.prop_bounds = true;
+    lra_options.prop_unassigned = true;
     lra_options.prop_integer = true;
+    lra_options.bound_dependency_threshold = 20.0f;
     auto& lra = theories.add_theory<Linear_arithmetic>();
     lra.set_options(lra_options);
 
@@ -87,8 +89,10 @@ void Qf_lia::setup(Yaga* yaga, Options const& options) const
 
     Linear_arithmetic::Options lra_options;
     lra_options.prop_rational = options.prop_rational;
-    lra_options.prop_bounds = options.deduce_bounds;
+    lra_options.prop_bounds = true;
+    lra_options.prop_unassigned = true;
     lra_options.prop_integer = true;
+    lra_options.bound_dependency_threshold = 20.0f;
     auto& lra = theories.add_theory<Linear_arithmetic>();
     lra.set_options(lra_options);
 

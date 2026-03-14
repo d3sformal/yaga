@@ -150,6 +150,21 @@ void Solver::backtrack_with(Clause_range clauses, int level)
 
 std::optional<Variable> Solver::pick_variable() { return variable_order->pick(db(), trail()); }
 
+std::optional<Variable> Solver::find_unassigned_variable() const
+{
+    for (auto [type, model] : trail().models())
+    {
+        for (int ord = 0; ord < static_cast<int>(model->num_vars()); ++ord)
+        {
+            if (!model->is_defined(ord))
+            {
+                return Variable{ord, type};
+            }
+        }
+    }
+    return {};
+}
+
 void Solver::decide(Variable var)
 {
     ++total_decisions;
@@ -220,7 +235,39 @@ Solver::Result Solver::check()
             auto var = pick_variable();
             if (!var)
             {
-                return Result::sat;
+                if (auto fallback = find_unassigned_variable())
+                {
+                    decide(*fallback);
+                    continue;
+                }
+
+                auto final_conflicts = theory()->check_model(db(), trail());
+                if (final_conflicts.empty())
+                {
+                    return Result::sat;
+                }
+
+                if (trail().decision_level() == 0)
+                {
+                    return Result::unsat;
+                }
+
+                auto [learned, level] = analyze_conflicts(std::move(final_conflicts));
+                if (std::any_of(learned.begin(), learned.end(), [](auto const& clause) { return clause.empty(); }))
+                {
+                    return Result::unsat;
+                }
+
+                auto clauses = learn(std::move(learned));
+                if (restart_policy->should_restart())
+                {
+                    restart();
+                }
+                else
+                {
+                    backtrack_with(clauses, level);
+                }
+                continue;
             }
             decide(var.value());
         }

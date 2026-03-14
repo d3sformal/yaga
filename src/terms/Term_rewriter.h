@@ -41,7 +41,7 @@ public:
             {
                 term_t next_child = children[current_entry.next_child];
                 ++current_entry.next_child;
-                if (is_processed(next_child)) { toProcess.emplace_back(next_child); }
+                if (not is_processed(next_child)) { toProcess.emplace_back(next_child); }
                 continue;
             }
             // If we are here, we have already processed all children

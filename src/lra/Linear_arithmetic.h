@@ -56,6 +56,12 @@ public:
          * If true, the plugin will work with integer numbers instead of rationals.
          */
         bool prop_integer = false;
+
+        /**
+         * Maximum number of bound dependencies kept during FM bound propagation, expressed as
+         * a multiple of the constraint size.
+         */
+        float bound_dependency_threshold = 5.0f;
     };
 
     virtual ~Linear_arithmetic() = default;
@@ -75,6 +81,14 @@ public:
      * any value. Empty list, otherwise.
      */
     std::vector<Clause> propagate(Database&, Trail&) override;
+
+    /** Validate the current total arithmetic model.
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     * @return conflict clauses if some fully assigned linear atom is inconsistent with the model
+     */
+    std::vector<Clause> check_model(Database&, Trail&) override;
 
     /** Decide value for @p variable if it is a real variable and add it to the trail.
      *
@@ -174,7 +188,11 @@ public:
      * 
      * @param opts new options
      */
-    inline void set_options(Options const& opts) { options = opts; }
+    inline void set_options(Options const& opts)
+    {
+        options = opts;
+        bounds.set_dependency_threshold(options.bound_dependency_threshold);
+    }
 
     /** Check whether @p lra_var_ord can be assigned exactly one value.
      * 
@@ -217,6 +235,8 @@ private:
     Model<Rational> cached_values;
     // list of rational variables whose bound has changed at this level
     std::vector<int> to_check;
+    // conflict detected during propagation (e.g., a fully assigned constraint mismatch)
+    std::optional<Clause> pending_conflict;
     // map real variable -> list of constraints in which it occurs
     std::vector<std::vector<Constraint>> occur;
     // parameters of optional features
@@ -278,17 +298,21 @@ private:
 
     /** Deduce new bounds using bounds added at this decision level
      *
-     * @param trail current solver trail
      * @param models partial assignment of variables
+     * @param assigned_vars new trail assignments since last propagate() call
+     * @param assigned_rationals newly assigned rational variables
+     * @param out_changed all variables whose bounds changed
      */
-    void propagate_bounds(Trail const& trail, Models const& models);
+    void propagate_bounds(Models const& models, std::vector<Variable> const& assigned_vars,
+                          std::vector<int> const& assigned_rationals,
+                          std::vector<int>& out_changed);
 
     /** Propagate true constraints to the trail
      *
      * @param trail current solver trail
      * @param models partial assignment of variables
      */
-    void propagate_unassigned(Trail& trail, Models& models);
+    void propagate_unassigned(Trail& trail, Models& models, std::vector<int> const& vars_to_check);
 
     /** Finish propagation by checking if there are any conflicts.
      *

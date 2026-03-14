@@ -28,6 +28,19 @@ std::vector<Clause> Theory_combination::propagate(Database& db, Trail& trail)
     return {}; // no conflict
 }
 
+std::vector<Clause> Theory_combination::check_model(Database& db, Trail& trail)
+{
+    for (auto&& theory : theories())
+    {
+        auto conflicts = theory->check_model(db, trail);
+        if (!conflicts.empty())
+        {
+            return conflicts;
+        }
+    }
+    return {};
+}
+
 void Theory_combination::decide(Database& db, Trail& trail, Variable var)
 {
     for (auto&& theory : theories())

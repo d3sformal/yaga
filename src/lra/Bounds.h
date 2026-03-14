@@ -26,6 +26,8 @@ public:
      */
     void resize(int num_vars);
 
+    inline void set_dependency_threshold(float value) { threshold = value; }
+
     /** Deduce a new bounds from @p cons
      *
      * @param models partial assignment of variables
@@ -100,7 +102,7 @@ private:
     std::vector<int> updated_read;
     std::vector<int> updated_write;
     // maximum number of dependencies of a bound (as a percentage of the number of variables)
-    float threshold = 1.0;
+    float threshold = 5.0;
 
     // properties deduced from a linear constraint
     struct Deduced_properties {

@@ -74,6 +74,7 @@ void Bounds::deduce_from_equality(Models const& models, Constraint const& cons)
     }
 
     float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
+    max_deps = std::min<float>(max_deps, 200.f);
     int i = 0;
     for (auto& prop : props)
     {
@@ -152,6 +153,7 @@ void Bounds::deduce_from_inequality(Models const& models, Constraint const& cons
     }
 
     float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
+    max_deps = std::min<float>(max_deps, 200.f);
     if (count_distinct_bounds(deps) <= max_deps && num_unbounded == 1)
     {
         bound /= unbounded_coef;
@@ -206,6 +208,94 @@ bool Bounds::is_implied(Models const& models, Constraint const& cons)
     else if (val == false)
     {
         return false;
+    }
+
+    if (cons.pred() == Order_predicate::eq)
+    {
+        struct Extremum {
+            Rational value{0};
+            bool strict = false;
+        };
+
+        std::optional<Extremum> min{Extremum{cons.rhs(), false}};
+        std::optional<Extremum> max{Extremum{cons.rhs(), false}};
+        auto [var_it, var_end] = cons.vars();
+        auto coef_it = cons.coef().begin();
+        for (; var_it != var_end; ++var_it, ++coef_it)
+        {
+            if (models.owned().is_defined(*var_it))
+            {
+                auto const contribution = *coef_it * models.owned().value(*var_it);
+                if (min)
+                {
+                    min->value -= contribution;
+                }
+                if (max)
+                {
+                    max->value -= contribution;
+                }
+                continue;
+            }
+
+            auto const* lb = bounds[*var_it].lower_bound(models);
+            auto const* ub = bounds[*var_it].upper_bound(models);
+            if (*coef_it > 0)
+            {
+                if (min && ub)
+                {
+                    min->value -= *coef_it * ub->value();
+                    min->strict = min->strict || ub->is_strict();
+                }
+                else
+                {
+                    min.reset();
+                }
+
+                if (max && lb)
+                {
+                    max->value -= *coef_it * lb->value();
+                    max->strict = max->strict || lb->is_strict();
+                }
+                else
+                {
+                    max.reset();
+                }
+            }
+            else
+            {
+                if (min && lb)
+                {
+                    min->value -= *coef_it * lb->value();
+                    min->strict = min->strict || lb->is_strict();
+                }
+                else
+                {
+                    min.reset();
+                }
+
+                if (max && ub)
+                {
+                    max->value -= *coef_it * ub->value();
+                    max->strict = max->strict || ub->is_strict();
+                }
+                else
+                {
+                    max.reset();
+                }
+            }
+        }
+
+        if (!cons.lit().is_negation())
+        {
+            return min && max && min->value == 0 && max->value == 0 && !min->strict &&
+                   !max->strict;
+        }
+
+        auto const strictly_negative =
+            max && (max->value < 0 || (max->value == 0 && max->strict));
+        auto const strictly_positive =
+            min && (min->value > 0 || (min->value == 0 && min->strict));
+        return strictly_negative || strictly_positive;
     }
 
     auto bound = cons.rhs();
