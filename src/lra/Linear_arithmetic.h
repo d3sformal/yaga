@@ -131,7 +131,7 @@ public:
         auto models = relevant_models(trail);
         if (is_new(models, cons.lit().var()))
         {
-            if (options.prop_bounds || options.prop_unassigned)
+            if (options.prop_bounds || options.prop_unassigned || options.prop_integer)
             {
                 for (auto var : cons.vars())
                 {
@@ -371,6 +371,19 @@ private:
      * @return integer value allowed by @p bounds or none if there is no such value
      */
     [[nodiscard]] std::optional<Rational> find_integer(Models const& models, Bounds_type& bounds);
+
+    /** Use currently active linear constraints to pick a better integer candidate for decisions.
+     *
+     * Assigned arithmetic variables keep their current value; unassigned ones are approximated by
+     * their cached value or by 0 if they have never been decided before.
+     *
+     * @param models partial assignment of variables in trail
+     * @param var_ord ordinal number of the variable to decide
+     * @param preferred_value value preferred by the generic heuristic (typically cached/0)
+     * @return integer candidate if a locally consistent one can be derived
+     */
+    [[nodiscard]] std::optional<Rational> guided_integer_value(Models const& models, int var_ord,
+                                                               Rational const& preferred_value);
 
     /** Check that bounds is consistent with all unit constraints on the trail
      *

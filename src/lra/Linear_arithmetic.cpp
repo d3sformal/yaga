@@ -10,6 +10,131 @@ namespace {
 using Models = Linear_arithmetic::Models;
 using Constraint = Linear_arithmetic::Constraint;
 
+struct Decision_interval {
+    std::optional<Rational> lb;
+    bool lb_strict = false;
+    std::optional<Rational> ub;
+    bool ub_strict = false;
+    std::vector<Rational> neq;
+};
+
+void add_lower_bound(Decision_interval& interval, Rational const& value, bool strict)
+{
+    if (!interval.lb || *interval.lb < value ||
+        (*interval.lb == value && strict && !interval.lb_strict))
+    {
+        interval.lb = value;
+        interval.lb_strict = strict;
+    }
+}
+
+void add_upper_bound(Decision_interval& interval, Rational const& value, bool strict)
+{
+    if (!interval.ub || value < *interval.ub ||
+        (*interval.ub == value && strict && !interval.ub_strict))
+    {
+        interval.ub = value;
+        interval.ub_strict = strict;
+    }
+}
+
+bool interval_allows(Decision_interval const& interval, Rational const& value)
+{
+    if (interval.lb &&
+        !(interval.lb.value() < value || (interval.lb.value() == value && !interval.lb_strict)))
+    {
+        return false;
+    }
+    if (interval.ub &&
+        !(value < interval.ub.value() || (value == interval.ub.value() && !interval.ub_strict)))
+    {
+        return false;
+    }
+    return std::ranges::find(interval.neq, value) == interval.neq.end();
+}
+
+Rational lower_seed(Rational const& value, bool strict)
+{
+    auto result = value.ceil();
+    if (strict && result == value)
+    {
+        result += 1;
+    }
+    return result;
+}
+
+Rational upper_seed(Rational const& value, bool strict)
+{
+    auto result = value.floor();
+    if (strict && result == value)
+    {
+        result -= 1;
+    }
+    return result;
+}
+
+template <typename Allowed>
+std::optional<Rational> choose_candidate(Decision_interval const& interval,
+                                         Rational const& preferred_value, Allowed&& allowed)
+{
+    std::vector<Rational> seeds;
+    seeds.reserve(8);
+    auto add_seed = [&](Rational const& value) {
+        if (value.isInteger())
+        {
+            seeds.push_back(value);
+        }
+        else
+        {
+            seeds.push_back(value.floor());
+            seeds.push_back(value.ceil());
+        }
+    };
+
+    add_seed(preferred_value);
+    if (interval.lb)
+    {
+        seeds.push_back(lower_seed(*interval.lb, interval.lb_strict));
+    }
+    if (interval.ub)
+    {
+        seeds.push_back(upper_seed(*interval.ub, interval.ub_strict));
+    }
+    if (interval.lb && interval.ub)
+    {
+        add_seed((*interval.lb + *interval.ub) / Rational{2});
+    }
+
+    for (auto const& seed : seeds)
+    {
+        if (allowed(seed))
+        {
+            return seed;
+        }
+    }
+
+    constexpr int radius_limit = 64;
+    for (int delta = 1; delta <= radius_limit; ++delta)
+    {
+        Rational const step{delta};
+        for (auto const& seed : seeds)
+        {
+            auto above = seed + step;
+            if (allowed(above))
+            {
+                return above;
+            }
+
+            auto below = seed - step;
+            if (allowed(below))
+            {
+                return below;
+            }
+        }
+    }
+    return {};
+}
+
 void add_assignment_literal(Linear_arithmetic* lra, Trail& trail, Models& models, Clause& out,
                             int var_ord)
 {
@@ -42,11 +167,70 @@ std::optional<Clause> mismatch_conflict(Linear_arithmetic* lra, Trail& trail, Mo
         return {};
     }
 
-    Clause conflict;
-    conflict.reserve(static_cast<std::size_t>(cons.size()) + 1);
-    conflict.push_back(*theory_val ? cons.lit() : ~cons.lit());
+    auto current_branch = *bool_val ? cons : ~cons;
+    auto conflict_lit = ~current_branch.lit();
+
+    auto pivot_var = cons.vars().front();
+    auto pivot_level =
+        trail.decision_level(Variable{pivot_var, Variable::rational}).value_or(0);
     for (auto lra_var_ord : cons.vars())
     {
+        auto level =
+            trail.decision_level(Variable{lra_var_ord, Variable::rational}).value_or(0);
+        if (level > pivot_level)
+        {
+            pivot_var = lra_var_ord;
+            pivot_level = level;
+        }
+    }
+
+    auto reduced_branch = [&]() -> std::optional<Constraint> {
+        std::array<int, 1> vars{pivot_var};
+        std::array<Rational, 1> coef{Rational{0}};
+        auto rhs = current_branch.rhs();
+
+        auto var_it = current_branch.vars().begin();
+        auto coef_it = current_branch.coef().begin();
+        for (; var_it != current_branch.vars().end(); ++var_it, ++coef_it)
+        {
+            if (*var_it == pivot_var)
+            {
+                coef.front() = *coef_it;
+            }
+            else
+            {
+                rhs -= *coef_it * models.owned().value(*var_it);
+            }
+        }
+
+        if (coef.front() == 0)
+        {
+            return {};
+        }
+
+        auto reduced = lra->constraint(trail, vars, coef, current_branch.pred(), rhs);
+        if (eval(models.owned(), reduced) != false)
+        {
+            reduced = ~reduced;
+        }
+        assert(eval(models.owned(), reduced) == false);
+        return reduced;
+    }();
+
+    Clause conflict;
+    conflict.reserve(static_cast<std::size_t>(cons.size()) + 1);
+    conflict.push_back(conflict_lit);
+    if (reduced_branch && reduced_branch->lit() != conflict_lit)
+    {
+        conflict.push_back(reduced_branch->lit());
+    }
+
+    for (auto lra_var_ord : cons.vars())
+    {
+        if (reduced_branch && lra_var_ord == pivot_var)
+        {
+            continue;
+        }
         add_assignment_literal(lra, trail, models, conflict, lra_var_ord);
     }
     return conflict;
@@ -712,6 +896,100 @@ std::optional<Rational> Linear_arithmetic::find_integer(Models const& models, Bo
     return {};
 }
 
+std::optional<Rational> Linear_arithmetic::guided_integer_value(Models const& models, int var_ord,
+                                                                Rational const& preferred_value)
+{
+    auto& bnds = bounds[var_ord];
+    Decision_interval interval;
+    bool has_active_constraint = false;
+
+    for (auto cons : occur[var_ord])
+    {
+        auto bool_ord = cons.lit().var().ord();
+        if (!models.boolean().is_defined(bool_ord))
+        {
+            continue;
+        }
+        has_active_constraint = true;
+
+        if (!models.boolean().value(bool_ord))
+        {
+            cons.negate();
+        }
+
+        Rational rhs = cons.rhs();
+        std::optional<Rational> coeff;
+        auto var_it = cons.vars().begin();
+        auto coef_it = cons.coef().begin();
+        for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
+        {
+            if (*var_it == var_ord)
+            {
+                coeff = *coef_it;
+                continue;
+            }
+
+            auto value = models.owned().is_defined(*var_it) ? models.owned().value(*var_it)
+                                                            : cached_values.is_defined(*var_it)
+                                                                  ? cached_values.value(*var_it)
+                                                                  : Rational{0};
+            rhs -= *coef_it * value;
+        }
+
+        if (!coeff || *coeff == 0)
+        {
+            continue;
+        }
+
+        auto bound = rhs / *coeff;
+        if (cons.pred() == Order_predicate::eq)
+        {
+            if (cons.lit().is_negation())
+            {
+                interval.neq.push_back(bound);
+            }
+            else
+            {
+                add_lower_bound(interval, bound, false);
+                add_upper_bound(interval, bound, false);
+            }
+            continue;
+        }
+
+        if (*coeff > 0)
+        {
+            if (!cons.lit().is_negation())
+            {
+                add_upper_bound(interval, bound, cons.pred() == Order_predicate::lt);
+            }
+            else
+            {
+                add_lower_bound(interval, bound, cons.pred() == Order_predicate::leq);
+            }
+        }
+        else
+        {
+            if (!cons.lit().is_negation())
+            {
+                add_lower_bound(interval, bound, cons.pred() == Order_predicate::lt);
+            }
+            else
+            {
+                add_upper_bound(interval, bound, cons.pred() == Order_predicate::leq);
+            }
+        }
+    }
+
+    if (!has_active_constraint)
+    {
+        return {};
+    }
+
+    return choose_candidate(interval, preferred_value, [&](Rational const& candidate) {
+        return interval_allows(interval, candidate) && bnds.is_allowed(models, candidate);
+    });
+}
+
 void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
 {
     if (var.type() != Variable::rational)
@@ -724,6 +1002,13 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
 
     Rational value =
         cached_values.is_defined(var.ord()) ? cached_values.value(var.ord()) : Rational{0};
+    if (options.prop_integer)
+    {
+        if (auto guided = guided_integer_value(models, var.ord(), value))
+        {
+            value = guided.value();
+        }
+    }
     if (!bnds.is_allowed(models, value))
     {
         if (auto int_value = find_integer(models, bnds))

@@ -24,6 +24,8 @@ void Bounds::deduce_from_equality(Models const& models, Constraint const& cons)
     assert(cons.pred() == Order_predicate::eq);
     assert(eval(models.boolean(), cons.lit()) == true);
 
+    float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
+    max_deps = std::min<float>(max_deps, 200.f);
     std::array<Deduced_properties, 2> props;
     props[0].bound = props[1].bound = cons.rhs();
     props[0].num_vars = props[1].num_vars = 0;
@@ -70,11 +72,16 @@ void Bounds::deduce_from_equality(Models const& models, Constraint const& cons)
                     props[i].unbounded_coef = *coef_it;
                 }
             }
+
+            // No branch can derive a bound once both FM directions still have at least two
+            // genuinely unbounded variables.
+            if (props[0].num_vars > 1 && props[1].num_vars > 1)
+            {
+                return;
+            }
         }
     }
 
-    float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
-    max_deps = std::min<float>(max_deps, 200.f);
     int i = 0;
     for (auto& prop : props)
     {
@@ -107,6 +114,8 @@ void Bounds::deduce_from_inequality(Models const& models, Constraint const& cons
     assert(eval(models.boolean(), cons.lit()) == true);
     assert(cons.pred() != Order_predicate::eq);
 
+    float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
+    max_deps = std::min<float>(max_deps, 200.f);
     std::vector<Bound> deps;
     auto bound = cons.rhs();
     int num_unbounded = 0;
@@ -148,12 +157,14 @@ void Bounds::deduce_from_inequality(Models const& models, Constraint const& cons
                 ++num_unbounded;
                 unbounded_var = *var_it;
                 unbounded_coef = *coef_it;
+                if (num_unbounded > 1)
+                {
+                    return;
+                }
             }
         }
     }
 
-    float max_deps = std::max<float>(threshold * cons.vars().size(), 0);
-    max_deps = std::min<float>(max_deps, 200.f);
     if (count_distinct_bounds(deps) <= max_deps && num_unbounded == 1)
     {
         bound /= unbounded_coef;

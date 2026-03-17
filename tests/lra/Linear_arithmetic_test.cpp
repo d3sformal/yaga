@@ -215,6 +215,38 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithme
     REQUIRE(yaga::eval(models.owned(), linear(x + y + z <= 0)) == false);
 }
 
+TEST_CASE("Fully assigned mismatches learn a projected arithmetic clause", "[linear_arithmetic]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+
+    Database db;
+    Linear_arithmetic lra;
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Rational>(Variable::rational, 2);
+
+    auto linear = factory(lra, trail);
+    auto [x, y] = real_vars<2>();
+    auto sum = linear(x + y <= 0);
+    auto x_is_1 = linear(x == 1);
+    auto y_le_neg1 = linear(y <= -1);
+
+    propagate(trail, sum);
+    decide(trail, x, 1);
+    REQUIRE(lra.propagate(db, trail).empty());
+
+    decide(trail, y, 0);
+    auto conflicts = lra.propagate(db, trail);
+    REQUIRE(!conflicts.empty());
+    auto expected = clause(~sum, ~x_is_1, y_le_neg1);
+    std::sort(conflicts.front().begin(), conflicts.front().end());
+    std::sort(expected.begin(), expected.end());
+    REQUIRE(conflicts.front() == expected);
+}
+
 TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
 {
     using namespace yaga;
@@ -873,5 +905,20 @@ TEST_CASE("Decide variable", "[linear_arithmetic]")
         REQUIRE(models.owned().is_defined(x.ord()));
         REQUIRE(models.owned().value(x.ord()) > 8_r / 10);
         REQUIRE(models.owned().value(x.ord()) < 9_r / 10);
+    }
+
+    SECTION("LIA decisions use active constraints as a model hint")
+    {
+        Linear_arithmetic::Options opts;
+        opts.prop_integer = true;
+        lra.set_options(opts);
+
+        propagate(trail, linear(x + y == 2));
+        REQUIRE(lra.propagate(db, trail).empty());
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) == 2);
     }
 }
