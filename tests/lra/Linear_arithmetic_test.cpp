@@ -159,6 +159,7 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     trail.set_model<bool>(Variable::boolean, 0);
     trail.set_model<Rational>(Variable::rational, 3);
 
+    auto models = lra.relevant_models(trail);
     auto linear = factory(lra, trail);
     auto [x, y, z] = real_vars<3>();
 
@@ -172,10 +173,11 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     REQUIRE(lra.propagate(db, trail).empty());
     REQUIRE(lra.propagate(db, trail).empty());
 
-    REQUIRE(trail.assigned(trail.decision_level()).size() == 5);
+    REQUIRE(trail.assigned(trail.decision_level()).size() == 6);
     REQUIRE(!trail.decision_level(x));
     REQUIRE(trail.decision_level(y) == 1);
     REQUIRE(!trail.decision_level(z));
+    REQUIRE(eval(models.boolean(), linear(x <= 8).lit()) == true);
 }
 
 TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithmetic]")
@@ -245,6 +247,38 @@ TEST_CASE("Fully assigned mismatches learn a projected arithmetic clause", "[lin
     std::sort(conflicts.front().begin(), conflicts.front().end());
     std::sort(expected.begin(), expected.end());
     REQUIRE(conflicts.front() == expected);
+}
+
+TEST_CASE("Materialize projected one-variable bounds", "[linear_arithmetic]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+
+    Database db;
+    Linear_arithmetic lra;
+    Linear_arithmetic::Options opts;
+    opts.prop_bounds = true;
+    lra.set_options(opts);
+
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Rational>(Variable::rational, 3);
+
+    auto models = lra.relevant_models(trail);
+    auto linear = factory(lra, trail);
+    auto [x, y, z] = real_vars<3>();
+
+    auto projected = linear(x <= -5);
+    propagate(trail, linear(x + y + z <= 0));
+    propagate(trail, linear(y >= 2));
+    propagate(trail, linear(z >= 3));
+
+    auto conflicts = lra.propagate(db, trail);
+    REQUIRE(conflicts.empty());
+    REQUIRE(eval(models.boolean(), projected.lit()) == true);
+    REQUIRE(trail.decision_level(projected.lit().var()) == 0);
 }
 
 TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")
@@ -502,7 +536,8 @@ TEST_CASE("Always choose a new boolean variable for unique derived constraints",
         clause(~linear(x > 0), ~linear(x + y < 0), linear(y < 0))));
     REQUIRE(yaga::eval(models.owned(), linear(y < 0)) == false);
     REQUIRE(yaga::eval(models.boolean(), conflicts.front()) == false);
-    REQUIRE(linear(y < 0).lit().var().ord() == 3);
+    REQUIRE(linear(y < 0).lit().var().ord() != linear(x > 0).lit().var().ord());
+    REQUIRE(linear(y < 0).lit().var().ord() != linear(x + y < 0).lit().var().ord());
 }
 
 TEST_CASE("Detect an inequality conflict", "[linear_arithmetic]")
@@ -920,5 +955,37 @@ TEST_CASE("Decide variable", "[linear_arithmetic]")
         REQUIRE(trail.decision_level(x) == 1);
         REQUIRE(models.owned().is_defined(x.ord()));
         REQUIRE(models.owned().value(x.ord()) == 2);
+    }
+
+    SECTION("LIA decisions repair the local arithmetic model before branching")
+    {
+        Linear_arithmetic::Options opts;
+        opts.prop_integer = true;
+        lra.set_options(opts);
+
+        propagate(trail, linear(x + y == 2));
+        propagate(trail, linear(y == 1));
+        REQUIRE(lra.propagate(db, trail).empty());
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().is_defined(x.ord()));
+        REQUIRE(models.owned().value(x.ord()) == 1);
+    }
+
+    SECTION("LIA decisions use a single remaining integer candidate")
+    {
+        Linear_arithmetic::Options opts;
+        opts.prop_integer = true;
+        lra.set_options(opts);
+
+        propagate(trail, linear(x >= 0));
+        propagate(trail, linear(x <= 1));
+        propagate(trail, linear(x != 0));
+        REQUIRE(lra.propagate(db, trail).empty());
+
+        lra.decide(db, trail, x);
+        REQUIRE(trail.decision_level(x) == 1);
+        REQUIRE(models.owned().value(x.ord()) == 1);
     }
 }

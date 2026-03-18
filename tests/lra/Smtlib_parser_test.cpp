@@ -394,3 +394,66 @@ TEST_CASE("Parse if-then-else with real output", "[test_parser]")
         REQUIRE(*test.real("x") < Rational{0});
     }
 }
+
+TEST_CASE("Preprocess arithmetic atoms with multiple ite terms", "[test_parser]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+
+    Yaga_test test;
+    test.input() << "(set-logic QF_LRA)\n";
+    test.input() << "(declare-fun b () Bool)\n";
+    test.input() << "(declare-fun c () Bool)\n";
+    test.input() << "(declare-fun x () Real)\n";
+    test.input() << "(declare-fun y () Real)\n";
+    test.input() << "(assert (= (+ (ite b x 1) (ite c y 2)) 0))\n";
+    test.input() << "(assert (not b))\n";
+    test.input() << "(assert (not c))\n";
+    test.run();
+
+    REQUIRE(test.answer() == Solver_answer::UNSAT);
+}
+
+TEST_CASE("Preprocess top-level linear definitions", "[test_parser]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+
+    Yaga_test test;
+    test.input() << "(set-logic QF_LRA)\n";
+    test.input() << "(declare-fun x () Real)\n";
+    test.input() << "(declare-fun y () Real)\n";
+    test.input() << "(declare-fun z () Real)\n";
+    test.input() << "(assert (= x (+ y 1)))\n";
+    test.input() << "(assert (= z (+ x 2)))\n";
+    test.input() << "(assert (= y 4))\n";
+    test.run();
+
+    REQUIRE(test.answer() == Solver_answer::SAT);
+    REQUIRE(test.real("x") == Rational{5});
+    REQUIRE(test.real("y") == Rational{4});
+    REQUIRE(test.real("z") == Rational{7});
+}
+
+TEST_CASE("Preprocess uniform arithmetic choices", "[test_parser]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+
+    Yaga_test test;
+    test.input() << "(set-logic QF_LRA)\n";
+    test.input() << "(declare-fun a () Real)\n";
+    test.input() << "(declare-fun b () Real)\n";
+    test.input() << "(declare-fun c () Real)\n";
+    test.input() << "(assert (or (and (= a 5) (= b 5) (= c 5))\n";
+    test.input() << "             (and (= a 0) (= b 0) (= c 0))))\n";
+    test.run();
+
+    REQUIRE(test.answer() == Solver_answer::SAT);
+    REQUIRE(test.real("a").has_value());
+    REQUIRE(test.real("b").has_value());
+    REQUIRE(test.real("c").has_value());
+    REQUIRE(test.real("a") == test.real("b"));
+    REQUIRE(test.real("b") == test.real("c"));
+    REQUIRE((*test.real("a") == Rational{0} || *test.real("a") == Rational{5}));
+}

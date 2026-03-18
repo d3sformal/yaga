@@ -1,13 +1,650 @@
 #include "Solver_wrapper.h"
-#include "utils/Utils.h"
+#include "Term_rewriter.h"
+#include "Terms.h"
 
 #include <algorithm>
+#include <functional>
+#include <unordered_set>
 #include <variant>
 
 namespace yaga::parser
 {
 
 using term_t = terms::term_t;
+
+namespace {
+
+std::vector<term_t> simplify_assertions(std::vector<term_t> assertions);
+
+bool is_conjunction(terms::Term_manager const& tm, term_t term)
+{
+    return tm.is_negated(term) &&
+           tm.get_kind(tm.positive_term(term)) == terms::Kind::OR_TERM;
+}
+
+void flatten_assertion(terms::Term_manager const& tm, term_t term, std::vector<term_t>& out)
+{
+    if (term == terms::true_term)
+    {
+        return;
+    }
+    if (term == terms::false_term)
+    {
+        out.push_back(term);
+        return;
+    }
+
+    if (is_conjunction(tm, term))
+    {
+        for (term_t arg : tm.get_args(tm.positive_term(term)))
+        {
+            flatten_assertion(tm, terms::opposite_term(arg), out);
+        }
+        return;
+    }
+
+    out.push_back(term);
+}
+
+bool is_top_level_clause(terms::Term_manager const& tm, term_t term)
+{
+    return !tm.is_negated(term) &&
+           tm.get_kind(term) == terms::Kind::OR_TERM;
+}
+
+void flatten_clause(terms::Term_manager const& tm, term_t term, std::vector<term_t>& out)
+{
+    if (is_top_level_clause(tm, term))
+    {
+        for (term_t arg : tm.get_args(term))
+        {
+            flatten_clause(tm, arg, out);
+        }
+        return;
+    }
+
+    out.push_back(term);
+}
+
+bool is_arithmetic_atom(terms::Term_manager const& tm, term_t term)
+{
+    switch (tm.get_kind(tm.positive_term(term)))
+    {
+    case terms::Kind::ARITH_GE_ATOM:
+    case terms::Kind::ARITH_EQ_ATOM:
+    case terms::Kind::ARITH_BINEQ_ATOM:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool is_linear_model_term(terms::Term_manager const& tm, term_t term)
+{
+    switch (tm.get_kind(term))
+    {
+    case terms::Kind::ARITH_CONSTANT:
+    case terms::Kind::UNINTERPRETED_TERM:
+        return true;
+    case terms::Kind::ARITH_PRODUCT:
+        return tm.is_uninterpreted(tm.var_of_product(term));
+    case terms::Kind::ARITH_POLY:
+        return std::ranges::all_of(tm.get_args(term), [&](term_t arg) {
+            return is_linear_model_term(tm, arg);
+        });
+    default:
+        return false;
+    }
+}
+
+void add_linear_coeff(std::unordered_map<term_t, Rational>& coeffs, term_t term,
+                      Rational const& coeff)
+{
+    if (coeff == 0)
+    {
+        return;
+    }
+
+    auto [it, inserted] = coeffs.insert({term, coeff});
+    if (!inserted)
+    {
+        it->second += coeff;
+        if (it->second == 0)
+        {
+            coeffs.erase(it);
+        }
+    }
+}
+
+bool collect_linear_terms(terms::Term_manager const& tm, term_t term,
+                          std::unordered_map<term_t, Rational>& coeffs, Rational& constant)
+{
+    switch (tm.get_kind(term))
+    {
+    case terms::Kind::ARITH_CONSTANT:
+        constant += tm.arithmetic_constant_value(term);
+        return true;
+    case terms::Kind::UNINTERPRETED_TERM:
+        add_linear_coeff(coeffs, term, Rational{1});
+        return true;
+    case terms::Kind::ARITH_PRODUCT:
+        if (!tm.is_uninterpreted(tm.var_of_product(term)))
+        {
+            return false;
+        }
+        add_linear_coeff(coeffs, tm.var_of_product(term), tm.coeff_of_product(term));
+        return true;
+    case terms::Kind::ARITH_POLY:
+        for (term_t arg : tm.get_args(term))
+        {
+            if (!collect_linear_terms(tm, arg, coeffs, constant))
+            {
+                return false;
+            }
+        }
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool contains_term(terms::Term_manager const& tm, term_t root, term_t needle)
+{
+    if (tm.positive_term(root) == needle)
+    {
+        return true;
+    }
+    for (term_t arg : tm.get_args(tm.positive_term(root)))
+    {
+        if (contains_term(tm, arg, needle))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::size_t term_size(terms::Term_manager const& tm, term_t root, std::size_t cap)
+{
+    std::size_t size = 1;
+    if (size >= cap)
+    {
+        return cap;
+    }
+
+    for (term_t arg : tm.get_args(tm.positive_term(root)))
+    {
+        size += term_size(tm, arg, cap - size);
+        if (size >= cap)
+        {
+            return cap;
+        }
+    }
+    return size;
+}
+
+std::size_t count_occurrences(terms::Term_manager const& tm, std::span<term_t const> assertions,
+                              std::size_t skip_idx, term_t needle, std::size_t cap)
+{
+    std::size_t count = 0;
+    for (std::size_t i = 0; i < assertions.size() && count < cap; ++i)
+    {
+        if (i == skip_idx)
+        {
+            continue;
+        }
+        if (contains_term(tm, assertions[i], needle))
+        {
+            ++count;
+        }
+    }
+    return count;
+}
+
+term_t rational_term(terms::Term_manager& tm, Rational const& value)
+{
+    return tm.mk_rational_constant(value.get_str());
+}
+
+term_t scaled_term(terms::Term_manager& tm, term_t term, Rational const& coeff)
+{
+    if (coeff == 1)
+    {
+        return term;
+    }
+    if (coeff == -1)
+    {
+        return tm.mk_unary_minus(term);
+    }
+
+    std::array<term_t, 2> args{rational_term(tm, coeff), term};
+    return tm.mk_arithmetic_times(args);
+}
+
+term_t make_linear_term(terms::Term_manager& tm, std::unordered_map<term_t, Rational> const& coeffs,
+                        Rational const& constant)
+{
+    std::vector<term_t> parts;
+    parts.reserve(coeffs.size() + (constant == 0 ? 0 : 1));
+    if (constant != 0)
+    {
+        parts.push_back(rational_term(tm, constant));
+    }
+    for (auto const& [term, coeff] : coeffs)
+    {
+        parts.push_back(scaled_term(tm, term, coeff));
+    }
+
+    if (parts.empty())
+    {
+        return terms::zero_term;
+    }
+    if (parts.size() == 1)
+    {
+        return parts.front();
+    }
+    return tm.mk_arithmetic_plus(parts);
+}
+
+std::optional<std::pair<term_t, term_t>> find_linear_definition(terms::Term_manager& tm,
+                                                                std::span<term_t const> assertions,
+                                                                std::size_t idx)
+{
+    constexpr std::size_t occurrence_limit = 8;
+    constexpr std::size_t expr_size_limit = 48;
+
+    auto assertion = assertions[idx];
+    if (tm.is_negated(assertion))
+    {
+        return {};
+    }
+
+    auto positive = tm.positive_term(assertion);
+    auto kind = tm.get_kind(positive);
+    if (kind == terms::Kind::ARITH_BINEQ_ATOM)
+    {
+        auto args = tm.get_args(positive);
+        std::optional<std::pair<term_t, term_t>> best;
+        std::size_t best_occurrences = occurrence_limit + 1;
+
+        for (int pivot_idx : {0, 1})
+        {
+            auto pivot = args[pivot_idx];
+            auto expr = args[1 - pivot_idx];
+            if (!tm.is_uninterpreted(pivot) || tm.get_type(pivot) != terms::types::real_type ||
+                !is_linear_model_term(tm, expr) || contains_term(tm, expr, pivot))
+            {
+                continue;
+            }
+
+            auto occurrences =
+                count_occurrences(tm, assertions, idx, pivot, occurrence_limit + 1);
+            if (occurrences > occurrence_limit ||
+                term_size(tm, expr, expr_size_limit + 1) > expr_size_limit)
+            {
+                continue;
+            }
+            if (!best || occurrences < best_occurrences)
+            {
+                best = {pivot, expr};
+                best_occurrences = occurrences;
+            }
+        }
+        return best;
+    }
+
+    if (kind != terms::Kind::ARITH_EQ_ATOM)
+    {
+        return {};
+    }
+
+    std::unordered_map<term_t, Rational> coeffs;
+    Rational constant{0};
+    if (!collect_linear_terms(tm, tm.get_args(positive)[0], coeffs, constant))
+    {
+        return {};
+    }
+
+    std::optional<std::pair<term_t, term_t>> best;
+    std::size_t best_occurrences = occurrence_limit + 1;
+    std::size_t best_size = expr_size_limit + 1;
+    for (auto const& [pivot, pivot_coeff] : coeffs)
+    {
+        if (!tm.is_uninterpreted(pivot) || tm.get_type(pivot) != terms::types::real_type ||
+            (pivot_coeff != 1 && pivot_coeff != -1))
+        {
+            continue;
+        }
+
+        std::unordered_map<term_t, Rational> rhs_coeffs;
+        for (auto const& [term, coeff] : coeffs)
+        {
+            if (term == pivot)
+            {
+                continue;
+            }
+            add_linear_coeff(rhs_coeffs, term, -coeff / pivot_coeff);
+        }
+        auto rhs_constant = -constant / pivot_coeff;
+        auto expr = make_linear_term(tm, rhs_coeffs, rhs_constant);
+        if (contains_term(tm, expr, pivot))
+        {
+            continue;
+        }
+
+        auto occurrences = count_occurrences(tm, assertions, idx, pivot, occurrence_limit + 1);
+        auto size = term_size(tm, expr, expr_size_limit + 1);
+        if (occurrences > occurrence_limit || size > expr_size_limit)
+        {
+            continue;
+        }
+        if (!best || occurrences < best_occurrences ||
+            (occurrences == best_occurrences && size < best_size))
+        {
+            best = {pivot, expr};
+            best_occurrences = occurrences;
+            best_size = size;
+        }
+    }
+    return best;
+}
+
+std::vector<term_t> eliminate_linear_definitions(
+    terms::Term_manager& tm, std::vector<term_t> assertions,
+    std::unordered_map<term_t, term_t>& eliminated_terms)
+{
+    constexpr int substitution_budget = 512;
+
+    for (int budget = substitution_budget; budget > 0; --budget)
+    {
+        bool changed = false;
+        for (std::size_t i = 0; i < assertions.size(); ++i)
+        {
+            auto definition = find_linear_definition(tm, assertions, i);
+            if (!definition)
+            {
+                continue;
+            }
+
+            auto [var, expr] = *definition;
+            terms::subst_map_t substitution{{var, expr}};
+            for (auto& [other_var, other_expr] : eliminated_terms)
+            {
+                if (other_var != var && contains_term(tm, other_expr, var))
+                {
+                    other_expr =
+                        terms::simultaneous_variable_substitution(tm, substitution, other_expr);
+                }
+            }
+            eliminated_terms[var] = expr;
+
+            std::vector<term_t> rewritten;
+            rewritten.reserve(assertions.size() - 1);
+            for (std::size_t j = 0; j < assertions.size(); ++j)
+            {
+                if (j == i)
+                {
+                    continue;
+                }
+
+                auto current = assertions[j];
+                rewritten.push_back(contains_term(tm, current, var)
+                                        ? terms::simultaneous_variable_substitution(
+                                              tm, substitution, current)
+                                        : current);
+            }
+
+            assertions = simplify_assertions(std::move(rewritten));
+            changed = true;
+            break;
+        }
+
+        if (!changed)
+        {
+            break;
+        }
+    }
+
+    return assertions;
+}
+
+std::optional<term_t> find_arithmetic_ite(terms::Term_manager const& tm, term_t root)
+{
+    std::vector<term_t> worklist;
+    std::unordered_set<int32_t> seen;
+
+    worklist.push_back(root);
+    while (!worklist.empty())
+    {
+        auto current = worklist.back();
+        worklist.pop_back();
+        auto positive = tm.positive_term(current);
+        if (!seen.insert(tm.index_of(positive)).second)
+        {
+            continue;
+        }
+
+        if (tm.get_kind(positive) == terms::Kind::ITE_TERM &&
+            tm.get_type(positive) == terms::types::real_type)
+        {
+            return positive;
+        }
+
+        for (term_t arg : tm.get_args(positive))
+        {
+            worklist.push_back(arg);
+        }
+    }
+    return {};
+}
+
+std::optional<std::pair<term_t, term_t>> constant_equality(terms::Term_manager const& tm, term_t term)
+{
+    if (tm.is_negated(term) || tm.get_kind(tm.positive_term(term)) != terms::Kind::ARITH_BINEQ_ATOM)
+    {
+        return {};
+    }
+
+    auto args = tm.get_args(tm.positive_term(term));
+    if (tm.is_uninterpreted(args[0]) && tm.is_arithmetic_constant(args[1]))
+    {
+        return {{args[0], args[1]}};
+    }
+    if (tm.is_uninterpreted(args[1]) && tm.is_arithmetic_constant(args[0]))
+    {
+        return {{args[1], args[0]}};
+    }
+    return {};
+}
+
+std::optional<std::vector<std::pair<term_t, term_t>>>
+uniform_constant_branch(terms::Term_manager const& tm, term_t branch)
+{
+    std::vector<term_t> conjuncts;
+    flatten_assertion(tm, branch, conjuncts);
+
+    std::vector<std::pair<term_t, term_t>> equalities;
+    equalities.reserve(conjuncts.size());
+    std::optional<term_t> branch_constant;
+    for (term_t conjunct : conjuncts)
+    {
+        auto eq = constant_equality(tm, conjunct);
+        if (!eq)
+        {
+            return {};
+        }
+
+        if (!branch_constant)
+        {
+            branch_constant = eq->second;
+        }
+        else if (*branch_constant != eq->second)
+        {
+            return {};
+        }
+        equalities.push_back(*eq);
+    }
+
+    return equalities;
+}
+
+std::optional<std::vector<term_t>> factor_uniform_choice(terms::Term_manager& tm, term_t assertion)
+{
+    if (tm.is_negated(assertion) || tm.get_kind(assertion) != terms::Kind::OR_TERM)
+    {
+        return {};
+    }
+
+    auto args = tm.get_args(assertion);
+    if (args.size() != 2)
+    {
+        return {};
+    }
+
+    auto lhs = uniform_constant_branch(tm, args[0]);
+    auto rhs = uniform_constant_branch(tm, args[1]);
+    if (!lhs || !rhs || lhs->size() != rhs->size() || lhs->size() < 2)
+    {
+        return {};
+    }
+
+    std::unordered_map<term_t, term_t> rhs_values;
+    rhs_values.reserve(rhs->size());
+    for (auto const& [var, value] : *rhs)
+    {
+        rhs_values.insert({var, value});
+    }
+
+    std::vector<term_t> vars;
+    vars.reserve(lhs->size());
+    std::optional<term_t> lhs_value;
+    std::optional<term_t> rhs_value;
+    for (auto const& [var, value] : *lhs)
+    {
+        auto it = rhs_values.find(var);
+        if (it == rhs_values.end())
+        {
+            return {};
+        }
+        if (!lhs_value)
+        {
+            lhs_value = value;
+            rhs_value = it->second;
+        }
+        else if (*lhs_value != value || *rhs_value != it->second)
+        {
+            return {};
+        }
+        vars.push_back(var);
+    }
+
+    if (!lhs_value || !rhs_value || *lhs_value == *rhs_value)
+    {
+        return {};
+    }
+
+    std::vector<term_t> replacement;
+    replacement.reserve(vars.size());
+    auto const representative = vars.front();
+    for (std::size_t i = 1; i < vars.size(); ++i)
+    {
+        replacement.push_back(tm.mk_binary_eq(representative, vars[i]));
+    }
+    replacement.push_back(
+        tm.mk_binary_or(tm.mk_binary_eq(representative, *lhs_value),
+                        tm.mk_binary_eq(representative, *rhs_value)));
+    return replacement;
+}
+
+std::vector<term_t> simplify_assertions(std::vector<term_t> assertions)
+{
+    std::vector<term_t> result;
+    result.reserve(assertions.size());
+    std::unordered_set<term_t> seen;
+    for (term_t assertion : assertions)
+    {
+        if (assertion == terms::true_term)
+        {
+            continue;
+        }
+        if (assertion == terms::false_term || seen.contains(terms::opposite_term(assertion)))
+        {
+            return {terms::false_term};
+        }
+        if (seen.insert(assertion).second)
+        {
+            result.push_back(assertion);
+        }
+    }
+    return result;
+}
+
+std::vector<term_t> preprocess_assertions(terms::Term_manager& tm,
+                                          std::vector<term_t> const& assertions,
+                                          std::unordered_map<term_t, term_t>& eliminated_terms)
+{
+    std::vector<term_t> pending;
+    pending.reserve(assertions.size());
+    for (term_t assertion : assertions)
+    {
+        flatten_assertion(tm, assertion, pending);
+    }
+    pending = eliminate_linear_definitions(tm, std::move(pending), eliminated_terms);
+
+    std::vector<term_t> result;
+    result.reserve(pending.size());
+    int ite_budget = 256;
+    auto const expansion_cap = std::max<std::size_t>(1024, pending.size() * 16);
+
+    while (!pending.empty())
+    {
+        auto assertion = pending.back();
+        pending.pop_back();
+
+        if (assertion == terms::true_term)
+        {
+            continue;
+        }
+        if (assertion == terms::false_term)
+        {
+            result.push_back(assertion);
+            continue;
+        }
+
+        if (auto factored = factor_uniform_choice(tm, assertion))
+        {
+            pending.insert(pending.end(), factored->begin(), factored->end());
+            continue;
+        }
+
+        if (ite_budget > 0 && pending.size() + result.size() < expansion_cap &&
+            is_arithmetic_atom(tm, assertion))
+        {
+            if (auto ite = find_arithmetic_ite(tm, assertion))
+            {
+                auto args = tm.get_args(*ite);
+                assert(args.size() == 3);
+
+                terms::subst_map_t true_subst{{*ite, args[1]}};
+                terms::subst_map_t false_subst{{*ite, args[2]}};
+
+                auto on_true = terms::simultaneous_substitution(tm, true_subst, assertion);
+                auto on_false = terms::simultaneous_substitution(tm, false_subst, assertion);
+
+                pending.push_back(tm.mk_implies(args[0], on_true));
+                pending.push_back(tm.mk_implies(terms::opposite_term(args[0]), on_false));
+                --ite_budget;
+                continue;
+            }
+        }
+
+        result.push_back(assertion);
+    }
+
+    return simplify_assertions(std::move(result));
+}
+
+} // namespace
 
 Solver_wrapper::Solver_wrapper(terms::Term_manager& term_manager, Options const& opts)
     : term_manager(term_manager), options(opts),
@@ -24,7 +661,10 @@ bool Solver_wrapper::has_uf() {
 
 Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
 {
-    if (std::ranges::any_of(assertions, [](term_t t) { return t == terms::false_term; }))
+    eliminated_rational_terms.clear();
+    auto normalized_assertions =
+        preprocess_assertions(term_manager, assertions, eliminated_rational_terms);
+    if (std::ranges::any_of(normalized_assertions, [](term_t t) { return t == terms::false_term; }))
     {
         return Solver_answer::UNSAT;
     }
@@ -35,17 +675,19 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     // Internalize all non-trivial terms first. For top-level disjunctions (CNF clauses), avoid
     // introducing an extra Tseitin variable and assert the clause directly.
     std::vector<term_t> to_internalize;
-    to_internalize.reserve(assertions.size());
-    for (term_t assertion : assertions)
+    to_internalize.reserve(normalized_assertions.size());
+    for (term_t assertion : normalized_assertions)
     {
         if (assertion == terms::true_term)
         {
             continue;
         }
 
-        if (term_manager.get_kind(assertion) == terms::Kind::OR_TERM && !term_manager.is_negated(assertion))
+        if (is_top_level_clause(term_manager, assertion))
         {
-            for (term_t arg : term_manager.get_args(assertion))
+            std::vector<term_t> clause_args;
+            flatten_clause(term_manager, assertion, clause_args);
+            for (term_t arg : clause_args)
             {
                 to_internalize.push_back(arg);
             }
@@ -58,13 +700,14 @@ Solver_answer Solver_wrapper::check(std::vector<term_t> const& assertions)
     internalizer.visit(to_internalize);
 
     // add top level assertions to the solver
-    for (term_t assertion : assertions)
+    for (term_t assertion : normalized_assertions)
     {
         if (assertion == terms::true_term) { continue; }
 
-        if (term_manager.get_kind(assertion) == terms::Kind::OR_TERM && !term_manager.is_negated(assertion))
+        if (is_top_level_clause(term_manager, assertion))
         {
-            auto args = term_manager.get_args(assertion);
+            std::vector<term_t> args;
+            flatten_clause(term_manager, assertion, args);
             std::vector<Literal> clause;
             clause.reserve(args.size());
             for (term_t arg : args)
@@ -170,6 +813,103 @@ void Solver_wrapper::model(Default_model_visitor& visitor)
         {
             visitor.visit(term, lra_model.value(var.ord()));
         }
+    }
+
+    std::unordered_map<term_t, Rational> eliminated_cache;
+    std::function<std::optional<Rational>(term_t)> eval_term = [&](term_t term)
+        -> std::optional<Rational> {
+        term = term_manager.positive_term(term);
+        if (auto it = eliminated_cache.find(term); it != eliminated_cache.end())
+        {
+            return it->second;
+        }
+
+        std::optional<Rational> value;
+        switch (term_manager.get_kind(term))
+        {
+        case terms::Kind::ARITH_CONSTANT:
+            value = term_manager.arithmetic_constant_value(term);
+            break;
+        case terms::Kind::UNINTERPRETED_TERM:
+            if (auto it = eliminated_rational_terms.find(term); it != eliminated_rational_terms.end())
+            {
+                value = eval_term(it->second);
+            }
+            else if (auto it = variables.find(term);
+                     it != variables.end() && it->second.type() == Variable::rational &&
+                     lra_model.is_defined(it->second.ord()))
+            {
+                value = lra_model.value(it->second.ord());
+            }
+            else
+            {
+                value = Rational{0};
+            }
+            break;
+        case terms::Kind::ARITH_PRODUCT:
+            if (auto inner = eval_term(term_manager.var_of_product(term)))
+            {
+                value = term_manager.coeff_of_product(term) * *inner;
+            }
+            break;
+        case terms::Kind::ARITH_POLY:
+        {
+            Rational sum{0};
+            for (term_t arg : term_manager.get_args(term))
+            {
+                auto arg_value = eval_term(arg);
+                if (!arg_value)
+                {
+                    return {};
+                }
+                sum += *arg_value;
+            }
+            value = sum;
+            break;
+        }
+        default:
+            break;
+        }
+
+        if (value)
+        {
+            eliminated_cache.insert({term, *value});
+        }
+        return value;
+    };
+
+    for (auto const& [term, _] : eliminated_rational_terms)
+    {
+        if (variables.contains(term))
+        {
+            continue;
+        }
+
+        if (auto value = eval_term(term))
+        {
+            visitor.visit(term, *value);
+        }
+    }
+
+    std::unordered_set<term_t> reported_free_terms;
+    std::function<void(term_t)> report_free_terms = [&](term_t term) {
+        term = term_manager.positive_term(term);
+        if (term_manager.get_kind(term) == terms::Kind::UNINTERPRETED_TERM &&
+            !variables.contains(term) && !eliminated_rational_terms.contains(term) &&
+            reported_free_terms.insert(term).second)
+        {
+            visitor.visit(term, Rational{0});
+        }
+
+        for (term_t arg : term_manager.get_args(term))
+        {
+            report_free_terms(arg);
+        }
+    };
+
+    for (auto const& [_, expr] : eliminated_rational_terms)
+    {
+        report_free_terms(expr);
     }
 
     auto fnc_model = solver.get_function_model();

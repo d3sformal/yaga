@@ -1,6 +1,7 @@
 #include "Linear_arithmetic.h"
 
 #include <array>
+#include <limits>
 #include <unordered_set>
 
 namespace yaga {
@@ -73,6 +74,43 @@ Rational upper_seed(Rational const& value, bool strict)
     return result;
 }
 
+Rational distance(Rational const& lhs, Rational const& rhs)
+{
+    return lhs < rhs ? rhs - lhs : lhs - rhs;
+}
+
+int count_integer_candidates(Models const& models, Linear_arithmetic::Bounds_type& bounds, int limit)
+{
+    auto lb = bounds.lower_bound(models);
+    auto ub = bounds.upper_bound(models);
+    if (!lb || !ub)
+    {
+        return limit;
+    }
+
+    auto first = lower_seed(lb->value(), lb->is_strict());
+    auto last = upper_seed(ub->value(), ub->is_strict());
+    if (last < first)
+    {
+        return 0;
+    }
+
+    if (last - first >= Rational{limit})
+    {
+        return limit;
+    }
+
+    int count = 0;
+    for (Rational value = first; value <= last && count < limit; value += 1)
+    {
+        if (bounds.is_allowed(models, value))
+        {
+            ++count;
+        }
+    }
+    return count;
+}
+
 template <typename Allowed>
 std::optional<Rational> choose_candidate(Decision_interval const& interval,
                                          Rational const& preferred_value, Allowed&& allowed)
@@ -133,6 +171,96 @@ std::optional<Rational> choose_candidate(Decision_interval const& interval,
         }
     }
     return {};
+}
+
+void merge_interval(Decision_interval& into, Decision_interval const& other)
+{
+    if (other.lb)
+    {
+        add_lower_bound(into, *other.lb, other.lb_strict);
+    }
+    if (other.ub)
+    {
+        add_upper_bound(into, *other.ub, other.ub_strict);
+    }
+    into.neq.insert(into.neq.end(), other.neq.begin(), other.neq.end());
+}
+
+template <typename Value_of>
+std::optional<Decision_interval> project_interval(Constraint const& cons, int var_ord,
+                                                  Value_of&& value_of)
+{
+    Rational rhs = cons.rhs();
+    std::optional<Rational> coeff;
+    auto var_it = cons.vars().begin();
+    auto coef_it = cons.coef().begin();
+    for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
+    {
+        if (*var_it == var_ord)
+        {
+            coeff = *coef_it;
+            continue;
+        }
+        rhs -= *coef_it * value_of(*var_it);
+    }
+
+    if (!coeff || *coeff == 0)
+    {
+        return {};
+    }
+
+    Decision_interval interval;
+    auto bound = rhs / *coeff;
+    if (cons.pred() == Order_predicate::eq)
+    {
+        if (cons.lit().is_negation())
+        {
+            interval.neq.push_back(bound);
+        }
+        else
+        {
+            add_lower_bound(interval, bound, false);
+            add_upper_bound(interval, bound, false);
+        }
+        return interval;
+    }
+
+    if (*coeff > 0)
+    {
+        if (!cons.lit().is_negation())
+        {
+            add_upper_bound(interval, bound, cons.pred() == Order_predicate::lt);
+        }
+        else
+        {
+            add_lower_bound(interval, bound, cons.pred() == Order_predicate::leq);
+        }
+    }
+    else
+    {
+        if (!cons.lit().is_negation())
+        {
+            add_lower_bound(interval, bound, cons.pred() == Order_predicate::lt);
+        }
+        else
+        {
+            add_upper_bound(interval, bound, cons.pred() == Order_predicate::leq);
+        }
+    }
+    return interval;
+}
+
+template <typename Value_of>
+bool satisfies(Constraint const& cons, Value_of&& value_of)
+{
+    auto rhs = cons.rhs();
+    auto var_it = cons.vars().begin();
+    auto coef_it = cons.coef().begin();
+    for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
+    {
+        rhs -= *coef_it * value_of(*var_it);
+    }
+    return cons.lit().is_negation() ^ cons.pred()(Rational{0}, rhs);
 }
 
 void add_assignment_literal(Linear_arithmetic* lra, Trail& trail, Models& models, Clause& out,
@@ -260,12 +388,18 @@ bool Linear_arithmetic::is_effectively_decided(Models const& models, int lra_var
         return false;
     }
 
-    if (auto lb = bounds[lra_var_ord].lower_bound(models))
+    auto& bnds = bounds[lra_var_ord];
+    if (auto lb = bnds.lower_bound(models))
     {
-        if (auto ub = bounds[lra_var_ord].upper_bound(models))
+        if (auto ub = bnds.upper_bound(models))
         {
             return lb->value() == ub->value() && !lb->is_strict() && !ub->is_strict();
         }
+    }
+
+    if (options.prop_integer)
+    {
+        return count_integer_candidates(models, bnds, 2) == 1;
     }
     return false;
 }
@@ -343,6 +477,8 @@ std::vector<Clause> Linear_arithmetic::propagate(Database&, Trail& trail)
         to_check.insert(to_check.end(), changed.begin(), changed.end());
         scan_vars.insert(scan_vars.end(), changed.begin(), changed.end());
     }
+
+    propagate_projected_bounds(trail, models, scan_vars);
 
     if (options.prop_unassigned && !scan_vars.empty())
     {
@@ -902,6 +1038,30 @@ std::optional<Rational> Linear_arithmetic::guided_integer_value(Models const& mo
     auto& bnds = bounds[var_ord];
     Decision_interval interval;
     bool has_active_constraint = false;
+    std::vector<Decision_interval> projected_intervals;
+    std::vector<Rational> seeds;
+    seeds.reserve(32);
+
+    auto add_seed = [&](Rational const& value) {
+        auto push = [&](Rational const& candidate) {
+            if (std::ranges::find(seeds, candidate) == seeds.end())
+            {
+                seeds.push_back(candidate);
+            }
+        };
+
+        if (value.isInteger())
+        {
+            push(value);
+        }
+        else
+        {
+            push(value.floor());
+            push(value.ceil());
+        }
+    };
+
+    add_seed(preferred_value);
 
     for (auto cons : occur[var_ord])
     {
@@ -916,67 +1076,29 @@ std::optional<Rational> Linear_arithmetic::guided_integer_value(Models const& mo
         {
             cons.negate();
         }
-
-        Rational rhs = cons.rhs();
-        std::optional<Rational> coeff;
-        auto var_it = cons.vars().begin();
-        auto coef_it = cons.coef().begin();
-        for (; var_it != cons.vars().end(); ++var_it, ++coef_it)
-        {
-            if (*var_it == var_ord)
-            {
-                coeff = *coef_it;
-                continue;
-            }
-
-            auto value = models.owned().is_defined(*var_it) ? models.owned().value(*var_it)
-                                                            : cached_values.is_defined(*var_it)
-                                                                  ? cached_values.value(*var_it)
-                                                                  : Rational{0};
-            rhs -= *coef_it * value;
-        }
-
-        if (!coeff || *coeff == 0)
+        auto projected = project_interval(cons, var_ord, [&](int other_var_ord) {
+            return models.owned().is_defined(other_var_ord)
+                       ? models.owned().value(other_var_ord)
+                       : cached_values.is_defined(other_var_ord) ? cached_values.value(other_var_ord)
+                                                                 : Rational{0};
+        });
+        if (!projected)
         {
             continue;
         }
-
-        auto bound = rhs / *coeff;
-        if (cons.pred() == Order_predicate::eq)
+        projected_intervals.push_back(*projected);
+        merge_interval(interval, *projected);
+        if (projected->lb)
         {
-            if (cons.lit().is_negation())
-            {
-                interval.neq.push_back(bound);
-            }
-            else
-            {
-                add_lower_bound(interval, bound, false);
-                add_upper_bound(interval, bound, false);
-            }
-            continue;
+            add_seed(lower_seed(*projected->lb, projected->lb_strict));
         }
-
-        if (*coeff > 0)
+        if (projected->ub)
         {
-            if (!cons.lit().is_negation())
-            {
-                add_upper_bound(interval, bound, cons.pred() == Order_predicate::lt);
-            }
-            else
-            {
-                add_lower_bound(interval, bound, cons.pred() == Order_predicate::leq);
-            }
+            add_seed(upper_seed(*projected->ub, projected->ub_strict));
         }
-        else
+        if (projected->lb && projected->ub)
         {
-            if (!cons.lit().is_negation())
-            {
-                add_lower_bound(interval, bound, cons.pred() == Order_predicate::lt);
-            }
-            else
-            {
-                add_upper_bound(interval, bound, cons.pred() == Order_predicate::leq);
-            }
+            add_seed((*projected->lb + *projected->ub) / Rational{2});
         }
     }
 
@@ -985,9 +1107,328 @@ std::optional<Rational> Linear_arithmetic::guided_integer_value(Models const& mo
         return {};
     }
 
+    if (auto lb = bnds.lower_bound(models))
+    {
+        add_seed(lower_seed(lb->value(), lb->is_strict()));
+    }
+    if (auto ub = bnds.upper_bound(models))
+    {
+        add_seed(upper_seed(ub->value(), ub->is_strict()));
+    }
+
+    struct Candidate_score {
+        int violated;
+        Rational preferred_distance;
+        Rational zero_distance;
+    };
+
+    auto better = [](Candidate_score const& lhs, Candidate_score const& rhs) {
+        if (lhs.violated != rhs.violated)
+        {
+            return lhs.violated < rhs.violated;
+        }
+        if (lhs.preferred_distance != rhs.preferred_distance)
+        {
+            return lhs.preferred_distance < rhs.preferred_distance;
+        }
+        return lhs.zero_distance < rhs.zero_distance;
+    };
+
+    std::optional<Rational> best;
+    std::optional<Candidate_score> best_score;
+    std::vector<Rational> seen_candidates;
+    seen_candidates.reserve(seeds.size() * 8);
+
+    auto try_candidate = [&](Rational const& candidate) {
+        if (std::ranges::find(seen_candidates, candidate) != seen_candidates.end())
+        {
+            return;
+        }
+        seen_candidates.push_back(candidate);
+        if (!bnds.is_allowed(models, candidate))
+        {
+            return;
+        }
+
+        int violated = 0;
+        for (auto const& projected : projected_intervals)
+        {
+            violated += !interval_allows(projected, candidate);
+        }
+
+        Candidate_score score{violated, distance(candidate, preferred_value),
+                              distance(candidate, Rational{0})};
+        if (!best_score || better(score, *best_score))
+        {
+            best = candidate;
+            best_score = score;
+        }
+    };
+
+    constexpr int radius_limit = 16;
+    for (int delta = 0; delta <= radius_limit; ++delta)
+    {
+        Rational const step{delta};
+        for (auto const& seed : seeds)
+        {
+            try_candidate(seed + step);
+            if (delta != 0)
+            {
+                try_candidate(seed - step);
+            }
+        }
+    }
+
+    if (best)
+    {
+        return best;
+    }
+
     return choose_candidate(interval, preferred_value, [&](Rational const& candidate) {
         return interval_allows(interval, candidate) && bnds.is_allowed(models, candidate);
     });
+}
+
+void Linear_arithmetic::repair_integer_model(Models const& models, int focus_var)
+{
+    if (!options.prop_integer || focus_var < 0 ||
+        focus_var >= static_cast<int>(occur.size()))
+    {
+        return;
+    }
+
+    auto seed_value = [&](int var_ord) -> Rational {
+        if (models.owned().is_defined(var_ord))
+        {
+            return models.owned().value(var_ord);
+        }
+        if (cached_values.is_defined(var_ord))
+        {
+            return cached_values.value(var_ord);
+        }
+
+        auto& bnds = bounds[var_ord];
+        if (bnds.is_allowed(models, Rational{0}))
+        {
+            cached_values.set_value(var_ord, Rational{0});
+            return Rational{0};
+        }
+
+        if (auto value = find_integer(models, bnds))
+        {
+            cached_values.set_value(var_ord, *value);
+            return *value;
+        }
+
+        cached_values.set_value(var_ord, Rational{0});
+        return Rational{0};
+    };
+
+    auto shadow_value = [&](int var_ord) -> Rational {
+        return models.owned().is_defined(var_ord) ? models.owned().value(var_ord) : seed_value(var_ord);
+    };
+
+    std::vector<int> queue;
+    queue.reserve(32);
+    std::vector<char> in_queue(cached_values.num_vars(), false);
+    auto enqueue = [&](int var_ord) {
+        if (var_ord < 0 || var_ord >= static_cast<int>(in_queue.size()))
+        {
+            return;
+        }
+        if (!in_queue[var_ord] && !models.owned().is_defined(var_ord))
+        {
+            in_queue[var_ord] = true;
+            queue.push_back(var_ord);
+        }
+    };
+
+    enqueue(focus_var);
+    for (auto cons : occur[focus_var])
+    {
+        auto bool_ord = cons.lit().var().ord();
+        if (!models.boolean().is_defined(bool_ord))
+        {
+            continue;
+        }
+        for (auto var_ord : cons.vars())
+        {
+            enqueue(var_ord);
+        }
+    }
+
+    std::size_t index = 0;
+    int budget = std::min<int>(256, std::max<int>(32, static_cast<int>(occur[focus_var].size()) * 8));
+    while (index < queue.size() && budget-- > 0)
+    {
+        auto var_ord = queue[index++];
+        in_queue[var_ord] = false;
+
+        for (auto cons : occur[var_ord])
+        {
+            auto bool_ord = cons.lit().var().ord();
+            if (!models.boolean().is_defined(bool_ord))
+            {
+                continue;
+            }
+
+            if (!models.boolean().value(bool_ord))
+            {
+                cons.negate();
+            }
+
+            if (satisfies(cons, shadow_value))
+            {
+                continue;
+            }
+
+            std::vector<int> candidates;
+            candidates.reserve(cons.size());
+            if (!models.owned().is_defined(focus_var) &&
+                std::find(cons.vars().begin(), cons.vars().end(), focus_var) != cons.vars().end())
+            {
+                candidates.push_back(focus_var);
+            }
+            for (auto other_var_ord : cons.vars())
+            {
+                if (!models.owned().is_defined(other_var_ord) &&
+                    std::ranges::find(candidates, other_var_ord) == candidates.end())
+                {
+                    candidates.push_back(other_var_ord);
+                }
+            }
+
+            bool repaired = false;
+            for (auto pivot_var : candidates)
+            {
+                auto projected = project_interval(cons, pivot_var, [&](int other_var_ord) {
+                    return shadow_value(other_var_ord);
+                });
+                if (!projected)
+                {
+                    continue;
+                }
+
+                auto preferred =
+                    cached_values.is_defined(pivot_var) ? cached_values.value(pivot_var) : Rational{0};
+                auto candidate = choose_candidate(*projected, preferred, [&](Rational const& value) {
+                    return interval_allows(*projected, value) &&
+                           bounds[pivot_var].is_allowed(models, value);
+                });
+                if (!candidate)
+                {
+                    continue;
+                }
+
+                if (!cached_values.is_defined(pivot_var) ||
+                    cached_values.value(pivot_var) != *candidate)
+                {
+                    cached_values.set_value(pivot_var, *candidate);
+                }
+
+                if (satisfies(cons, shadow_value))
+                {
+                    enqueue(pivot_var);
+                    repaired = true;
+                    break;
+                }
+            }
+
+            if (repaired)
+            {
+                continue;
+            }
+        }
+    }
+}
+
+int Linear_arithmetic::implied_level(Trail const& trail,
+                                     Implied_value<Rational> const& bound) const
+{
+    int level = trail.decision_level(bound.reason().lit().var()).value_or(0);
+    for (auto var_ord : bound.reason().vars())
+    {
+        if (var_ord != bound.var())
+        {
+            level = std::max<int>(level,
+                                  trail.decision_level(Variable{var_ord, Variable::rational})
+                                      .value_or(0));
+        }
+    }
+    for (auto const& other : bound.bounds())
+    {
+        level = std::max<int>(level, implied_level(trail, other));
+    }
+    return level;
+}
+
+void Linear_arithmetic::propagate_projected_bounds(Trail& trail, Models& models,
+                                                   std::vector<int> const& vars_to_check)
+{
+    if (vars_to_check.empty())
+    {
+        return;
+    }
+
+    std::unordered_set<int> seen;
+    auto propagate_literal = [&](Constraint const& cons, int level) {
+        auto bool_ord = cons.lit().var().ord();
+        auto current = eval(models.boolean(), cons.lit());
+        if (current.has_value())
+        {
+            return;
+        }
+
+        models.boolean().set_value(bool_ord, !cons.lit().is_negation());
+        trail.propagate(cons.lit().var(), nullptr, level);
+    };
+
+    auto make_equality = [&](int var_ord, Rational const& value) {
+        std::array<int, 1> vars{var_ord};
+        std::array<Rational, 1> coef{Rational{1}};
+        return constraint(trail, vars, coef, Order_predicate::eq, value);
+    };
+    auto make_upper = [&](int var_ord, Rational const& value, bool strict) {
+        std::array<int, 1> vars{var_ord};
+        std::array<Rational, 1> coef{Rational{1}};
+        return constraint(trail, vars, coef, strict ? Order_predicate::lt : Order_predicate::leq,
+                          value);
+    };
+    auto make_lower = [&](int var_ord, Rational const& value, bool strict) {
+        std::array<int, 1> vars{var_ord};
+        std::array<Rational, 1> coef{Rational{-1}};
+        return constraint(trail, vars, coef, strict ? Order_predicate::lt : Order_predicate::leq,
+                          -value);
+    };
+
+    for (auto var_ord : vars_to_check)
+    {
+        if (!seen.insert(var_ord).second || models.owned().is_defined(var_ord))
+        {
+            continue;
+        }
+
+        auto& bnds = bounds[var_ord];
+        auto lb = bnds.lower_bound(models);
+        auto ub = bnds.upper_bound(models);
+        if (lb && ub && lb->value() == ub->value() && !lb->is_strict() && !ub->is_strict())
+        {
+            auto eq = make_equality(var_ord, lb->value());
+            propagate_literal(eq, std::max(implied_level(trail, *lb), implied_level(trail, *ub)));
+            continue;
+        }
+
+        if (lb)
+        {
+            auto lower = make_lower(var_ord, lb->value(), lb->is_strict());
+            propagate_literal(lower, implied_level(trail, *lb));
+        }
+        if (ub)
+        {
+            auto upper = make_upper(var_ord, ub->value(), ub->is_strict());
+            propagate_literal(upper, implied_level(trail, *ub));
+        }
+    }
 }
 
 void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
@@ -999,6 +1440,10 @@ void Linear_arithmetic::decide(Database&, Trail& trail, Variable var)
 
     auto models = relevant_models(trail);
     auto& bnds = bounds[var.ord()];
+    if (options.prop_integer)
+    {
+        repair_integer_model(models, var.ord());
+    }
 
     Rational value =
         cached_values.is_defined(var.ord()) ? cached_values.value(var.ord()) : Rational{0};

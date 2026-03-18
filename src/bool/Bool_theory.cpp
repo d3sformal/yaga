@@ -52,21 +52,12 @@ void Bool_theory::on_before_backtrack(Database& db, Trail& trail, int level)
     }
 }
 
-void Bool_theory::on_learned_clause(Database& db, Trail&, Clause const& learned)
+void Bool_theory::on_learned_clause(Database&, Trail&, Clause const&)
 {
-    // find the learned clause in database (should be exactly one comparison since learned clauses
-    // are added to the back)
-    auto it = std::find_if(
-        db.learned().rbegin(), db.learned().rend(),
-        [learned_ptr = &learned](auto const& clause) { return &clause == learned_ptr; });
-    assert(it != db.learned().rend());
-
-    // watch the first two literals in the learned clause
-    watched[learned[0]].emplace_back(&*it);
-    if (learned.size() > 1)
-    {
-        watched[learned[1]].emplace_back(&*it);
-    }
+    // Learned clauses live in a growing vector, so caching raw pointers across insertions is not
+    // stable. Rebuild watch lists lazily on the next propagate() call instead.
+    prepared = false;
+    unit_clauses.clear();
 }
 
 void Bool_theory::initialize(Database& db, Trail& trail)
@@ -76,13 +67,14 @@ void Bool_theory::initialize(Database& db, Trail& trail)
     // allocate space for new variables if necessary
     watched.resize(model.num_vars());
 
-    if (trail.empty()) // initialize watch lists
+    if (!prepared) // initialize watch lists once per check
     {
         // clear watch lists
         for (auto& list : watched)
         {
             list.clear();
         }
+        unit_clauses.clear();
 
         // initialize watched literals
         auto& asserted = db.asserted();
@@ -94,7 +86,7 @@ void Bool_theory::initialize(Database& db, Trail& trail)
                 if (clause.size() == 1) // propagate unit clauses
                 {
                     watched[clause[0]].emplace_back(Watched_clause{&clause});
-                    satisfied.push_back({.lit = clause[0], .reason = &clause});
+                    unit_clauses.push_back(&clause);
                 }
                 else // non-unit clause
                 {
@@ -102,6 +94,17 @@ void Bool_theory::initialize(Database& db, Trail& trail)
                     watched[clause[1]].emplace_back(&clause);
                 }
             }
+        }
+        prepared = true;
+    }
+
+    if (trail.empty())
+    {
+        for (auto clause : unit_clauses)
+        {
+            assert(clause != nullptr);
+            assert(clause->size() == 1);
+            satisfied.push_back({.lit = clause->front(), .reason = clause});
         }
     }
 
@@ -114,6 +117,12 @@ void Bool_theory::initialize(Database& db, Trail& trail)
             satisfied.push_back({.lit = lit, .reason = reason});
         }
     }
+}
+
+void Bool_theory::on_init(Database&, Trail&)
+{
+    prepared = false;
+    unit_clauses.clear();
 }
 
 std::vector<Clause> Bool_theory::propagate(Database& db, Trail& trail)

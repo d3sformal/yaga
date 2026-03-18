@@ -372,6 +372,17 @@ private:
      */
     [[nodiscard]] std::optional<Rational> find_integer(Models const& models, Bounds_type& bounds);
 
+    /** Repair cached values of unassigned integer variables around @p focus_var.
+     *
+     * The repair is local and budgeted: it only inspects active constraints mentioning
+     * @p focus_var and their immediate neighbors. The goal is to keep `cached_values` closer to
+     * a satisfiable arithmetic model before the next decision is made.
+     *
+     * @param models partial assignment of variables in trail
+     * @param focus_var ordinal number of the variable we are about to decide
+     */
+    void repair_integer_model(Models const& models, int focus_var);
+
     /** Use currently active linear constraints to pick a better integer candidate for decisions.
      *
      * Assigned arithmetic variables keep their current value; unassigned ones are approximated by
@@ -384,6 +395,28 @@ private:
      */
     [[nodiscard]] std::optional<Rational> guided_integer_value(Models const& models, int var_ord,
                                                                Rational const& preferred_value);
+
+    /** Propagate explicit boolean literals for the current tightest projected bounds.
+     *
+     * Unit propagation and FM deduction already maintain precise arithmetic bounds internally.
+     * Materializing their tightest one-variable consequences on the Boolean trail allows the SAT
+     * layer to combine them earlier with other literals.
+     *
+     * @param trail current solver trail
+     * @param models partial assignment of variables in trail
+     * @param vars_to_check variables whose current bounds should be materialized
+     */
+    void propagate_projected_bounds(Trail& trail, Models& models,
+                                    std::vector<int> const& vars_to_check);
+
+    /** Compute the highest trail level of a derived bound.
+     *
+     * @param trail current solver trail
+     * @param bound implied bound or inequality
+     * @return highest decision level of any fact the bound depends on
+     */
+    [[nodiscard]] int implied_level(Trail const& trail,
+                                    Implied_value<Rational> const& bound) const;
 
     /** Check that bounds is consistent with all unit constraints on the trail
      *

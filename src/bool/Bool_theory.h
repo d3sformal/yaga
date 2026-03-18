@@ -57,6 +57,13 @@ public:
      */
     void on_learned_clause(Database& db, Trail& trail, Clause const& learned) override;
 
+    /** Reset cached watch initialization for a new solver check.
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     */
+    void on_init(Database& db, Trail& trail) override;
+
     /** Cache variable polarity
      * 
      * @param db clause database
@@ -111,10 +118,14 @@ private:
     Literal_map<std::vector<Watched_clause>> watched;
     // stack of true literals to propagate with a pointer to the reason clause
     std::vector<Satisfied_literal> satisfied;
+    // unit clauses cached for fast restart re-seeding
+    std::vector<Clause*> unit_clauses;
     // cached variable phase
     std::vector<bool> phase;
     // phase strategy
     Phase var_phase{Phase::positive};
+    // watch lists have been built for the current check
+    bool prepared = false;
 
     /** Propagate assigned literals at current decision level in @p trail
      *

@@ -65,7 +65,7 @@ void Qf_lia::setup(Yaga* yaga, Options const& options) const
     bcp.set_phase(options.phase);
 
     Linear_arithmetic::Options lra_options;
-    lra_options.prop_rational = options.prop_rational;
+    lra_options.prop_rational = true;
     lra_options.prop_bounds = true;
     lra_options.prop_unassigned = true;
     lra_options.prop_integer = true;
@@ -88,7 +88,7 @@ void Qf_lia::setup(Yaga* yaga, Options const& options) const
     bcp.set_phase(options.phase);
 
     Linear_arithmetic::Options lra_options;
-    lra_options.prop_rational = options.prop_rational;
+    lra_options.prop_rational = true;
     lra_options.prop_bounds = true;
     lra_options.prop_unassigned = true;
     lra_options.prop_integer = true;

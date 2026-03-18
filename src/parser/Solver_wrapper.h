@@ -125,6 +125,7 @@ class Solver_wrapper
     terms::Term_manager& term_manager;
     Options const& options;
     std::unordered_map<terms::term_t, Variable> variables;
+    std::unordered_map<terms::term_t, terms::term_t> eliminated_rational_terms;
 
     Internalizer_config internalizer_config;
     terms::Visitor<Internalizer_config> internalizer;

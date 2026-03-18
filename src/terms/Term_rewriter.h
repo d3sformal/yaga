@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "Term_manager.h"
+#include "Terms.h"
 
 namespace yaga::terms {
 
@@ -56,7 +57,13 @@ public:
                 assert(tm.get_type(child) == tm.get_type(newChild));
                 aux_args.push_back(newChild);
             }
-            term_t newTerm = needs_change ? tm.mk_term(tm.get_kind(current_term), aux_args) : current_term;
+            term_t newTerm = current_term;
+            if (needs_change)
+            {
+                auto rebuilt = tm.mk_term(tm.get_kind(current_term), aux_args);
+                // Rebuilding a changed negated Boolean term must preserve its outer polarity.
+                newTerm = is_negated(current_term) ? opposite_term(rebuilt) : rebuilt;
+            }
             aux_args.clear();
             term_t rewritten = cfg.rewrite(newTerm);
             if (rewritten != newTerm or needs_change) {
@@ -101,10 +108,35 @@ public:
     }
 };
 
-term_t simultaneous_variable_substitution(Term_manager& tm, subst_map_t const& map, term_t term)
+class ExactSubstituteConfig : public DefaultRewriterConfig
+{
+    subst_map_t const& subst_map;
+
+public:
+    explicit ExactSubstituteConfig(subst_map_t const& subst_map) : subst_map(subst_map) {}
+
+    term_t rewrite(term_t term) override
+    {
+        if (auto it = subst_map.find(term); it != subst_map.end())
+        {
+            return it->second;
+        }
+        return term;
+    }
+};
+
+inline term_t simultaneous_variable_substitution(Term_manager& tm, subst_map_t const& map,
+                                                 term_t term)
 {
     VarSubstituteConfig config(tm, map);
     Rewriter<VarSubstituteConfig> rewriter(tm, config);
+    return rewriter.rewrite(term);
+}
+
+inline term_t simultaneous_substitution(Term_manager& tm, subst_map_t const& map, term_t term)
+{
+    ExactSubstituteConfig config(map);
+    Rewriter<ExactSubstituteConfig> rewriter(tm, config);
     return rewriter.rewrite(term);
 }
 
