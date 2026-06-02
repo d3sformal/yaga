@@ -452,7 +452,14 @@ public:
 
         function_map_t const& fn_map = it_f->second;
         auto it = fn_map.find(args);
-        return it != fn_map.end() ? std::optional{it->second} : std::nullopt;
+        if (it != fn_map.end())
+        {
+            return it->second;
+        }
+
+        auto trailing = fnc_trailing_values.find(name);
+        return trailing != fnc_trailing_values.end() ? std::optional{trailing->second}
+                                                     : std::nullopt;
     }
 };
 

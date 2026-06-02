@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <deque>
 #include <limits>
 #include <optional>
 #include <ranges>
@@ -81,6 +82,20 @@ public:
      * any value. Empty list, otherwise.
      */
     std::vector<Clause> propagate(Database&, Trail&) override;
+
+    /** Reset transient explanation clauses for a new solver check.
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     */
+    void on_init(Database&, Trail&) override;
+
+    /** Drop transient explanation clauses after restart.
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     */
+    void on_restart(Database&, Trail&) override;
 
     /** Validate the current total arithmetic model.
      *
@@ -243,6 +258,8 @@ private:
     Options options;
     // unassigned rational variables with only one allowed value
     std::vector<int> decided;
+    // explanation clauses for theory propagations; pointers stored in Trail::reason()
+    std::deque<Clause> reason_clauses;
 
     /** Start watching LRA variables in @p cons
      *
@@ -408,6 +425,31 @@ private:
      */
     void propagate_projected_bounds(Trail& trail, Models& models,
                                     std::vector<int> const& vars_to_check);
+
+    /** Store a theory explanation clause and return a stable pointer to it.
+     *
+     * @param clause clause to store
+     * @return pointer to stored clause
+     */
+    Clause* store_reason(Clause clause);
+
+    /** Explain why the currently assigned values imply @p cons.
+     *
+     * @param trail current solver trail
+     * @param models partial assignment of variables in trail
+     * @param cons fully assigned constraint
+     * @return reason clause or nullptr if no explicit explanation could be built
+     */
+    Clause* explain_assigned_constraint(Trail& trail, Models& models, Constraint const& cons);
+
+    /** Explain why current bounds imply @p cons.
+     *
+     * @param trail current solver trail
+     * @param models partial assignment of variables in trail
+     * @param cons constraint implied by bounds
+     * @return reason clause or nullptr if no explicit explanation could be built
+     */
+    Clause* explain_implied_constraint(Trail& trail, Models& models, Constraint const& cons);
 
     /** Compute the highest trail level of a derived bound.
      *

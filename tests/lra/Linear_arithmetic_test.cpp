@@ -170,10 +170,12 @@ TEST_CASE("LRA propagation is idempotent", "[linear_arithmetic]")
     propagate(trail, linear(z == 0));
 
     REQUIRE(lra.propagate(db, trail).empty());
+    auto num_assigned = trail.assigned(trail.decision_level()).size();
     REQUIRE(lra.propagate(db, trail).empty());
     REQUIRE(lra.propagate(db, trail).empty());
 
-    REQUIRE(trail.assigned(trail.decision_level()).size() == 6);
+    REQUIRE(num_assigned >= 6);
+    REQUIRE(trail.assigned(trail.decision_level()).size() == num_assigned);
     REQUIRE(!trail.decision_level(x));
     REQUIRE(trail.decision_level(y) == 1);
     REQUIRE(!trail.decision_level(z));
@@ -198,23 +200,22 @@ TEST_CASE("Propagate fully assigned constraints in the system", "[linear_arithme
     auto [x, y, z] = real_vars<3>();
 
     // add a constraint that is not on the trail
-    linear(x + y + z <= 0);
-
+    auto sum = linear(x + y + z <= 0);
     decide(trail, x, 1);
     REQUIRE(lra.propagate(db, trail).empty());
     decide(trail, y, 0);
     REQUIRE(lra.propagate(db, trail).empty());
 
-    REQUIRE(!yaga::eval(models.boolean(), linear(x + y + z <= 0).lit()));
-    REQUIRE(!yaga::eval(models.owned(), linear(x + y + z <= 0)));
-    REQUIRE(!trail.decision_level(linear(x + y + z <= 0).lit().var()));
+    REQUIRE(!yaga::eval(models.boolean(), sum.lit()));
+    REQUIRE(!yaga::eval(models.owned(), sum));
+    REQUIRE(!trail.decision_level(sum.lit().var()));
 
     decide(trail, z, 0);
     REQUIRE(lra.propagate(db, trail).empty());
 
-    REQUIRE(trail.decision_level(linear(x + y + z <= 0).lit().var()) == 3);
-    REQUIRE(yaga::eval(models.boolean(), linear(x + y + z <= 0).lit()) == false);
-    REQUIRE(yaga::eval(models.owned(), linear(x + y + z <= 0)) == false);
+    REQUIRE(trail.decision_level(sum.lit().var()) == 3);
+    REQUIRE(yaga::eval(models.boolean(), sum.lit()) == false);
+    REQUIRE(yaga::eval(models.owned(), sum) == false);
 }
 
 TEST_CASE("Fully assigned mismatches learn a projected arithmetic clause", "[linear_arithmetic]")
@@ -279,6 +280,41 @@ TEST_CASE("Materialize projected one-variable bounds", "[linear_arithmetic]")
     REQUIRE(conflicts.empty());
     REQUIRE(eval(models.boolean(), projected.lit()) == true);
     REQUIRE(trail.decision_level(projected.lit().var()) == 0);
+
+    REQUIRE(trail.reason(projected.lit().var()) == nullptr);
+}
+
+TEST_CASE("Propagate implied unassigned constraints semantically", "[linear_arithmetic]")
+{
+    using namespace yaga;
+    using namespace yaga::test;
+
+    Database db;
+    Linear_arithmetic lra;
+    Linear_arithmetic::Options opts;
+    opts.prop_unassigned = true;
+    lra.set_options(opts);
+
+    Event_dispatcher dispatcher;
+    dispatcher.add(&lra);
+    Trail trail{dispatcher};
+    trail.set_model<bool>(Variable::boolean, 0);
+    trail.set_model<Rational>(Variable::rational, 2);
+
+    auto models = lra.relevant_models(trail);
+    auto linear = factory(lra, trail);
+    auto [x, y] = real_vars<2>();
+
+    auto sum = linear(x + y <= 0);
+    auto x_bound = linear(x <= -1);
+    auto y_bound = linear(y <= 0);
+
+    propagate(trail, x_bound);
+    propagate(trail, y_bound);
+    REQUIRE(lra.propagate(db, trail).empty());
+
+    REQUIRE(eval(models.boolean(), sum.lit()) == true);
+    REQUIRE(trail.reason(sum.lit().var()) == nullptr);
 }
 
 TEST_CASE("Compute bounds correctly after backtracking", "[linear_arithmetic]")

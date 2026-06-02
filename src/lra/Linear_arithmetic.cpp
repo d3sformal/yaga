@@ -10,6 +10,7 @@ namespace {
 
 using Models = Linear_arithmetic::Models;
 using Constraint = Linear_arithmetic::Constraint;
+using Bound = Implied_value<Rational>;
 
 struct Decision_interval {
     std::optional<Rational> lb;
@@ -263,26 +264,91 @@ bool satisfies(Constraint const& cons, Value_of&& value_of)
     return cons.lit().is_negation() ^ cons.pred()(Rational{0}, rhs);
 }
 
-void add_assignment_literal(Linear_arithmetic* lra, Trail& trail, Models& models, Clause& out,
-                            int var_ord)
+std::optional<Literal> ensure_assignment_literal(Linear_arithmetic* lra, Trail& trail,
+                                                 Models& models, int var_ord)
 {
     if (!models.owned().is_defined(var_ord))
     {
-        return;
+        return {};
     }
 
     std::array<int, 1> vars{var_ord};
     std::array<Rational, 1> coef{Rational{1}};
     auto eq = lra->constraint(trail, vars, coef, Order_predicate::eq, models.owned().value(var_ord));
 
-    if (!models.boolean().is_defined(eq.lit().var().ord()))
+    auto current = eval(models.boolean(), eq.lit());
+    if (!current.has_value())
     {
         lra->propagate(trail, models, eq);
     }
-
     assert(eval(models.owned(), eq) == true);
-    assert(eval(models.boolean(), eq.lit()) == true);
-    out.push_back(~eq.lit()); // add inequality: var != current_value
+    if (eval(models.boolean(), eq.lit()) != true)
+    {
+        return {};
+    }
+    return eq.lit();
+}
+
+void add_assignment_literal(Linear_arithmetic* lra, Trail& trail, Models& models, Clause& out,
+                            int var_ord)
+{
+    if (auto literal = ensure_assignment_literal(lra, trail, models, var_ord))
+    {
+        out.push_back(~literal.value()); // add inequality: var != current_value
+    }
+}
+
+void add_bound_antecedents(Linear_arithmetic* lra, Trail& trail, Models& models, Clause& out,
+                           Bound const& bound)
+{
+    out.push_back(~bound.reason().lit());
+
+    for (auto var_ord : bound.reason().vars())
+    {
+        if (var_ord == bound.var())
+        {
+            continue;
+        }
+
+        bool covered_by_bound = std::any_of(bound.bounds().begin(), bound.bounds().end(),
+                                            [&](auto const& other) { return other.var() == var_ord; });
+        if (!covered_by_bound && models.owned().is_defined(var_ord))
+        {
+            if (auto literal = ensure_assignment_literal(lra, trail, models, var_ord))
+            {
+                out.push_back(~literal.value());
+            }
+        }
+    }
+
+    for (auto const& other : bound.bounds())
+    {
+        add_bound_antecedents(lra, trail, models, out, other);
+    }
+}
+
+void deduplicate_clause(Clause& clause)
+{
+    Clause unique;
+    unique.reserve(clause.size());
+    for (auto lit : clause)
+    {
+        if (std::find(unique.begin(), unique.end(), lit) == unique.end())
+        {
+            unique.push_back(lit);
+        }
+    }
+    clause = std::move(unique);
+}
+
+int clause_level(Trail const& trail, Clause const& clause)
+{
+    int level = 0;
+    for (auto lit : clause)
+    {
+        level = std::max(level, trail.decision_level(lit.var()).value_or(0));
+    }
+    return level;
 }
 
 std::optional<Clause> mismatch_conflict(Linear_arithmetic* lra, Trail& trail, Models& models,
@@ -379,6 +445,23 @@ void Linear_arithmetic::on_variable_resize(Variable::Type type, int num_vars)
     {
         constraints.resize(num_vars);
     }
+}
+
+void Linear_arithmetic::on_init(Database&, Trail&)
+{
+    reason_clauses.clear();
+}
+
+void Linear_arithmetic::on_restart(Database&, Trail&)
+{
+    reason_clauses.clear();
+}
+
+Clause* Linear_arithmetic::store_reason(Clause clause)
+{
+    deduplicate_clause(clause);
+    reason_clauses.push_back(std::move(clause));
+    return &reason_clauses.back();
 }
 
 bool Linear_arithmetic::is_effectively_decided(Models const& models, int lra_var_ord)
@@ -667,6 +750,93 @@ int Linear_arithmetic::decision_level(Trail const& trail, Constraint const& cons
     return level;
 }
 
+Clause* Linear_arithmetic::explain_assigned_constraint(Trail& trail, Models& models,
+                                                       Constraint const& cons)
+{
+    auto value = cons.eval(models.owned());
+    Literal implied = value ? cons.lit() : ~cons.lit();
+
+    Clause reason;
+    reason.reserve(static_cast<std::size_t>(cons.size()) + 1);
+    reason.push_back(implied);
+    for (auto var_ord : cons.vars())
+    {
+        if (auto literal = ensure_assignment_literal(this, trail, models, var_ord))
+        {
+            reason.push_back(~literal.value());
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+    return store_reason(std::move(reason));
+}
+
+Clause* Linear_arithmetic::explain_implied_constraint(Trail& trail, Models& models,
+                                                      Constraint const& cons)
+{
+    if (cons.pred() == Order_predicate::eq)
+    {
+        return nullptr;
+    }
+
+    Clause reason;
+    reason.reserve(static_cast<std::size_t>(cons.size()) * 4 + 1);
+    reason.push_back(cons.lit());
+
+    auto append_assignment = [&](Clause& out, int var_ord) -> bool {
+        auto literal = ensure_assignment_literal(this, trail, models, var_ord);
+        if (!literal)
+        {
+            return false;
+        }
+        out.push_back(~literal.value());
+        return true;
+    };
+
+    auto bound = cons.rhs();
+    auto [var_it, var_end] = cons.vars();
+    auto coef_it = cons.coef().begin();
+    for (; var_it != var_end; ++var_it, ++coef_it)
+    {
+        if (models.owned().is_defined(*var_it))
+        {
+            bound -= *coef_it * models.owned().value(*var_it);
+            if (!append_assignment(reason, *var_it))
+            {
+                return nullptr;
+            }
+            continue;
+        }
+
+        Implied_value<Rational> const* bound_ptr = nullptr;
+        if ((!cons.lit().is_negation() && *coef_it > 0) || (cons.lit().is_negation() && *coef_it < 0))
+        {
+            bound_ptr = bounds[*var_it].upper_bound(models);
+        }
+        else
+        {
+            bound_ptr = bounds[*var_it].lower_bound(models);
+        }
+
+        if (!bound_ptr)
+        {
+            return nullptr;
+        }
+        bound -= *coef_it * bound_ptr->value();
+        add_bound_antecedents(this, trail, models, reason, *bound_ptr);
+    }
+
+    auto implied = cons.lit().is_negation() ? !cons.pred()(Rational{0}, bound)
+                                            : cons.pred()(Rational{0}, bound);
+    if (!implied)
+    {
+        return nullptr;
+    }
+    return store_reason(std::move(reason));
+}
+
 bool Linear_arithmetic::is_unit(Model<Rational> const& model, Constraint const& cons) const
 {
     // Unit constraint will have exactly one watched variable assigned. The first two variables
@@ -849,8 +1019,8 @@ void Linear_arithmetic::propagate_unassigned(Trail& trail, Models& models,
             {
                 if (bounds.is_implied(models, c))
                 {
-                    trail.propagate(c.lit().var(), nullptr, trail.decision_level());
                     models.boolean().set_value(bool_ord, !c.lit().is_negation());
+                    trail.propagate(c.lit().var(), nullptr, trail.decision_level());
                     break;
                 }
             }
@@ -903,7 +1073,7 @@ void Linear_arithmetic::propagate(Trail& trail, Models& models, Constraint const
     // propagate the boolean variable of the constraint
     auto value = cons.eval(models.owned());
     models.boolean().set_value(cons.lit().var().ord(), cons.lit().is_negation() ^ value);
-    trail.propagate(cons.lit().var(), /*reason=*/nullptr, dec_level);
+    trail.propagate(cons.lit().var(), nullptr, dec_level);
 }
 
 bool Linear_arithmetic::is_new(Models const& models, Variable var) const
@@ -1371,7 +1541,7 @@ void Linear_arithmetic::propagate_projected_bounds(Trail& trail, Models& models,
     }
 
     std::unordered_set<int> seen;
-    auto propagate_literal = [&](Constraint const& cons, int level) {
+    auto propagate_literal = [&](Constraint const& cons, int level, Clause* reason) {
         auto bool_ord = cons.lit().var().ord();
         auto current = eval(models.boolean(), cons.lit());
         if (current.has_value())
@@ -1380,7 +1550,7 @@ void Linear_arithmetic::propagate_projected_bounds(Trail& trail, Models& models,
         }
 
         models.boolean().set_value(bool_ord, !cons.lit().is_negation());
-        trail.propagate(cons.lit().var(), nullptr, level);
+        trail.propagate(cons.lit().var(), reason, reason ? clause_level(trail, *reason) : level);
     };
 
     auto make_equality = [&](int var_ord, Rational const& value) {
@@ -1414,19 +1584,20 @@ void Linear_arithmetic::propagate_projected_bounds(Trail& trail, Models& models,
         if (lb && ub && lb->value() == ub->value() && !lb->is_strict() && !ub->is_strict())
         {
             auto eq = make_equality(var_ord, lb->value());
-            propagate_literal(eq, std::max(implied_level(trail, *lb), implied_level(trail, *ub)));
+            propagate_literal(eq, std::max(implied_level(trail, *lb), implied_level(trail, *ub)),
+                              nullptr);
             continue;
         }
 
         if (lb)
         {
             auto lower = make_lower(var_ord, lb->value(), lb->is_strict());
-            propagate_literal(lower, implied_level(trail, *lb));
+            propagate_literal(lower, implied_level(trail, *lb), nullptr);
         }
         if (ub)
         {
             auto upper = make_upper(var_ord, ub->value(), ub->is_strict());
-            propagate_literal(upper, implied_level(trail, *ub));
+            propagate_literal(upper, implied_level(trail, *ub), nullptr);
         }
     }
 }

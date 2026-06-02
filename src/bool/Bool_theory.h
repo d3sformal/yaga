@@ -64,6 +64,13 @@ public:
      */
     void on_init(Database& db, Trail& trail) override;
 
+    /** Rebuild watch lists after restart-time clause deletion/subsumption.
+     *
+     * @param db clause database
+     * @param trail current solver trail
+     */
+    void on_restart(Database& db, Trail& trail) override;
+
     /** Cache variable polarity
      * 
      * @param db clause database

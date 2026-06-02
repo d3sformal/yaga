@@ -220,8 +220,12 @@ Solver::Result Solver::check()
                 return Result::unsat;
             }
 
+            bool only_semantic_splits =
+                std::all_of(learned.begin(), learned.end(),
+                            [&](auto const& clause) { return is_semantic_split(clause); });
+
             auto clauses = learn(std::move(learned));
-            if (restart_policy->should_restart())
+            if (restart_policy->should_restart() && !only_semantic_splits)
             {
                 restart();
             }
@@ -258,8 +262,12 @@ Solver::Result Solver::check()
                     return Result::unsat;
                 }
 
+                bool only_semantic_splits =
+                    std::all_of(learned.begin(), learned.end(),
+                                [&](auto const& clause) { return is_semantic_split(clause); });
+
                 auto clauses = learn(std::move(learned));
-                if (restart_policy->should_restart())
+                if (restart_policy->should_restart() && !only_semantic_splits)
                 {
                     restart();
                 }

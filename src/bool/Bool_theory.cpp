@@ -52,12 +52,30 @@ void Bool_theory::on_before_backtrack(Database& db, Trail& trail, int level)
     }
 }
 
-void Bool_theory::on_learned_clause(Database&, Trail&, Clause const&)
+void Bool_theory::on_learned_clause(Database&, Trail& trail, Clause const& learned)
 {
-    // Learned clauses live in a growing vector, so caching raw pointers across insertions is not
-    // stable. Rebuild watch lists lazily on the next propagate() call instead.
-    prepared = false;
-    unit_clauses.clear();
+    auto& model = trail.model<bool>(Variable::boolean);
+    watched.resize(model.num_vars());
+    phase.resize(model.num_vars(), true);
+
+    if (!prepared)
+    {
+        return;
+    }
+
+    auto* clause = const_cast<Clause*>(&learned);
+    assert(clause != nullptr);
+
+    if (clause->size() == 1)
+    {
+        watched[clause->front()].emplace_back(clause);
+        unit_clauses.push_back(clause);
+    }
+    else if (clause->size() >= 2)
+    {
+        watched[(*clause)[0]].emplace_back(clause);
+        watched[(*clause)[1]].emplace_back(clause);
+    }
 }
 
 void Bool_theory::initialize(Database& db, Trail& trail)
@@ -120,6 +138,12 @@ void Bool_theory::initialize(Database& db, Trail& trail)
 }
 
 void Bool_theory::on_init(Database&, Trail&)
+{
+    prepared = false;
+    unit_clauses.clear();
+}
+
+void Bool_theory::on_restart(Database&, Trail&)
 {
     prepared = false;
     unit_clauses.clear();
